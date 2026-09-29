@@ -33,6 +33,11 @@ namespace SubnauticaMP.Shared
         CyclopsState = 25,    // lights, silent running, engine mode
         StoryGoal = 26,       // a story event happened (radio message, Sunbeam, Precursor...)
         Aurora = 27,          // when the Aurora's countdown / warnings start
+        SpawnSlots = 28,      // what spawned in entity slots (same fish / plants / resources for everyone)
+        CreatureOwner = 29,   // who runs which creature's brain
+        CreatureStates = 30,  // owner -> others: creature positions
+        CreatureDamage = 31,  // hit a creature someone else runs
+        CreatureDied = 32,
     }
 
     public struct Vec3
@@ -105,6 +110,11 @@ namespace SubnauticaMP.Shared
                 case PacketType.CyclopsState: return new CyclopsStatePacket();
                 case PacketType.StoryGoal: return new StoryGoalPacket();
                 case PacketType.Aurora: return new AuroraPacket();
+                case PacketType.SpawnSlots: return new SpawnSlotsPacket();
+                case PacketType.CreatureOwner: return new CreatureOwnerPacket();
+                case PacketType.CreatureStates: return new CreatureStatesPacket();
+                case PacketType.CreatureDamage: return new CreatureDamagePacket();
+                case PacketType.CreatureDied: return new CreatureDiedPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }

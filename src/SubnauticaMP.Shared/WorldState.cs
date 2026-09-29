@@ -11,7 +11,7 @@ namespace SubnauticaMP.Shared
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 6;
+        const int FileVersion = 7;
         const int MaxEntries = 1_000_000;
 
         public HashSet<string> Blueprints = new HashSet<string>();
@@ -33,6 +33,7 @@ namespace SubnauticaMP.Shared
         public Dictionary<string, CyclopsStatePacket> Cyclopses = new Dictionary<string, CyclopsStatePacket>();
         public List<StoryGoalPacket> StoryGoals = new List<StoryGoalPacket>(); // in the order they happened
         public AuroraPacket Aurora; // null until the first player shares it
+        public Dictionary<string, SpawnSlot> SpawnBook = new Dictionary<string, SpawnSlot>();
 
         public HashSet<string> SetFor(UnlockKind kind)
         {
@@ -81,6 +82,8 @@ namespace SubnauticaMP.Shared
             foreach (var g in StoryGoals) g.Write(w);
             w.Write(Aurora != null);
             Aurora?.Write(w);
+            w.Write(SpawnBook.Count);
+            foreach (var slot in SpawnBook.Values) slot.Write(w);
         }
 
         public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
@@ -161,6 +164,15 @@ namespace SubnauticaMP.Shared
                     s.Aurora.Read(r);
                 }
             }
+            if (version >= 7)
+            {
+                int n = ReadCount(r);
+                for (int i = 0; i < n; i++)
+                {
+                    var slot = SpawnSlot.Read(r);
+                    s.SpawnBook[slot.Key] = slot;
+                }
+            }
             return s;
         }
 
@@ -187,6 +199,7 @@ namespace SubnauticaMP.Shared
                 Cyclopses = new Dictionary<string, CyclopsStatePacket>(Cyclopses),
                 StoryGoals = new List<StoryGoalPacket>(StoryGoals),
                 Aurora = Aurora,
+                SpawnBook = new Dictionary<string, SpawnSlot>(SpawnBook),
             };
         }
 

@@ -36,6 +36,7 @@ namespace SubnauticaMP.Shared
         Timer _tick;
         int _nextId = 1;
         int _hostId;
+        readonly Dictionary<string, int> _creatureOwners = new Dictionary<string, int>(); // creature id -> player id (not saved)
 
         public event Action<string> Log;
         public event Action PlayersChanged; // also fires when the game starts or the host changes
@@ -391,6 +392,55 @@ namespace SubnauticaMP.Shared
                     Broadcast(aurora, except: conn);
                     break;
 
+                case SpawnSlotsPacket slots:
+                    var fresh = new SpawnSlotsPacket();
+                    lock (_lock)
+                    {
+                        foreach (var slot in slots.Slots)
+                        {
+                            if (string.IsNullOrEmpty(slot.Key) || _world.SpawnBook.ContainsKey(slot.Key)) continue; // first roll wins
+                            _world.SpawnBook[slot.Key] = slot;
+                            fresh.Slots.Add(slot);
+                        }
+                    }
+                    if (fresh.Slots.Count == 0) return;
+                    _dirty = true;
+                    Broadcast(fresh, except: conn);
+                    break;
+
+                case CreatureOwnerPacket owner:
+                    HandleCreatureOwner(client, owner);
+                    break;
+
+                case CreatureStatesPacket states:
+                    var mine = new CreatureStatesPacket();
+                    lock (_lock)
+                        foreach (var st in states.States)
+                            if (_creatureOwners.TryGetValue(st.Id ?? "", out var o) && o == client.Id) mine.States.Add(st);
+                    if (mine.States.Count > 0) Broadcast(mine, except: conn);
+                    break;
+
+                case CreatureDamagePacket damage:
+                    Connection ownerConn = null;
+                    lock (_lock)
+                    {
+                        if (_creatureOwners.TryGetValue(damage.Id ?? "", out var o) && o != client.Id)
+                            ownerConn = _connections.FirstOrDefault(c => ((Client)c.Tag).Joined && ((Client)c.Tag).Id == o);
+                    }
+                    ownerConn?.Send(damage);
+                    break;
+
+                case CreatureDiedPacket dead:
+                    if (string.IsNullOrEmpty(dead.Id)) return;
+                    lock (_lock)
+                    {
+                        _creatureOwners.Remove(dead.Id);
+                        if (!_world.RemovedEntities.Add(dead.Id)) return; // already dead
+                    }
+                    _dirty = true;
+                    Broadcast(dead, except: conn);
+                    break;
+
                 case PlayerDiedPacket died:
                     died.Id = client.Id;
                     Log?.Invoke($"{client.Name} died");
@@ -423,6 +473,48 @@ namespace SubnauticaMP.Shared
             }
         }
 
+        void HandleCreatureOwner(Client client, CreatureOwnerPacket request)
+        {
+            var granted = new CreatureOwnerPacket { OwnerId = request.OwnerId };
+            lock (_lock)
+            {
+                bool claim = request.OwnerId == client.Id;
+                bool handoff = !claim && request.OwnerId != 0;
+                if (handoff && !_connections.Any(c => ((Client)c.Tag).Joined && ((Client)c.Tag).Id == request.OwnerId)) return;
+
+                foreach (var id in request.Ids)
+                {
+                    if (string.IsNullOrEmpty(id)) continue;
+                    _creatureOwners.TryGetValue(id, out var current);
+                    if (claim)
+                    {
+                        // first come first served, and dead creatures stay dead
+                        if (current != 0 || _world.RemovedEntities.Contains(id)) continue;
+                        _creatureOwners[id] = client.Id;
+                    }
+                    else
+                    {
+                        if (current != client.Id) continue; // only the owner can let go or hand over
+                        if (handoff) _creatureOwners[id] = request.OwnerId;
+                        else _creatureOwners.Remove(id);
+                    }
+                    granted.Ids.Add(id);
+                }
+            }
+            if (granted.Ids.Count > 0) Broadcast(granted, except: null);
+        }
+
+        // creature owners grouped by player, for someone who just joined. Call inside _lock.
+        List<CreatureOwnerPacket> CreatureOwnerPackets()
+        {
+            return _creatureOwners.GroupBy(kv => kv.Value)
+                .SelectMany(g => g.Select(kv => kv.Key)
+                    .Select((id, i) => new { id, i })
+                    .GroupBy(x => x.i / CreatureOwnerPacket.MaxIds)
+                    .Select(chunk => new CreatureOwnerPacket { OwnerId = g.Key, Ids = chunk.Select(x => x.id).ToList() }))
+                .ToList();
+        }
+
         void HandleHello(Connection conn, Client client, HelloPacket hello)
         {
             if (hello.ProtocolVersion != Protocol.Version)
@@ -433,6 +525,7 @@ namespace SubnauticaMP.Shared
 
             var welcome = new WelcomePacket();
             bool hostChanged;
+            List<CreatureOwnerPacket> owners;
             lock (_lock)
             {
                 if (_connections.Count(c => ((Client)c.Tag).Joined) >= Protocol.MaxPlayers)
@@ -454,10 +547,12 @@ namespace SubnauticaMP.Shared
                 client.Joined = true;
                 hostChanged = PickHost();
                 welcome.HostId = _hostId;
+                owners = CreatureOwnerPackets();
             }
 
             conn.MaxPacketSize = Protocol.MaxClientPacketSize;
             conn.Send(welcome);
+            foreach (var p in owners) conn.Send(p);
             Broadcast(new PlayerJoinedPacket { Id = client.Id, Name = client.Name }, except: conn);
             if (hostChanged) Broadcast(new HostPacket { HostId = HostId }, except: conn);
             Log?.Invoke($"{client.Name} joined (id {client.Id})");
@@ -485,6 +580,7 @@ namespace SubnauticaMP.Shared
         {
             var client = (Client)conn.Tag;
             var released = new List<string>();
+            var freedCreatures = new List<string>();
             bool hostChanged;
             lock (_lock)
             {
@@ -492,8 +588,16 @@ namespace SubnauticaMP.Shared
                 if (!client.Joined) return;
                 foreach (var v in _world.Vehicles.Values)
                     if (v.OwnerId == client.Id) { v.OwnerId = 0; released.Add(v.Id); }
+                foreach (var id in _creatureOwners.Where(kv => kv.Value == client.Id).Select(kv => kv.Key).ToList())
+                {
+                    _creatureOwners.Remove(id);
+                    freedCreatures.Add(id);
+                }
                 hostChanged = PickHost();
             }
+
+            for (int i = 0; i < freedCreatures.Count; i += CreatureOwnerPacket.MaxIds)
+                Broadcast(new CreatureOwnerPacket { OwnerId = 0, Ids = freedCreatures.Skip(i).Take(CreatureOwnerPacket.MaxIds).ToList() }, except: null);
 
             foreach (var id in released) Broadcast(new VehicleOwnerPacket { Id = id, OwnerId = 0 }, except: null);
             Broadcast(new PlayerLeftPacket { Id = client.Id }, except: null);
