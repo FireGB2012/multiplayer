@@ -111,7 +111,7 @@ namespace SubnauticaMP
                 _autoJoin = _pendingLaunch = null;
                 _autoStart = !Game.InWorld;
                 _lastAddress = a.Host == "127.0.0.1" ? null : a.Host + ":" + a.Port;
-                Connect(a.Host, a.Port);
+                Connect(a.Host, a.Port, a.Password);
             }
 
             PumpPackets();
@@ -304,7 +304,7 @@ namespace SubnauticaMP
                     AddChat($"Connected! {welcome.Players.Count} other player(s) here. {_gameMode} world.");
                     if (_autoStart && !Game.InWorld) StartCoroutine(AutoStart());
                     _autoStart = false;
-                    if (_lastAddress != null) SafeRun("server list", () => ServerList.Remember(_lastAddress));
+                    if (_lastAddress != null) SafeRun("server list", () => ServerList.Remember(_lastAddress, null, _lastPassword));
                     break;
 
                 case HostPacket host:
@@ -338,6 +338,8 @@ namespace SubnauticaMP
 
                 case RejectedPacket rejected:
                     AddChat("Server said no: " + rejected.Reason);
+                    if (rejected.Reason.IndexOf("password", StringComparison.OrdinalIgnoreCase) >= 0)
+                        AskForPassword(_lastAddress, rejected.Reason);
                     break;
 
                 case UnlockPacket unlock: World.OnUnlock(unlock); break;
@@ -457,7 +459,7 @@ namespace SubnauticaMP
             }
             _autoStart = !Game.InWorld;
             _lastAddress = address.Trim();
-            Connect(host, port);
+            Connect(host, port, ServerList.Find(address)?.Password);
         }
 
         // Host a world from the main menu: server runs inside this game, then we join it like everyone else.
@@ -466,7 +468,7 @@ namespace SubnauticaMP
             if (_client.State != ClientState.Disconnected) return;
             StopHosting();
             var path = Path.Combine(Path.Combine(Plugin.Folder, "worlds"), SafeFileName(worldName.Trim()) + ".dat");
-            var server = new NetServer(path, gameMode);
+            var server = new NetServer(path, gameMode) { Password = Plugin.HostPassword.Value ?? "" };
             server.Log += msg => Plugin.Log.LogInfo("[server] " + msg);
             try { server.Start(Plugin.Port.Value); }
             catch (Exception e)
@@ -485,10 +487,13 @@ namespace SubnauticaMP
 
         public static string WorldsFolder => Path.Combine(Plugin.Folder, "worlds");
 
-        void Connect(string host, int port)
+        string _lastPassword;
+
+        void Connect(string host, int port, string password = null)
         {
+            _lastPassword = string.IsNullOrEmpty(password) ? null : password;
             AddChat($"Joining {host}:{port}...");
-            _client.Connect(host, port, Plugin.PlayerName.Value);
+            _client.Connect(host, port, Plugin.PlayerName.Value, password: password ?? "");
         }
 
         void JoinFromUi()
@@ -498,7 +503,7 @@ namespace SubnauticaMP
                 AddChat("That doesn't look like a join code or IP");
                 return;
             }
-            Connect(host, port);
+            Connect(host, port, ServerList.Find(Plugin.ServerAddress.Value)?.Password);
         }
 
         void Host()
@@ -507,7 +512,7 @@ namespace SubnauticaMP
             {
                 var worldFile = Path.Combine(Path.Combine(Plugin.Folder, "worlds"), SafeFileName(Game.CurrentSaveSlot()) + ".dat");
                 // hosting from inside a save you're already playing: no lobby
-                var server = new NetServer(worldFile, Game.CurrentGameMode(), started: true);
+                var server = new NetServer(worldFile, Game.CurrentGameMode(), started: true) { Password = Plugin.HostPassword.Value ?? "" };
                 server.Log += msg => Plugin.Log.LogInfo("[server] " + msg);
                 try
                 {

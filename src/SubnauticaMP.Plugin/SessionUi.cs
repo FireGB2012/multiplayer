@@ -1,11 +1,12 @@
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Linq;
 using SubnauticaMP.Shared;
 using UnityEngine;
 
 namespace SubnauticaMP
 {
-    // F8 window, chat overlay and name tags (plain Unity IMGUI so it works in any menu).
+    // F8 window, chat, name tags and the lobby screen, drawn in Subnautica's own style (see SnSkin).
     public sealed partial class Session
     {
         const float ChatShowSeconds = 10f;
@@ -15,10 +16,11 @@ namespace SubnauticaMP
         readonly ConcurrentQueue<string> _pendingChat = new ConcurrentQueue<string>(); // from background threads
 
         bool _menuOpen;
-        Rect _window = new Rect(40, 40, 380, 380);
+        Rect _window = new Rect(40, 40, 440, 560);
         string _chatInput = "";
-        Vector2 _chatScroll;
-        GUIStyle _tagStyle, _codeStyle, _bigStyle, _midStyle;
+        Vector2 _chatScroll, _playersScroll;
+        int _confirmBan;
+        GUIStyle _tagStyle, _tagSmall, _chatStyle;
 
         public void AddChat(string line)
         {
@@ -37,11 +39,28 @@ namespace SubnauticaMP
         {
             GUI.depth = -1000; // above the game's own UI
             DrainPendingChat();
-            DrawMainMenuUi();
-            if (Lobby.Holding) DrawLobby();
-            else DrawNameTags();
-            DrawChatOverlay();
-            if (_menuOpen) _window = GUILayout.Window(0x5B4D50, _window, DrawWindow, "Subnautica Multiplayer  (F8)");
+            var old = GUI.skin;
+            GUI.skin = SnSkin.Skin;
+            try
+            {
+                DrawMainMenuUi();
+                if (Lobby.Holding) DrawLobby();
+                else DrawNameTags();
+                DrawChatOverlay();
+                if (_menuOpen) _window = GUILayout.Window(0x5B4D50, _window, DrawWindow, "");
+            }
+            finally { GUI.skin = old; }
+        }
+
+        void MakeOverlayStyles()
+        {
+            if (_tagStyle != null) return;
+            _tagStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = 16, wordWrap = false };
+            _tagStyle.normal.textColor = SnSkin.Cyan;
+            _tagSmall = new GUIStyle(_tagStyle) { fontSize = 13, fontStyle = FontStyle.Normal };
+            _tagSmall.normal.textColor = SnSkin.Text;
+            _chatStyle = new GUIStyle(GUI.skin.label) { fontSize = 15, wordWrap = false };
+            _chatStyle.normal.textColor = SnSkin.Text;
         }
 
         void DrawNameTags()
@@ -49,11 +68,7 @@ namespace SubnauticaMP
             if (_remotes.Count == 0) return;
             var cam = Game.Camera;
             if (cam == null) return;
-            if (_tagStyle == null)
-            {
-                _tagStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold };
-                _tagStyle.normal.textColor = Color.cyan;
-            }
+            MakeOverlayStyles();
 
             foreach (var r in _remotes.Values)
             {
@@ -61,65 +76,59 @@ namespace SubnauticaMP
                 var screen = cam.WorldToScreenPoint(r.transform.position + Vector3.up * 1.3f);
                 if (screen.z <= 0f) continue; // behind us
                 float dist = Vector3.Distance(cam.transform.position, r.transform.position);
-                GUI.Label(new Rect(screen.x - 130, Screen.height - screen.y - 12, 260, 24), $"{r.PlayerName} ({dist:0}m)", _tagStyle);
+                float x = screen.x - 150, y = Screen.height - screen.y;
+                SnSkin.OutlinedLabel(new Rect(x, y - 14, 300, 24), $"{r.PlayerName}  ·  {dist:0}m" + (r.Sleeping ? "  zzz" : ""), _tagStyle);
                 if (r.HasVitals)
-                    GUI.Label(new Rect(screen.x - 130, Screen.height - screen.y + 8, 260, 24), $"HP {r.Health}   Food {r.Food}   Water {r.Water}", _tagStyle);
+                    SnSkin.OutlinedLabel(new Rect(x, y + 8, 300, 22), $"HP {r.Health}    Food {r.Food}    Water {r.Water}", _tagSmall);
             }
         }
 
         // Black "waiting for players" screen shown instead of the intro until the host starts.
         void DrawLobby()
         {
-            if (_bigStyle == null)
-            {
-                _bigStyle = new GUIStyle(GUI.skin.label) { fontSize = 42, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
-                _bigStyle.normal.textColor = new Color(0.37f, 0.83f, 0.88f);
-                _midStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleCenter, wordWrap = true };
-                _midStyle.normal.textColor = Color.white;
-            }
-
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.blackTexture);
 
             float w = Mathf.Min(900f, Screen.width - 40f);
             float x = (Screen.width - w) / 2f;
-            float y = Screen.height * 0.28f;
+            float y = Screen.height * 0.26f;
 
-            GUI.Label(new Rect(x, y, w, 60), "WAITING FOR PLAYERS", _bigStyle);
-            y += 80;
+            GUI.Label(new Rect(x, y, w, 60), "WAITING FOR PLAYERS", SnSkin.BigText);
+            y += 84;
 
             var names = new List<string> { Plugin.PlayerName.Value };
             foreach (var r in _remotes.Values) if (r != null) names.Add(r.PlayerName);
-            GUI.Label(new Rect(x, y, w, 32), $"{names.Count} {(names.Count == 1 ? "player" : "players")} in the server", _midStyle);
-            y += 34;
-            GUI.Label(new Rect(x, y, w, 60), string.Join("   ", names.ToArray()), _midStyle);
-            y += 70;
-            GUI.Label(new Rect(x, y, w, 30), $"{_gameMode} mode", _midStyle);
+            GUI.Label(new Rect(x, y, w, 32), $"{names.Count} {(names.Count == 1 ? "player" : "players")} in the server", SnSkin.MidText);
+            y += 36;
+            GUI.Label(new Rect(x, y, w, 60), string.Join("     ", names.ToArray()), SnSkin.MidText);
+            y += 64;
+            GUI.Label(new Rect(x, y, w, 30), $"{_gameMode.ToUpperInvariant()} MODE", SnSkin.Header.WithCenter());
             y += 50;
 
             if (IsHost)
             {
-                GUI.Label(new Rect(x, y, w, 30), "Everyone in? Press ENTER to start", _midStyle);
+                GUI.Label(new Rect(x, y, w, 30), "Everyone in? Press ENTER to start", SnSkin.MidText);
                 y += 44;
-                if (GUI.Button(new Rect(Screen.width / 2f - 110, y, 220, 50), "START")) StartForEveryone();
+                if (GUI.Button(new Rect(Screen.width / 2f - 130, y, 260, 52), "START", SnSkin.BigButton)) StartForEveryone();
                 if (_joinCode != null)
-                    GUI.Label(new Rect(x, y + 80, w, 30), "Join code: " + _joinCode, _midStyle);
+                    GUI.Label(new Rect(x, y + 80, w, 30), "Join code: " + _joinCode, SnSkin.MidText);
             }
             else
             {
-                GUI.Label(new Rect(x, y, w, 30), $"Waiting for {HostName} to start the game...", _midStyle);
+                GUI.Label(new Rect(x, y, w, 30), $"Waiting for {HostName} to start the game...", SnSkin.MidText);
             }
         }
 
         void DrawChatOverlay()
         {
             if (_menuOpen) return;
+            MakeOverlayStyles();
             float now = Time.unscaledTime;
             int shown = 0;
             float y = Screen.height - 200;
             for (int i = _chat.Count - 1; i >= 0 && shown < MaxChatLines; i--)
             {
                 if (now - _chat[i].time > ChatShowSeconds) break;
-                GUI.Label(new Rect(20, y - shown * 20, 700, 22), _chat[i].text);
+                SnSkin.OutlinedLabel(new Rect(22, y - shown * 22, 900, 24), _chat[i].text, _chatStyle);
                 shown++;
             }
         }
@@ -127,39 +136,47 @@ namespace SubnauticaMP
         void DrawWindow(int id)
         {
             var state = _client.State;
-            GUILayout.Label("Status: " + (state == ClientState.Connected
-                ? $"Connected ({_remotes.Count} other player(s))" + (_hostedServer != null ? " - hosting" : "")
-                : state.ToString()));
+            GUILayout.BeginHorizontal();
+            GUILayout.Label("MULTIPLAYER", SnSkin.Title, GUILayout.Height(40));
+            if (GUILayout.Button("X", SnSkin.SmallButton, GUILayout.Width(34), GUILayout.Height(30))) _menuOpen = false;
+            GUILayout.EndHorizontal();
+
+            GUILayout.Label(state == ClientState.Connected
+                ? $"Connected  ·  {_remotes.Count + 1} player(s)" + (_hostedServer != null ? "  ·  you're hosting" : "")
+                : state == ClientState.Connecting ? "Connecting..." : "Not connected", SnSkin.Small);
 
             if (_joinCode != null)
             {
-                if (_codeStyle == null) _codeStyle = new GUIStyle(GUI.skin.textField) { fontSize = 18, alignment = TextAnchor.MiddleCenter };
-                GUILayout.Label("Join code for friends:");
-                GUILayout.TextField(_joinCode, _codeStyle); // selectable so it can be copied
+                GUILayout.Label("JOIN CODE FOR FRIENDS", SnSkin.Header);
+                GUILayout.TextField(_joinCode, GUILayout.Height(34)); // selectable so it can be copied
             }
 
-            GUI.enabled = state == ClientState.Disconnected;
-            Row("Name", () => Plugin.PlayerName.Value = GUILayout.TextField(Plugin.PlayerName.Value, Protocol.MaxNameLength));
-            Row("Join code / IP", () => Plugin.ServerAddress.Value = GUILayout.TextField(Plugin.ServerAddress.Value));
-            Row("Port", () =>
+            if (state == ClientState.Disconnected)
             {
-                if (int.TryParse(GUILayout.TextField(Plugin.Port.Value.ToString()), out var port) && port > 0 && port < 65536)
-                    Plugin.Port.Value = port;
-            });
+                GUILayout.Label("CONNECT", SnSkin.Header);
+                Row("Name", () => Plugin.PlayerName.Value = GUILayout.TextField(Plugin.PlayerName.Value, Protocol.MaxNameLength));
+                Row("Join code / IP", () => Plugin.ServerAddress.Value = GUILayout.TextField(Plugin.ServerAddress.Value));
+                Row("Port", () =>
+                {
+                    if (int.TryParse(GUILayout.TextField(Plugin.Port.Value.ToString()), out var port) && port > 0 && port < 65536)
+                        Plugin.Port.Value = port;
+                });
+                Row("Host password", () => Plugin.HostPassword.Value = GUILayout.PasswordField(Plugin.HostPassword.Value ?? "", '*', 40));
+                GUILayout.BeginHorizontal();
+                if (GUILayout.Button("HOST")) Host();
+                if (GUILayout.Button("JOIN")) JoinFromUi();
+                GUILayout.EndHorizontal();
+                if (!Game.InWorld) GUILayout.Label("Tip: use the Multiplayer button in the main menu instead.", SnSkin.Small);
+            }
+            else
+            {
+                DrawPlayers();
+                if (GUILayout.Button("LEAVE")) Leave();
+            }
 
-            GUILayout.BeginHorizontal();
-            if (GUILayout.Button("Host")) Host();
-            if (GUILayout.Button("Join")) JoinFromUi();
-            GUI.enabled = true;
-            if (GUILayout.Button("Leave")) Leave();
-            GUILayout.EndHorizontal();
-
-            if (!Game.InWorld && state == ClientState.Disconnected)
-                GUILayout.Label("Tip: load a save first, then host/join.");
-
-            GUILayout.Space(6);
-            _chatScroll = GUILayout.BeginScrollView(_chatScroll, GUILayout.Height(140));
-            foreach (var line in _chat) GUILayout.Label(line.text);
+            GUILayout.Label("CHAT", SnSkin.Header);
+            _chatScroll = GUILayout.BeginScrollView(_chatScroll, GUI.skin.box, GUILayout.Height(130));
+            foreach (var line in _chat) GUILayout.Label(line.text, SnSkin.Small);
             GUILayout.EndScrollView();
 
             GUI.enabled = state == ClientState.Connected;
@@ -167,7 +184,7 @@ namespace SubnauticaMP
             bool enter = Event.current.type == EventType.KeyDown &&
                          (Event.current.keyCode == KeyCode.Return || Event.current.keyCode == KeyCode.KeypadEnter);
             _chatInput = GUILayout.TextField(_chatInput, Protocol.MaxChatLength);
-            if ((GUILayout.Button("Send", GUILayout.Width(60)) || enter) && _chatInput.Trim().Length > 0)
+            if ((GUILayout.Button("SEND", GUILayout.Width(70)) || enter) && _chatInput.Trim().Length > 0)
             {
                 Send(new ChatPacket { Text = _chatInput });
                 _chatInput = "";
@@ -178,12 +195,44 @@ namespace SubnauticaMP
             GUI.DragWindow();
         }
 
+        void DrawPlayers()
+        {
+            GUILayout.Label("PLAYERS", SnSkin.Header);
+            _playersScroll = GUILayout.BeginScrollView(_playersScroll, GUILayout.MaxHeight(170));
+            PlayerRow(LocalId, Plugin.PlayerName.Value + "  (you)");
+            foreach (var r in _remotes.Values.Where(r => r != null).OrderBy(r => r.Id).ToList())
+                PlayerRow(r.Id, r.PlayerName);
+            GUILayout.EndScrollView();
+        }
+
+        void PlayerRow(int id, string name)
+        {
+            GUILayout.BeginHorizontal(GUI.skin.box);
+            GUILayout.Label(name + (id == _hostId ? "   ·   host" : ""));
+            if (IsHost && id != LocalId)
+            {
+                if (GUILayout.Button("KICK", SnSkin.SmallButton, GUILayout.Width(60)))
+                    Send(new KickPacket { TargetId = id });
+                if (GUILayout.Button(_confirmBan == id ? "SURE?" : "BAN", SnSkin.DangerButton, GUILayout.Width(66)))
+                {
+                    if (_confirmBan == id) { Send(new KickPacket { TargetId = id, Ban = true }); _confirmBan = 0; }
+                    else _confirmBan = id;
+                }
+            }
+            GUILayout.EndHorizontal();
+        }
+
         static void Row(string label, System.Action field)
         {
             GUILayout.BeginHorizontal();
-            GUILayout.Label(label, GUILayout.Width(100));
+            GUILayout.Label(label, GUILayout.Width(120));
             field();
             GUILayout.EndHorizontal();
         }
+    }
+
+    internal static class GuiStyleExtensions
+    {
+        public static GUIStyle WithCenter(this GUIStyle s) => new GUIStyle(s) { alignment = TextAnchor.MiddleCenter };
     }
 }

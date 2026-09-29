@@ -36,8 +36,20 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Your own inventory | ✖ each player keeps their own (like Nitrox) |
 | Creatures / fauna AI | ✔ same spawns for everyone, one player runs each creature, attacks hit whoever they chase (new worlds / unexplored areas) |
 | Plants / resources in entity slots | ✔ same spawns + same ids, so picking them up syncs |
-| Eggs hatching, containment breeding, cuddlefish, crabsquid EMP | ✖ not yet |
+| Alien containment: fish/eggs you put in, babies and hatchlings | ✔ the host's game breeds, everyone gets the baby |
+| Cuddlefish follower, crabsquid EMP | ✖ not yet |
 | Player models | ✔ real diver suit, swim animation, held tool |
+| Suits: radiation suit, reinforced suit, stillsuit, fins, rebreather, tanks | ✔ you see what they wear |
+| Tool animations (knife swing, scanner, builder, welder, PDA...) | ✔ |
+| Beds | ✔ the night is skipped only when everyone is in bed together |
+| Base power (solar, thermal, bioreactor, nuclear) | ✔ one player runs each generator, everyone's usage comes off the same power |
+| Planters | ✔ via locker sync, growth progress kept; fruit picking syncs (wild plants too) |
+| Fabricator / crafting animation | ✔ others see it build; only the crafter gets the item |
+| Cyclops fires + extinguishing | ✔ the driver's game (or the host) starts fires, everyone sees and can put them out |
+| Base / Cyclops leaks and welding | ✔ damage and repairs are shared |
+| Build hologram while placing something | ✔ teammates see your green/red ghost |
+| Server password, kick, ban | ✔ in the launcher, the in-game F8 window (host) and the dedicated server |
+| In-game menus | ✔ styled like Subnautica's own UI (its font, blue panels, cyan highlights) |
 
 ## In-game Multiplayer menu
 Like Nitrox: the main menu gets a **Multiplayer** button next to Play. It lists **your worlds** and **servers you've played on**
@@ -56,7 +68,7 @@ Multiplayer saves are kept out of the normal single-player Load list. The launch
    - **New world**: everyone lands on a black *Waiting for players* screen showing who's in.
      When everyone's there the host presses **ENTER** (or clicks START) and the lifepod intro plays for everyone at once.
    - **Existing world**: it loads your save for that world. First time joining someone's world? You get a fresh game in their mode.
-5. In game, **F8** opens the multiplayer window (chat, join code, leave).
+5. In game, **F8** opens the multiplayer window (chat, join code, players, kick/ban if you host, leave).
 
 The host is whoever plays on the server's PC (otherwise whoever joined first).
 Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.
@@ -74,9 +86,9 @@ Send `Subnautica\BepInEx\LogOutput.log`. The mod logs which features hooked in
 
 ## Dedicated server
 ```
-dotnet run --project src/SubnauticaMP.Server -- 11000 world.dat
+dotnet run --project src/SubnauticaMP.Server -- 11000 world.dat --password secret
 ```
-Commands: `players`, `save`, `quit`.
+Commands: `players`, `kick <name>`, `ban <name>`, `unban <name>`, `bans`, `save`, `quit`.
 
 ## Building
 Needs the .NET 8 SDK.

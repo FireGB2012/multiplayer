@@ -57,9 +57,9 @@ namespace SubnauticaMP.Launcher
             }
         }
 
-        public static void WriteLaunchInfo(string dir, string name, string host, int port)
+        public static void WriteLaunchInfo(string dir, string name, string host, int port, string password = "")
         {
-            new Shared.LaunchInfo { PlayerName = name, Host = host, Port = port }
+            new Shared.LaunchInfo { PlayerName = name, Host = host, Port = port, Password = password ?? "" }
                 .Save(Path.Combine(PluginDir(dir), Shared.LaunchInfo.FileName));
         }
 

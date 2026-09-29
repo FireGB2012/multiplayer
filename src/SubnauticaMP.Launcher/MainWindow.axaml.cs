@@ -25,6 +25,8 @@ namespace SubnauticaMP.Launcher
             VersionText.Text = "v" + GameFolder.BundledModVersion.ToString(3);
             NameBox.Text = _settings.PlayerName;
             JoinBox.Text = _settings.LastJoin;
+            JoinPasswordBox.Text = _settings.JoinPassword;
+            HostPasswordBox.Text = _settings.HostPassword;
             WorldBox.Text = _settings.WorldName;
             ModeBox.ItemsSource = GameModes.All;
             ModeBox.SelectedItem = _settings.Mode;
@@ -34,6 +36,8 @@ namespace SubnauticaMP.Launcher
             JoinButton.Click += (_, _) => Run(JoinAndPlay);
             HostPlayButton.Click += (_, _) => Run(HostAndPlay);
             ServerButton.Click += (_, _) => Run(ToggleServer);
+            KickButton.Click += (_, _) => Run(() => KickSelected(false));
+            BanButton.Click += (_, _) => Run(() => KickSelected(true));
             BrowseButton.Click += (_, _) => Run(Browse);
             PlayBrowseButton.Click += (_, _) => Run(Browse);
             SearchButton.Click += (_, _) => Run(SearchPc);
@@ -90,6 +94,8 @@ namespace SubnauticaMP.Launcher
         {
             _settings.PlayerName = NameBox.Text ?? "";
             _settings.LastJoin = JoinBox.Text ?? "";
+            _settings.JoinPassword = JoinPasswordBox.Text ?? "";
+            _settings.HostPassword = HostPasswordBox.Text ?? "";
             _settings.WorldName = WorldName;
             _settings.Mode = Mode;
             _settings.GameDir = GameDir;
@@ -118,8 +124,8 @@ namespace SubnauticaMP.Launcher
         {
             if (!JoinCode.TryParseAddress(JoinBox.Text, Protocol.DefaultPort, out var host, out var port))
                 throw new Exception("Type a join code (like KQ7MX-3HD2P) or an IP address first.");
-            LaunchGame(host, port);
-            Status($"Starting Subnautica... load a save and you'll join {host}:{port} automatically.");
+            LaunchGame(host, port, JoinPasswordBox.Text ?? "");
+            Status($"Starting Subnautica... you'll join {host}:{port} automatically.");
         }
 
         void HostAndPlay()
@@ -130,7 +136,7 @@ namespace SubnauticaMP.Launcher
             Status("Server running + game starting. Send friends the join code, then press ENTER in game when everyone's in. Keep this window open!");
         }
 
-        void LaunchGame(string host, int port)
+        void LaunchGame(string host, int port, string password = "")
         {
             var dir = GameDir;
             if (!GameFolder.IsGameDir(dir))
@@ -142,7 +148,7 @@ namespace SubnauticaMP.Launcher
             }
 
             GameFolder.InstallMod(dir);
-            GameFolder.WriteLaunchInfo(dir, PlayerName, host, port);
+            GameFolder.WriteLaunchInfo(dir, PlayerName, host, port, password);
             SaveSettings();
             RefreshSetup();
 
@@ -178,7 +184,7 @@ namespace SubnauticaMP.Launcher
             LogBox.Text = "";
             try
             {
-                _host.Start(WorldName, port, Mode);
+                _host.Start(WorldName, port, Mode, HostPasswordBox.Text ?? "");
             }
             catch (System.Net.Sockets.SocketException)
             {
@@ -192,7 +198,7 @@ namespace SubnauticaMP.Launcher
         {
             bool running = _host.Running;
             ServerButton.Content = running ? "STOP SERVER" : "START SERVER";
-            WorldBox.IsEnabled = PortBox.IsEnabled = !running;
+            WorldBox.IsEnabled = PortBox.IsEnabled = HostPasswordBox.IsEnabled = !running;
             ModeBox.IsEnabled = !running && HostedServer.TryLoadWorld(WorldName) == null;
             var world = running ? _host.World : HostedServer.TryLoadWorld(WorldName);
             WorldSummary.Text = $"{WorldName}  ·  {(world?.GameMode ?? Mode)}" + (world == null ? "  ·  new" : "");
@@ -213,7 +219,21 @@ namespace SubnauticaMP.Launcher
             ReachText.Text = _host.ReachStatus ?? "";
             ReachText.Foreground = Avalonia.Media.Brush.Parse(_host.Reachable == true ? "#5BD68B" : _host.Reachable == false ? "#FF8A7A" : "#8FB3C4");
             int hostId = _host.HostId;
-            PlayersList.ItemsSource = _host.Players.Select(p => p.Id == hostId ? p.Name + "  (host)" : p.Name).ToList();
+            PlayersList.ItemsSource = _host.Players.Select(p => new PlayerRow(p.Id, p.Id == hostId ? p.Name + "  (host)" : p.Name)).ToList();
+            KickButton.IsEnabled = BanButton.IsEnabled = running;
+        }
+
+        sealed record PlayerRow(int Id, string Label)
+        {
+            public override string ToString() => Label;
+        }
+
+        void KickSelected(bool ban)
+        {
+            if (!(PlayersList.SelectedItem is PlayerRow row)) throw new Exception("Click a player in the list first.");
+            if (!_host.Kick(row.Id, ban)) throw new Exception("They already left.");
+            Status((ban ? "Banned " : "Kicked ") + row.Label + ".");
+            RefreshServer();
         }
 
         void AppendLog(string line)

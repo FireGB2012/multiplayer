@@ -51,6 +51,7 @@
                   <TextBlock Classes="h2" Text="Join a friend" />
                   <TextBlock Classes="hint" Text="Paste their join code (like KQ7MX-3HD2P) or IP address." />
                   <TextBox x:Name="JoinBox" Watermark="Join code or IP" />
+                  <TextBox x:Name="JoinPasswordBox" PasswordChar="*" Watermark="Password (only if they set one)" />
                   <Button x:Name="JoinButton" Classes="primary" Content="JOIN &amp; PLAY" />
                 </StackPanel>
               </Border>
@@ -66,6 +67,10 @@
                     <ComboBox x:Name="ModeBox" HorizontalAlignment="Stretch" />
                   </StackPanel>
                   <TextBlock x:Name="ModeHint" Classes="hint" />
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="label" Text="PASSWORD (OPTIONAL)" />
+                    <TextBox x:Name="HostPasswordBox" PasswordChar="*" Watermark="Leave empty for no password" />
+                  </StackPanel>
                   <Button x:Name="HostPlayButton" Classes="primary" Content="HOST &amp; PLAY" />
                 </StackPanel>
               </Border>
@@ -130,6 +135,10 @@
             <Border Classes="card" Padding="10">
               <DockPanel>
                 <TextBlock DockPanel.Dock="Top" Classes="label" Text="PLAYERS ONLINE" Margin="4,0,0,8" />
+                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                  <Button x:Name="KickButton" Content="Kick" />
+                  <Button x:Name="BanButton" Content="Ban" />
+                </StackPanel>
                 <ListBox x:Name="PlayersList" Background="Transparent" />
               </DockPanel>
             </Border>

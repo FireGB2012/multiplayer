@@ -47,10 +47,12 @@ namespace SubnauticaMP.Launcher
             catch { return null; }
         }
 
-        public void Start(string worldName, int port, string gameMode)
+        public bool Kick(int playerId, bool ban) => _server != null && _server.Kick(playerId, ban);
+
+        public void Start(string worldName, int port, string gameMode, string password = "")
         {
             if (Running) return;
-            var server = new NetServer(WorldPath(worldName), gameMode);
+            var server = new NetServer(WorldPath(worldName), gameMode) { Password = password ?? "" };
             server.Log += m => Log?.Invoke(m);
             server.PlayersChanged += () => Changed?.Invoke();
             server.Start(port); // throws if the port is taken

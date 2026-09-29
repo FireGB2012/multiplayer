@@ -155,4 +155,16 @@ public class Batch5Tests
         Assert.Equal("x|1,1,1", Trip(new PickedPacket { Key = "x|1,1,1" }).Key);
         Assert.Equal("pw", Trip(new HelloPacket { Name = "A", Password = "pw" }).Password);
     }
+
+    [Fact]
+    public void LauncherPassesThePassword()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "snmp-launch-" + Guid.NewGuid() + ".txt");
+        try
+        {
+            new LaunchInfo { PlayerName = "A", Host = "1.2.3.4", Port = 11000, Password = "reef" }.Save(path);
+            Assert.Equal("reef", LaunchInfo.TryLoad(path).Password);
+        }
+        finally { File.Delete(path); }
+    }
 }

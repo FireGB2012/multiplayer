@@ -15,6 +15,7 @@ namespace SubnauticaMP.Shared
         public string PlayerName;
         public string Host;
         public int Port = Protocol.DefaultPort;
+        public string Password = "";
         public DateTime CreatedUtc = DateTime.UtcNow;
 
         public void Save(string path)
@@ -24,6 +25,7 @@ namespace SubnauticaMP.Shared
                 "name=" + (PlayerName ?? "").Replace("\n", " "),
                 "host=" + Host,
                 "port=" + Port.ToString(CultureInfo.InvariantCulture),
+                "password=" + (Password ?? "").Replace("\n", " "),
                 "created=" + CreatedUtc.ToString("o", CultureInfo.InvariantCulture),
             });
         }
@@ -44,6 +46,7 @@ namespace SubnauticaMP.Shared
                 var info = new LaunchInfo();
                 values.TryGetValue("name", out info.PlayerName);
                 values.TryGetValue("host", out info.Host);
+                if (values.TryGetValue("password", out var pw)) info.Password = pw;
                 if (values.TryGetValue("port", out var p)) int.TryParse(p, NumberStyles.Integer, CultureInfo.InvariantCulture, out info.Port);
                 if (!values.TryGetValue("created", out var c) ||
                     !DateTime.TryParse(c, CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind, out info.CreatedUtc)) return null;

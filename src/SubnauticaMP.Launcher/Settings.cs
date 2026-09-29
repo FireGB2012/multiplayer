@@ -19,6 +19,8 @@ namespace SubnauticaMP.Launcher
         public string WorldName = "My World";
         public int Port = Shared.Protocol.DefaultPort;
         public string Mode = Shared.GameModes.Survival;
+        public string HostPassword = "";
+        public string JoinPassword = "";
 
         public static Settings Load()
         {
@@ -38,6 +40,8 @@ namespace SubnauticaMP.Launcher
                 if (v.TryGetValue("world", out var w) && w.Trim().Length > 0) s.WorldName = w;
                 if (v.TryGetValue("port", out var p) && int.TryParse(p, out var port)) s.Port = port;
                 if (v.TryGetValue("mode", out var m)) s.Mode = Shared.GameModes.Normalize(m);
+                if (v.TryGetValue("hostPassword", out var hp)) s.HostPassword = hp;
+                if (v.TryGetValue("joinPassword", out var jp)) s.JoinPassword = jp;
             }
             catch { }
             return s;
@@ -52,6 +56,7 @@ namespace SubnauticaMP.Launcher
                 {
                     "name=" + PlayerName, "gameDir=" + GameDir, "lastJoin=" + LastJoin,
                     "world=" + WorldName, "port=" + Port, "mode=" + Mode,
+                    "hostPassword=" + HostPassword, "joinPassword=" + JoinPassword,
                 });
             }
             catch { }
