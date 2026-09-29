@@ -19,6 +19,8 @@ namespace SubnauticaMP.Launcher
         public string LanCode { get; private set; }
         public string RouterStatus { get; private set; }
         public bool RouterOk { get; private set; }
+        public string ReachStatus { get; private set; }
+        public bool? Reachable { get; private set; }
 
         public event Action<string> Log;
         public event Action Changed; // players, codes, router status
@@ -62,28 +64,48 @@ namespace SubnauticaMP.Launcher
             RouterStatus = "Opening your router so friends on other wifi can join...";
             Changed?.Invoke();
 
+            Reachable = null;
+            ReachStatus = null;
             Task.Run(() =>
             {
                 var r = Upnp.OpenPort(Port, "Subnautica Multiplayer");
-                var ip = r.Success && !string.IsNullOrEmpty(r.ExternalIp) && !r.BehindCgnat ? r.ExternalIp : Upnp.LookUpPublicIp();
+                var ip = r.PublicIp ?? (r.Success ? r.ExternalIp : null);
                 if (ip != null && IPAddress.TryParse(ip, out var addr)) InternetCode = JoinCode.Encode(addr, Port);
 
-                if (r.Success && !r.BehindCgnat)
-                {
-                    RouterOk = true;
-                    RouterStatus = "Router opened automatically. Friends anywhere can join with the internet code.";
-                }
+                RouterOk = r.Success && !r.BehindCgnat && !r.DoubleNat;
+                if (RouterOk)
+                    RouterStatus = "Router opened automatically.";
                 else if (r.BehindCgnat)
-                {
-                    RouterStatus = "Your internet provider shares your IP with other people (CGNAT), so hosting from home " +
-                                   "won't work over the internet. Fix: everyone installs Radmin VPN or Tailscale and uses your VPN IP, or a friend hosts.";
-                }
+                    RouterStatus = "Your internet provider shares one IP between customers (CGNAT), so nobody can connect in from outside. " +
+                                   "Fix: everyone installs Radmin VPN or Tailscale and joins with your VPN IP, or a friend hosts.";
+                else if (r.DoubleNat)
+                    RouterStatus = $"Your router opened the port, but there's a second box in front of it (your internet provider's modem, outside IP {r.ExternalIp}). " +
+                                   $"Also forward TCP {Port} on that modem (or put it in bridge mode), or use Radmin VPN / Tailscale.";
                 else
-                {
-                    RouterStatus = $"Couldn't open your router automatically ({r.Error}). Either turn on UPnP in your router settings, " +
-                                   $"forward TCP port {Port} to this PC by hand, or use Radmin VPN / Tailscale.";
-                }
+                    RouterStatus = $"Couldn't open your router automatically ({r.Error}). Forward TCP port {Port} to this PC by hand, or use Radmin VPN / Tailscale.";
                 Log?.Invoke(RouterStatus);
+                Log?.Invoke("Router details: " + r.Report());
+                Changed?.Invoke();
+                CheckReachable();
+            });
+        }
+
+        // Asks an outside website to connect to us: the real answer to "can friends join?"
+        public void CheckReachable()
+        {
+            if (!Running) return;
+            var port = Port;
+            ReachStatus = "Checking if friends can reach you...";
+            Reachable = null;
+            Changed?.Invoke();
+            Task.Run(() =>
+            {
+                var ok = Upnp.CheckReachable(port);
+                Reachable = ok;
+                ReachStatus = ok == true ? "✔ Friends on other wifi CAN reach you. Send them the internet code!"
+                    : ok == false ? "✖ Port is closed from the internet. Most likely Windows Firewall: hit 'Allow through firewall', then 'Test again'."
+                    : "Couldn't run the reachability test (website didn't answer). Just try joining with a friend.";
+                Log?.Invoke(ReachStatus);
                 Changed?.Invoke();
             });
         }

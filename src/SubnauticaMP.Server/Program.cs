@@ -19,10 +19,14 @@ Log("World file: " + worldFile);
 new Thread(() =>
 {
     var r = Upnp.OpenPort(server.Port, "Subnautica Multiplayer server");
-    var ip = r.Success && !r.BehindCgnat ? r.ExternalIp : Upnp.LookUpPublicIp();
-    if (r.Success && !r.BehindCgnat) Log("Router port opened automatically (UPnP).");
+    var ip = r.PublicIp ?? (r.Success ? r.ExternalIp : null);
+    if (r.Success && !r.BehindCgnat && !r.DoubleNat) Log("Router port opened automatically.");
     else if (r.BehindCgnat) Log("ISP uses CGNAT: people outside your network can't reach this server directly. Use a VPN like Tailscale.");
+    else if (r.DoubleNat) Log($"Router opened the port, but an ISP modem ({r.ExternalIp}) is in front of it. Forward TCP {server.Port} there too.");
     else Log($"Couldn't open router port automatically ({r.Error}). Forward TCP {server.Port} by hand if friends can't join.");
+    Log("Router details: " + r.Report());
+    var reach = Upnp.CheckReachable(server.Port);
+    Log(reach == true ? "Reachable from the internet." : reach == false ? "NOT reachable from the internet (check firewall / port forward)." : "Couldn't test reachability.");
     if (ip != null && IPAddress.TryParse(ip, out var addr)) Log($"Join code: {JoinCode.Encode(addr, server.Port)}  (or {ip}:{server.Port})");
 }) { IsBackground = true }.Start();
 

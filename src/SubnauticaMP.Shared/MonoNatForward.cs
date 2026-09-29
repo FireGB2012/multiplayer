@@ -50,6 +50,7 @@ namespace SubnauticaMP.Shared
                 foreach (var device in fresh)
                 {
                     tried.Add(device);
+                    result.Details.Add($"Mono.Nat found {device.NatProtocol} router at {device.DeviceEndpoint}");
                     // same as Nitrox: longest lease first; some routers only take 0 (= forever) or short ones
                     foreach (var lifetime in new[] { int.MaxValue, 0, 7200 })
                     {
@@ -60,27 +61,29 @@ namespace SubnauticaMP.Shared
                             _mappedOn = device;
                             _mapping = mapping;
                             result.Success = true;
+                            result.Details.Add($"{device.NatProtocol}: port {port} opened (lease {lifetime})");
                             try { result.ExternalIp = Run(device.GetExternalIPAsync(), 5000)?.ToString(); } catch { }
-                            result.BehindCgnat = Upnp.IsNonPublic(result.ExternalIp);
                             return result;
                         }
                         catch (MappingException e) when (e.ErrorCode == ErrorCode.ConflictInMappingEntry)
                         {
-                            // something (maybe our last run) already forwards this port: fine if it's to us
+                            // something (maybe our last run, or Nitrox) already forwards this port
                             result.Success = true;
+                            result.Details.Add($"{device.NatProtocol}: port {port} was already forwarded (maybe by Nitrox) - if that's to another PC, use a different port");
                             try { result.ExternalIp = Run(device.GetExternalIPAsync(), 5000)?.ToString(); } catch { }
-                            result.BehindCgnat = Upnp.IsNonPublic(result.ExternalIp);
                             return result;
                         }
                         catch (Exception e)
                         {
                             errors.Add($"{device.NatProtocol}: {e.GetBaseException().Message}");
+                            result.Details.Add($"{device.NatProtocol} lease {lifetime}: {e.GetBaseException().Message}");
                         }
                     }
                 }
                 Thread.Sleep(200);
             }
 
+            if (tried.Count == 0) result.Details.Add("Mono.Nat: no router answered in " + timeoutMs / 1000 + "s");
             lock (Lock) result.Error = tried.Count == 0
                 ? "No router answered (UPnP / NAT-PMP)"
                 : "Router said no: " + string.Join(", ", errors.Distinct().Take(3).ToArray());

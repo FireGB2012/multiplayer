@@ -49,6 +49,8 @@ namespace SubnauticaMP.Launcher
             OpenFolderButton.Click += (_, _) => Run(OpenModFolder);
             CopyInternetButton.Click += (_, _) => Run(() => Copy(_host.InternetCode));
             CopyLanButton.Click += (_, _) => Run(() => Copy(_host.LanCode));
+            FirewallButton.Click += (_, _) => Run(AllowFirewall);
+            TestReachButton.Click += (_, _) => Run(() => _host.CheckReachable());
             GameDirBox.TextChanged += (_, _) => RefreshSetup();
             WorldBox.TextChanged += (_, _) => RefreshWorld();
             ModeBox.SelectionChanged += (_, _) => RefreshWorld();
@@ -208,6 +210,8 @@ namespace SubnauticaMP.Launcher
             CopyLanButton.IsEnabled = _host.LanCode != null;
             RouterText.Text = _host.RouterStatus ?? "";
             RouterText.Foreground = Avalonia.Media.Brush.Parse(_host.RouterOk ? "#5BD68B" : "#E8C27A");
+            ReachText.Text = _host.ReachStatus ?? "";
+            ReachText.Foreground = Avalonia.Media.Brush.Parse(_host.Reachable == true ? "#5BD68B" : _host.Reachable == false ? "#FF8A7A" : "#8FB3C4");
             int hostId = _host.HostId;
             PlayersList.ItemsSource = _host.Players.Select(p => p.Id == hostId ? p.Name + "  (host)" : p.Name).ToList();
         }
@@ -245,6 +249,41 @@ namespace SubnauticaMP.Launcher
                 ModeHint.Text = "New world. " + GameModes.Describe(Mode);
             }
             if (WorldSummary != null && !_host.Running) RefreshServer();
+        }
+
+        // Windows blocks incoming connections for programs it hasn't asked about (the popup often hides
+        // behind the game). Add allow rules for the port, this launcher and Subnautica. Needs admin once.
+        void AllowFirewall()
+        {
+            if (!OperatingSystem.IsWindows()) throw new Exception("Only needed on Windows.");
+            int port = _host.Running ? _host.Port : int.TryParse(PortBox.Text, out var p) ? p : Protocol.DefaultPort;
+            var rules = new System.Collections.Generic.List<string>
+            {
+                $"netsh advfirewall firewall add rule name=\"Subnautica Multiplayer TCP {port}\" dir=in action=allow protocol=TCP localport={port} profile=any",
+            };
+            if (Environment.ProcessPath is string me)
+                rules.Add($"netsh advfirewall firewall add rule name=\"Subnautica Multiplayer Launcher\" dir=in action=allow program=\"{me}\" profile=any");
+            var game = Path.Combine(GameDir, "Subnautica.exe");
+            if (File.Exists(game))
+                rules.Add($"netsh advfirewall firewall add rule name=\"Subnautica Multiplayer Game\" dir=in action=allow program=\"{game}\" profile=any");
+
+            var psi = new ProcessStartInfo("cmd.exe", "/c " + string.Join(" & ", rules))
+            {
+                UseShellExecute = true,
+                Verb = "runas", // Windows asks "allow this app to make changes?" - say yes
+                WindowStyle = ProcessWindowStyle.Hidden,
+            };
+            try
+            {
+                using var proc = Process.Start(psi);
+                proc?.WaitForExit(15000);
+            }
+            catch (System.ComponentModel.Win32Exception)
+            {
+                throw new Exception("You need to click Yes on the Windows popup to allow it.");
+            }
+            Status("Firewall rules added. Hit 'Test again'.");
+            if (_host.Running) _host.CheckReachable();
         }
 
         // ---------- setup ----------

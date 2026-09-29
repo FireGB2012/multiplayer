@@ -15,6 +15,11 @@ namespace SubnauticaMP.Shared
         public string LocalIp;
         public string Error;
         public bool BehindCgnat; // ISP-level NAT: port forwarding can't work, need a VPN/tunnel
+        public bool DoubleNat;   // router opened the port, but another box (ISP modem) sits in front of it
+        public string PublicIp;  // what websites see us as
+        public System.Collections.Generic.List<string> Details = new System.Collections.Generic.List<string>();
+
+        public string Report() => string.Join(" | ", Details.ToArray());
     }
 
     // Asks the home router (via UPnP) to forward our port so people on other networks can connect.
@@ -41,16 +46,46 @@ namespace SubnauticaMP.Shared
         public static PortForwardResult OpenPort(int port, string description, int discoveryTimeoutMs = 4000)
         {
             // 1) Mono.Nat, the library Nitrox uses: searches on every network adapter, UPnP and NAT-PMP.
-            PortForwardResult viaMonoNat;
-            try { viaMonoNat = MonoNatForward.Open(port, description, 12000); }
-            catch (Exception e) { viaMonoNat = new PortForwardResult { Error = "Mono.Nat unavailable: " + e.GetBaseException().Message }; }
-            if (viaMonoNat.Success) return viaMonoNat;
+            PortForwardResult result;
+            try { result = MonoNatForward.Open(port, description, 12000); }
+            catch (Exception e) { result = new PortForwardResult { Error = "Mono.Nat unavailable: " + e.GetBaseException().Message }; }
 
             // 2) our own UPnP code as a backup
-            var ours = OpenPortOurselves(port, description, discoveryTimeoutMs);
-            if (ours.Success) return ours;
-            ours.Error = viaMonoNat.Error + "; " + ours.Error;
-            return ours;
+            if (!result.Success)
+            {
+                var ours = OpenPortOurselves(port, description, discoveryTimeoutMs);
+                ours.Details.InsertRange(0, result.Details);
+                if (!ours.Success) ours.Error = result.Error + "; " + ours.Error;
+                result = ours;
+            }
+
+            // 3) is the router the only box between us and the internet?
+            result.PublicIp = LookUpPublicIp();
+            result.Details.Add("public IP (web): " + (result.PublicIp ?? "unknown") + ", router's outside IP: " + (result.ExternalIp ?? "unknown"));
+            Classify(result);
+            return result;
+        }
+
+        // Asks an outside website to try connecting to our port: the only real proof friends can get in.
+        // true = reachable, false = closed, null = couldn't check.
+        public static bool? CheckReachable(int port)
+        {
+            try
+            {
+                var req = (HttpWebRequest)WebRequest.Create("https://ifconfig.co/port/" + port);
+                req.Accept = "application/json";
+                req.Timeout = 15000;
+                req.UserAgent = "SubnauticaMP";
+                using (var resp = req.GetResponse())
+                using (var reader = new StreamReader(resp.GetResponseStream()))
+                {
+                    var json = reader.ReadToEnd().Replace(" ", "");
+                    if (json.Contains("\"reachable\":true")) return true;
+                    if (json.Contains("\"reachable\":false")) return false;
+                }
+            }
+            catch { }
+            return null;
         }
 
         static PortForwardResult OpenPortOurselves(int port, string description, int discoveryTimeoutMs)
@@ -59,6 +94,7 @@ namespace SubnauticaMP.Shared
             try
             {
                 var locations = Discover(discoveryTimeoutMs);
+                result.Details.Add("our UPnP search found " + locations.Count + " router(s): " + string.Join(", ", locations.ToArray()));
                 if (locations.Count == 0)
                 {
                     result.Error = "No UPnP router found (UPnP may be turned off in your router settings)";
@@ -69,7 +105,12 @@ namespace SubnauticaMP.Shared
                 foreach (var location in locations)
                 {
                     var r = OpenPortAt(location, port, description);
-                    if (r.Success) return r;
+                    result.Details.Add($"{location}: " + (r.Success ? "opened, outside IP " + r.ExternalIp : r.Error));
+                    if (r.Success)
+                    {
+                        r.Details.InsertRange(0, result.Details);
+                        return r;
+                    }
                     lastError = r.Error;
                 }
                 result.Error = lastError;
@@ -117,7 +158,6 @@ namespace SubnauticaMP.Shared
 
                 var ip = Soap(gw, "GetExternalIPAddress");
                 if (ip.error == null) result.ExternalIp = FindValue(ip.body, "NewExternalIPAddress");
-                result.BehindCgnat = IsNonPublic(result.ExternalIp);
                 result.Success = true;
                 _cached = gw;
             }
@@ -159,6 +199,24 @@ namespace SubnauticaMP.Shared
                 catch { }
             }
             return null;
+        }
+
+        // 100.64/10 = the ISP shares one internet IP between customers (CGNAT): only a VPN/tunnel helps.
+        // Any other private address, or a different IP than websites see = a second box (ISP modem) in front
+        // of the router: forward the port on that box too, or put it in bridge mode.
+        public static void Classify(PortForwardResult r)
+        {
+            r.BehindCgnat = r.DoubleNat = false;
+            if (!r.Success || r.ExternalIp == null) return;
+            if (IsCgnat(r.ExternalIp)) r.BehindCgnat = true;
+            else if (IsNonPublic(r.ExternalIp) || (r.PublicIp != null && r.PublicIp != r.ExternalIp)) r.DoubleNat = true;
+        }
+
+        public static bool IsCgnat(string ipText)
+        {
+            if (!IPAddress.TryParse(ipText ?? "", out var ip) || ip.AddressFamily != AddressFamily.InterNetwork) return false;
+            var b = ip.GetAddressBytes();
+            return b[0] == 100 && b[1] >= 64 && b[1] <= 127;
         }
 
         // Private ranges + 100.64/10 (carrier-grade NAT): the router's "external" IP isn't the real internet one.

@@ -118,6 +118,11 @@
               </Grid>
               <TextBlock x:Name="LobbyText" FontWeight="SemiBold" />
               <TextBlock x:Name="RouterText" Classes="hint" />
+              <TextBlock x:Name="ReachText" FontWeight="SemiBold" TextWrapping="Wrap" />
+              <WrapPanel>
+                <Button x:Name="FirewallButton" Content="Allow through firewall" Margin="0,0,8,0" />
+                <Button x:Name="TestReachButton" Content="Test again" />
+              </WrapPanel>
             </StackPanel>
           </Border>
 

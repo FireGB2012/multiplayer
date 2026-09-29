@@ -241,6 +241,19 @@ public class UpnpTests
     [InlineData("86.12.200.7", false)]
     public void SpotsNonPublicAddresses(string ip, bool expected) => Assert.Equal(expected, Upnp.IsNonPublic(ip));
 
+    [Theory]
+    [InlineData("100.72.1.1", "86.1.1.1", true, false)]   // ISP shares the IP: CGNAT
+    [InlineData("192.168.1.1", "86.1.1.1", false, true)]  // modem in front of the router: double NAT
+    [InlineData("86.1.1.1", "86.1.1.1", false, false)]    // all good
+    [InlineData("86.1.1.1", "90.2.2.2", false, true)]     // router's outside IP isn't what the web sees
+    public void ClassifiesNetworkSetups(string routerIp, string webIp, bool cgnat, bool doubleNat)
+    {
+        var r = new PortForwardResult { Success = true, ExternalIp = routerIp, PublicIp = webIp };
+        Upnp.Classify(r);
+        Assert.Equal(cgnat, r.BehindCgnat);
+        Assert.Equal(doubleNat, r.DoubleNat);
+    }
+
     [Fact]
     public void TalksToARouter()
     {

@@ -426,13 +426,15 @@ namespace SubnauticaMP
             new Thread(() =>
             {
                 var r = Upnp.OpenPort(port, "Subnautica Multiplayer");
-                string ip = r.Success ? r.ExternalIp : null;
-                if (string.IsNullOrEmpty(ip)) ip = Upnp.LookUpPublicIp();
+                Plugin.Log.LogInfo("Router details: " + r.Report());
+                string ip = r.PublicIp ?? (r.Success ? r.ExternalIp : null);
                 string msg;
-                if (r.Success && !r.BehindCgnat)
-                    msg = "Router opened! Friends anywhere can join.";
+                if (r.Success && !r.BehindCgnat && !r.DoubleNat)
+                    msg = "Router opened! Checking if friends can reach you...";
                 else if (r.BehindCgnat)
-                    msg = "Your internet provider blocks hosting (CGNAT). Use Radmin VPN / Tailscale / playit.gg, or let a friend host.";
+                    msg = "Your internet provider shares your IP (CGNAT): nobody can connect in. Use Radmin VPN / Tailscale, or let a friend host.";
+                else if (r.DoubleNat)
+                    msg = $"Router opened the port, but your ISP modem ({r.ExternalIp}) sits in front of it. Forward TCP {port} on the modem too, or use Radmin VPN.";
                 else
                     msg = "Couldn't auto-open your router (" + r.Error + "). Forward TCP port " + port + " by hand, or use Radmin VPN / Tailscale.";
 
@@ -440,6 +442,11 @@ namespace SubnauticaMP
                     _joinCode = JoinCode.Encode(addr, port);
                 _pendingChat.Enqueue(msg);
                 if (_joinCode != null) _pendingChat.Enqueue("Join code: " + _joinCode + " (F8 to see it again)");
+
+                var reach = Upnp.CheckReachable(port);
+                if (reach == true) _pendingChat.Enqueue("Friends on other wifi CAN reach you!");
+                else if (reach == false)
+                    _pendingChat.Enqueue("Port is closed from the internet. Probably Windows Firewall: in the launcher's Server tab hit 'Allow through firewall'.");
             }) { IsBackground = true, Name = "SubnauticaMP upnp" }.Start();
         }
 
