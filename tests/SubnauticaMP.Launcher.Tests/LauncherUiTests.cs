@@ -50,7 +50,7 @@ public class LauncherUiTests
         w.FindControl<TabControl>("Tabs").SelectedIndex = 1;
         w.FindControl<TextBox>("PortBox").Text = FreePort().ToString();
         w.FindControl<TextBox>("WorldBox").Text = "My World";
-        File.Delete(HostedServer.WorldPath("My World"));
+        DeleteIfThere(HostedServer.WorldPath("My World"));
         Avalonia.Threading.Dispatcher.UIThread.RunJobs();
         w.FindControl<ComboBox>("ModeBox").SelectedItem = "Creative";
         w.FindControl<Button>("ServerButton").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
@@ -63,7 +63,7 @@ public class LauncherUiTests
         w.FindControl<Button>("ServerButton").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         Assert.Equal("START SERVER", w.FindControl<Button>("ServerButton").Content);
         w.Close();
-        File.Delete(HostedServer.WorldPath("My World"));
+        DeleteIfThere(HostedServer.WorldPath("My World"));
     }
 
     [AvaloniaFact]
@@ -105,6 +105,11 @@ public class LauncherUiTests
             w.Close();
         }
         finally { File.Delete(HostedServer.WorldPath(name)); }
+    }
+
+    static void DeleteIfThere(string path)
+    {
+        if (File.Exists(path)) File.Delete(path);
     }
 
     static int FreePort()
