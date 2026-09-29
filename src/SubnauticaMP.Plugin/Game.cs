@@ -19,7 +19,9 @@ namespace SubnauticaMP
             StorageContainer, TechType, VFXConstructing, WorldForces, LightmappedPrefabs, SubConsoleCommand,
             SaveLoadManager, MainMenuType, MainMenuLoadButton, SceneIntro, GameInput, EscapePod, GameModeUtils,
             GameModeOption, GameModeEnum, ProtobufSerializer, TaskResultOfT, Base, Constructable, BaseDeconstructable,
-            ItemsContainer, InventoryItem, PDALog, PDAScanner, PingInstance, PingType, Openable, Inventory, Survival;
+            ItemsContainer, InventoryItem, PDALog, PDAScanner, PingInstance, PingType, Openable, Inventory, Survival,
+            LiveMixin, VehicleDockingBay, CyclopsLightingPanel, CyclopsSilentRunningAbilityButton, CyclopsMotorModeButton,
+            SubControl, LargeWorldStreamer;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         static readonly Dictionary<string, Func<object, object>> Getters = new Dictionary<string, Func<object, object>>();
@@ -75,6 +77,209 @@ namespace SubnauticaMP
             Openable = Find("Openable");
             Inventory = Find("Inventory");
             Survival = Find("Survival");
+            LiveMixin = Find("LiveMixin");
+            VehicleDockingBay = Find("VehicleDockingBay");
+            CyclopsLightingPanel = Find("CyclopsLightingPanel");
+            CyclopsSilentRunningAbilityButton = Find("CyclopsSilentRunningAbilityButton");
+            CyclopsMotorModeButton = Find("CyclopsMotorModeButton");
+            SubControl = Find("SubControl");
+            LargeWorldStreamer = Find("LargeWorldStreamer");
+        }
+
+        // ---------- vehicle health / energy (0..1, -1 = unknown) ----------
+
+        public static float HealthOf(GameObject go)
+        {
+            var live = LiveMixin != null ? go.GetComponent(LiveMixin) : null;
+            if (live == null) return -1f;
+            var h = TryGet(LiveMixin, live, "health");
+            var max = TryGet(LiveMixin, live, "maxHealth");
+            if (h == null || max == null || Convert.ToSingle(max) <= 0f) return -1f;
+            return Mathf.Clamp01(Convert.ToSingle(h) / Convert.ToSingle(max));
+        }
+
+        public static void SetHealth(GameObject go, float fraction)
+        {
+            var live = LiveMixin != null ? go.GetComponent(LiveMixin) : null;
+            var max = live != null ? TryGet(LiveMixin, live, "maxHealth") : null;
+            if (max == null || fraction < 0f) return;
+            Set(LiveMixin, live, "health", Convert.ToSingle(max) * fraction);
+        }
+
+        static IEnumerable<object> EnergySources(GameObject go)
+        {
+            var v = Vehicle != null ? go.GetComponent(Vehicle) : null;
+            var ei = v != null ? TryGet(Vehicle, v, "energyInterface") : null;
+            if (ei != null && TryGet(ei.GetType(), ei, "sources") is IEnumerable sources)
+                foreach (var s in sources) if (s != null && !(s is UnityEngine.Object o && o == null)) yield return s;
+        }
+
+        static object PowerRelayOf(GameObject go)
+        {
+            var sub = SubRoot != null ? go.GetComponent(SubRoot) : null;
+            return sub != null ? TryGet(SubRoot, sub, "powerRelay") : null;
+        }
+
+        public static float EnergyOf(GameObject go)
+        {
+            float charge = 0f, capacity = 0f;
+            foreach (var s in EnergySources(go))
+            {
+                charge += Convert.ToSingle(TryGet(s.GetType(), s, "charge") ?? 0f);
+                capacity += Convert.ToSingle(TryGet(s.GetType(), s, "capacity") ?? 0f);
+            }
+            var relay = PowerRelayOf(go);
+            if (relay != null)
+            {
+                charge += Convert.ToSingle(TryGet(relay.GetType(), relay, "GetPower") ?? 0f);
+                capacity += Convert.ToSingle(TryGet(relay.GetType(), relay, "GetMaxPower") ?? 0f);
+            }
+            return capacity > 0f ? Mathf.Clamp01(charge / capacity) : -1f;
+        }
+
+        public static void SetEnergy(GameObject go, float fraction)
+        {
+            if (fraction < 0f) return;
+            foreach (var s in EnergySources(go))
+            {
+                float charge = Convert.ToSingle(TryGet(s.GetType(), s, "charge") ?? 0f);
+                float capacity = Convert.ToSingle(TryGet(s.GetType(), s, "capacity") ?? 0f);
+                if (capacity > 0f) Call(s.GetType(), s, "ModifyCharge", capacity * fraction - charge);
+            }
+            var relay = PowerRelayOf(go);
+            if (relay != null)
+            {
+                float power = Convert.ToSingle(TryGet(relay.GetType(), relay, "GetPower") ?? 0f);
+                float max = Convert.ToSingle(TryGet(relay.GetType(), relay, "GetMaxPower") ?? 0f);
+                if (max > 0f) Call(relay.GetType(), relay, "ModifyPower", max * fraction - power);
+            }
+        }
+
+        // ---------- docking ----------
+
+        public static bool IsDocked(GameObject vehicle)
+        {
+            var v = Vehicle != null ? vehicle.GetComponent(Vehicle) : null;
+            return v != null && TryGet(Vehicle, v, "docked") is bool b && b;
+        }
+
+        static Component NearestBay(Vector3 pos, float maxDistance)
+        {
+            if (VehicleDockingBay == null) return null;
+            Component best = null;
+            float bestDist = maxDistance;
+            foreach (var o in UnityEngine.Object.FindObjectsOfType(VehicleDockingBay))
+            {
+                var bay = (Component)o;
+                float d = Vector3.Distance(bay.transform.position, pos);
+                if (d < bestDist) { bestDist = d; best = bay; }
+            }
+            return best;
+        }
+
+        // The bay this vehicle sits in (for telling others where it docked).
+        public static Vector3? DockPositionOf(GameObject vehicle)
+        {
+            if (VehicleDockingBay == null) return null;
+            var v = vehicle.GetComponent(Vehicle);
+            foreach (var o in UnityEngine.Object.FindObjectsOfType(VehicleDockingBay))
+            {
+                var bay = (Component)o;
+                if (ReferenceEquals(TryGet(VehicleDockingBay, bay, "dockedVehicle"), v)) return bay.transform.position;
+            }
+            var near = NearestBay(vehicle.transform.position, 15f);
+            return near != null ? near.transform.position : (Vector3?)null;
+        }
+
+        // Nitrox's way: set the dock up by hand, without the parts that assume the local player is driving.
+        public static bool DockRemote(GameObject vehicle, Vector3 bayPosition)
+        {
+            var v = Vehicle != null ? vehicle.GetComponent(Vehicle) : null;
+            var bay = NearestBay(bayPosition, 15f);
+            if (v == null || bay == null) return false;
+            var sub = Call(VehicleDockingBay, bay, "GetSubRoot") as Component;
+            Set(VehicleDockingBay, bay, "dockedVehicle", v);
+            TryDo("unregister", () =>
+            {
+                var lws = TryGet(LargeWorldStreamer, null, "main");
+                var cells = lws != null ? TryGet(LargeWorldStreamer, lws, "cellManager") : null;
+                if (cells != null) Call(cells.GetType(), cells, "UnregisterEntity", vehicle);
+            });
+            if (sub != null) vehicle.transform.SetParent(sub.transform, true);
+            Set(Vehicle, v, "docked", true);
+            Set(VehicleDockingBay, bay, "vehicle_docked_param", true);
+            return true;
+        }
+
+        public static void UndockRemote(GameObject vehicle)
+        {
+            var v = Vehicle != null ? vehicle.GetComponent(Vehicle) : null;
+            if (v == null) return;
+            if (VehicleDockingBay != null)
+                foreach (var o in UnityEngine.Object.FindObjectsOfType(VehicleDockingBay))
+                {
+                    var bay = (Component)o;
+                    if (!ReferenceEquals(TryGet(VehicleDockingBay, bay, "dockedVehicle"), v)) continue;
+                    var sub = Call(VehicleDockingBay, bay, "GetSubRoot") as Component;
+                    if (IsCyclops(sub)) TryDo("undockcyc", () => Call(VehicleDockingBay, bay, "SetVehicleUndocked"));
+                    Set(VehicleDockingBay, bay, "dockedVehicle", null);
+                    Set(VehicleDockingBay, bay, "vehicle_docked_param", false);
+                }
+            Set(Vehicle, v, "docked", false);
+            vehicle.transform.SetParent(null, true);
+            Register(vehicle);
+        }
+
+        // ---------- Cyclops controls ----------
+
+        public static CyclopsStatePacket ReadCyclops(GameObject cyclops, string id)
+        {
+            var state = new CyclopsStatePacket { Id = id };
+            var lights = CyclopsLightingPanel != null ? cyclops.GetComponentInChildren(CyclopsLightingPanel, true) : null;
+            if (lights != null)
+            {
+                state.InternalLights = TryGet(CyclopsLightingPanel, lights, "lightingOn") is bool a && a;
+                state.FloodLights = TryGet(CyclopsLightingPanel, lights, "floodlightsOn") is bool b && b;
+            }
+            var silent = CyclopsSilentRunningAbilityButton != null ? cyclops.GetComponentInChildren(CyclopsSilentRunningAbilityButton, true) : null;
+            state.SilentRunning = silent != null && TryGet(CyclopsSilentRunningAbilityButton, silent, "active") is bool c && c;
+            var control = SubControl != null ? cyclops.GetComponent(SubControl) : null;
+            var motor = control != null ? TryGet(SubControl, control, "cyclopsMotorMode") : null;
+            var mode = motor != null ? TryGet(motor.GetType(), motor, "cyclopsMotorMode") : null;
+            state.MotorMode = mode != null ? Convert.ToInt32(mode) : -1;
+            return state;
+        }
+
+        public static void ApplyCyclops(GameObject cyclops, CyclopsStatePacket s)
+        {
+            var now = ReadCyclops(cyclops, s.Id);
+            var lights = CyclopsLightingPanel != null ? cyclops.GetComponentInChildren(CyclopsLightingPanel, true) : null;
+            if (lights != null && now.InternalLights != s.InternalLights) TryDo("cyclights", () =>
+            {
+                Set(CyclopsLightingPanel, lights, "lightingOn", s.InternalLights);
+                var root = TryGet(CyclopsLightingPanel, lights, "cyclopsRoot");
+                if (root != null) Call(root.GetType(), root, "ForceLightingState", s.InternalLights);
+                Call(CyclopsLightingPanel, lights, "UpdateLightingButtons");
+            });
+            if (lights != null && now.FloodLights != s.FloodLights) TryDo("cycflood", () =>
+            {
+                Set(CyclopsLightingPanel, lights, "floodlightsOn", s.FloodLights);
+                Call(CyclopsLightingPanel, lights, "SetExternalLighting", s.FloodLights);
+                Call(CyclopsLightingPanel, lights, "UpdateLightingButtons");
+            });
+            var silent = CyclopsSilentRunningAbilityButton != null ? cyclops.GetComponentInChildren(CyclopsSilentRunningAbilityButton, true) : null;
+            if (silent != null && now.SilentRunning != s.SilentRunning) TryDo("cycsilent", () =>
+            {
+                Set(CyclopsSilentRunningAbilityButton, silent, "active", s.SilentRunning);
+                cyclops.BroadcastMessage(s.SilentRunning ? "RigForSilentRunning" : "SecureFromSilentRunning", SendMessageOptions.DontRequireReceiver);
+            });
+            if (s.MotorMode >= 0 && now.MotorMode != s.MotorMode && CyclopsMotorModeButton != null) TryDo("cycmotor", () =>
+            {
+                var set = FindMethod(CyclopsMotorModeButton, "SetCyclopsMotorMode");
+                if (set == null) return;
+                var mode = Enum.ToObject(set.GetParameters()[0].ParameterType, s.MotorMode);
+                foreach (var b in cyclops.GetComponentsInChildren(CyclopsMotorModeButton, true)) set.Invoke(b, new[] { mode });
+            });
         }
 
         // ---------- vitals / hands ----------

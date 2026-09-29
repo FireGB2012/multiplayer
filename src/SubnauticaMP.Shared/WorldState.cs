@@ -11,7 +11,7 @@ namespace SubnauticaMP.Shared
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 4;
+        const int FileVersion = 5;
         const int MaxEntries = 1_000_000;
 
         public HashSet<string> Blueprints = new HashSet<string>();
@@ -30,6 +30,7 @@ namespace SubnauticaMP.Shared
         public Dictionary<string, List<byte[]>> Containers = new Dictionary<string, List<byte[]>>();
         public Dictionary<string, byte[]> DroppedItems = new Dictionary<string, byte[]>();
         public Dictionary<string, bool> Doors = new Dictionary<string, bool>();
+        public Dictionary<string, CyclopsStatePacket> Cyclopses = new Dictionary<string, CyclopsStatePacket>();
 
         public HashSet<string> SetFor(UnlockKind kind)
         {
@@ -72,6 +73,8 @@ namespace SubnauticaMP.Shared
             foreach (var kv in DroppedItems) { w.Write(kv.Key); Bytes.Write(w, kv.Value); }
             w.Write(Doors.Count);
             foreach (var kv in Doors) { w.Write(kv.Key); w.Write(kv.Value); }
+            w.Write(Cyclopses.Count);
+            foreach (var c in Cyclopses.Values) c.Write(w);
         }
 
         public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
@@ -88,7 +91,7 @@ namespace SubnauticaMP.Shared
             int count = ReadCount(r);
             for (int i = 0; i < count; i++)
             {
-                var v = VehicleInfo.Read(r);
+                var v = version >= 5 ? VehicleInfo.Read(r) : VehicleInfo.ReadOld(r);
                 s.Vehicles[v.Id] = v;
             }
             s.HasTime = r.ReadBoolean();
@@ -127,6 +130,16 @@ namespace SubnauticaMP.Shared
                 n = ReadCount(r);
                 for (int i = 0; i < n; i++) s.Doors[r.ReadString()] = r.ReadBoolean();
             }
+            if (version >= 5)
+            {
+                int n = ReadCount(r);
+                for (int i = 0; i < n; i++)
+                {
+                    var c = new CyclopsStatePacket();
+                    c.Read(r);
+                    s.Cyclopses[c.Id] = c;
+                }
+            }
             return s;
         }
 
@@ -150,6 +163,7 @@ namespace SubnauticaMP.Shared
                 Containers = Containers.ToDictionary(kv => kv.Key, kv => new List<byte[]>(kv.Value)),
                 DroppedItems = new Dictionary<string, byte[]>(DroppedItems),
                 Doors = new Dictionary<string, bool>(Doors),
+                Cyclopses = new Dictionary<string, CyclopsStatePacket>(Cyclopses),
             };
         }
 

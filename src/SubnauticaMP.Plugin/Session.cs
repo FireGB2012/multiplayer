@@ -210,6 +210,25 @@ namespace SubnauticaMP
             if (Game.PlayerVehicle(player) != null) flags |= PlayerFlags.InVehicle;
 
             var (health, food, water) = Game.Vitals(player);
+
+            // standing in a synced Cyclops: send where we are inside it, so we don't slide around on their screen
+            string subId = "";
+            Vec3 localPos = default;
+            Quat localRot = default;
+            var sub = Game.PlayerSub(player);
+            if (Game.IsCyclops(sub))
+            {
+                var id = Game.GetId(sub.gameObject);
+                if (Vehicles.IsTracked(id))
+                {
+                    subId = id;
+                    var lp = sub.transform.InverseTransformPoint(t.position);
+                    var lr = Quaternion.Inverse(sub.transform.rotation) * rot;
+                    localPos = new Vec3(lp.x, lp.y, lp.z);
+                    localRot = new Quat(lr.x, lr.y, lr.z, lr.w);
+                }
+            }
+
             Send(new PlayerStatePacket
             {
                 Position = new Vec3(t.position.x, t.position.y, t.position.z),
@@ -219,6 +238,9 @@ namespace SubnauticaMP
                 Food = food,
                 Water = water,
                 Held = _heldCache,
+                SubId = subId,
+                LocalPosition = localPos,
+                LocalRotation = localRot,
             });
         }
 
@@ -293,6 +315,9 @@ namespace SubnauticaMP
                     World.OnEntityRemoved(removed.EntityId);
                     break;
                 case ItemDroppedPacket dropped: Items.OnDropped(dropped); break;
+                case VehicleSnapshotPacket vsnap: Vehicles.OnSnapshot(vsnap); break;
+                case VehicleDockPacket vdock: Vehicles.OnDock(vdock); break;
+                case CyclopsStatePacket cyc: Vehicles.OnCyclops(cyc); break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
                     AddChat($"{NameOf(died.Id)} died!");

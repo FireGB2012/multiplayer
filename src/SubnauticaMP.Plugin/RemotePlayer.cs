@@ -19,6 +19,9 @@ namespace SubnauticaMP
         public bool HasVitals { get; private set; }
 
         string _held = "";
+        string _subId = "";
+        Vector3 _localPos;
+        Quaternion _localRot = Quaternion.identity;
         GameObject _heldModel;
         int _heldRequest;
 
@@ -81,6 +84,12 @@ namespace SubnauticaMP
             _lastTargetPos = _targetPos;
             _lastTargetTime = now;
             _underwater = (state.Flags & PlayerFlags.Underwater) != 0;
+            _subId = state.SubId ?? "";
+            if (_subId.Length > 0)
+            {
+                _localPos = new Vector3(state.LocalPosition.X, state.LocalPosition.Y, state.LocalPosition.Z);
+                _localRot = new Quaternion(state.LocalRotation.X, state.LocalRotation.Y, state.LocalRotation.Z, state.LocalRotation.W);
+            }
             Health = state.Health; Food = state.Food; Water = state.Water;
             HasVitals = state.Health > 0 || state.Food > 0 || state.Water > 0;
             if ((state.Held ?? "") != _held) SetHeld(state.Held ?? "");
@@ -153,6 +162,18 @@ namespace SubnauticaMP
             }
 
             if (!_hasTarget) return;
+
+            // inside a Cyclops: follow our copy of that Cyclops, not their world position
+            if (_subId.Length > 0)
+            {
+                var sub = Session.Instance != null ? Session.Instance.Vehicles.CyclopsTransform(_subId) : null;
+                if (sub != null)
+                {
+                    _targetPos = sub.TransformPoint(_localPos);
+                    _targetRot = sub.rotation * _localRot;
+                }
+            }
+
             if (_anim != null && _diver != null && _diver.activeSelf)
             {
                 if (Time.unscaledTime - _lastTargetTime > 0.5f) _velocity = Vector3.zero; // stopped sending = standing still

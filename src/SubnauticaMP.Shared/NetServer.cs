@@ -266,6 +266,8 @@ namespace SubnauticaMP.Shared
                         if (!_world.Vehicles.TryGetValue(vstate.Id ?? "", out var v) || v.OwnerId != client.Id) return;
                         v.Position = vstate.Position;
                         v.Rotation = vstate.Rotation;
+                        if (vstate.Health >= 0) v.Health = vstate.Health;
+                        if (vstate.Energy >= 0) v.Energy = vstate.Energy;
                     }
                     _dirty = true;
                     Broadcast(vstate, except: conn);
@@ -336,6 +338,35 @@ namespace SubnauticaMP.Shared
                     lock (_lock) _world.Doors[door.Id] = door.Open;
                     _dirty = true;
                     Broadcast(door, except: conn);
+                    break;
+
+                case VehicleSnapshotPacket snap:
+                    lock (_lock)
+                    {
+                        // whoever drove it last (or nobody) may update it
+                        if (!_world.Vehicles.TryGetValue(snap.Id ?? "", out var v) || (v.OwnerId != client.Id && v.OwnerId != 0)) return;
+                        v.Snapshot = snap.Data ?? new byte[0];
+                    }
+                    _dirty = true;
+                    Broadcast(snap, except: conn);
+                    break;
+
+                case VehicleDockPacket dock:
+                    lock (_lock)
+                    {
+                        if (!_world.Vehicles.TryGetValue(dock.Id ?? "", out var v)) return;
+                        v.Docked = dock.Docked;
+                        v.DockPosition = dock.DockPosition;
+                    }
+                    _dirty = true;
+                    Broadcast(dock, except: conn);
+                    break;
+
+                case CyclopsStatePacket cyc:
+                    if (string.IsNullOrEmpty(cyc.Id)) return;
+                    lock (_lock) _world.Cyclopses[cyc.Id] = cyc;
+                    _dirty = true;
+                    Broadcast(cyc, except: conn);
                     break;
 
                 case PlayerDiedPacket died:

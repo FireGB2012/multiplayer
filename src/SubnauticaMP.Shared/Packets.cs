@@ -28,6 +28,9 @@ namespace SubnauticaMP.Shared
         ItemDropped = 20,   // an item put down in the world (saved with the game's serializer)
         Door = 21,          // door / hatch opened or closed
         PlayerDied = 22,
+        VehicleSnapshot = 23, // whole vehicle (upgrades, power cells, colors, storage) when the driver gets out
+        VehicleDock = 24,
+        CyclopsState = 25,    // lights, silent running, engine mode
     }
 
     public struct Vec3
@@ -95,6 +98,9 @@ namespace SubnauticaMP.Shared
                 case PacketType.ItemDropped: return new ItemDroppedPacket();
                 case PacketType.Door: return new DoorPacket();
                 case PacketType.PlayerDied: return new PlayerDiedPacket();
+                case PacketType.VehicleSnapshot: return new VehicleSnapshotPacket();
+                case PacketType.VehicleDock: return new VehicleDockPacket();
+                case PacketType.CyclopsState: return new CyclopsStatePacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
@@ -178,6 +184,9 @@ namespace SubnauticaMP.Shared
         public PlayerFlags Flags;
         public byte Health, Food, Water; // 0-100
         public string Held;              // TechType in their hand, "" = empty
+        public string SubId = "";        // inside a Cyclops: its id, and Local* are relative to it
+        public Vec3 LocalPosition;
+        public Quat LocalRotation;
         public override PacketType Type => PacketType.PlayerState;
 
         public override void Write(BinaryWriter w)
@@ -188,6 +197,8 @@ namespace SubnauticaMP.Shared
             w.Write((byte)Flags);
             w.Write(Health); w.Write(Food); w.Write(Water);
             w.Write(Held ?? "");
+            w.Write(SubId ?? "");
+            if (!string.IsNullOrEmpty(SubId)) { LocalPosition.Write(w); LocalRotation.Write(w); }
         }
 
         public override void Read(BinaryReader r)
@@ -198,6 +209,8 @@ namespace SubnauticaMP.Shared
             Flags = (PlayerFlags)r.ReadByte();
             Health = r.ReadByte(); Food = r.ReadByte(); Water = r.ReadByte();
             Held = r.ReadString();
+            SubId = r.ReadString();
+            if (SubId.Length > 0) { LocalPosition = Vec3.Read(r); LocalRotation = Quat.Read(r); }
         }
     }
 
@@ -234,15 +247,33 @@ namespace SubnauticaMP.Shared
         public Vec3 Position;
         public Quat Rotation;
         public int OwnerId;     // player simulating it right now, 0 = nobody
+        public float Health = -1f, Energy = -1f; // 0..1, -1 = unknown
+        public byte[] Snapshot = new byte[0];    // the whole vehicle saved by the game's serializer
+        public Vec3 DockPosition;                // docked: where the bay is
+        public bool Docked;
 
         public void Write(BinaryWriter w)
         {
             w.Write(Id ?? ""); w.Write(TechType ?? "");
             Position.Write(w); Rotation.Write(w);
             w.Write(OwnerId);
+            w.Write(Health); w.Write(Energy);
+            Bytes.Write(w, Snapshot);
+            w.Write(Docked); DockPosition.Write(w);
         }
 
         public static VehicleInfo Read(BinaryReader r) => new VehicleInfo
+        {
+            Id = r.ReadString(), TechType = r.ReadString(),
+            Position = Vec3.Read(r), Rotation = Quat.Read(r),
+            OwnerId = r.ReadInt32(),
+            Health = r.ReadSingle(), Energy = r.ReadSingle(),
+            Snapshot = Bytes.Read(r),
+            Docked = r.ReadBoolean(), DockPosition = Vec3.Read(r),
+        };
+
+        // world files from before vehicles had stats
+        public static VehicleInfo ReadOld(BinaryReader r) => new VehicleInfo
         {
             Id = r.ReadString(), TechType = r.ReadString(),
             Position = Vec3.Read(r), Rotation = Quat.Read(r),
@@ -265,9 +296,10 @@ namespace SubnauticaMP.Shared
         public string Id;
         public Vec3 Position;
         public Quat Rotation;
+        public float Health = -1f, Energy = -1f;
         public override PacketType Type => PacketType.VehicleState;
-        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); Position.Write(w); Rotation.Write(w); }
-        public override void Read(BinaryReader r) { Id = r.ReadString(); Position = Vec3.Read(r); Rotation = Quat.Read(r); }
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); Position.Write(w); Rotation.Write(w); w.Write(Health); w.Write(Energy); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); Position = Vec3.Read(r); Rotation = Quat.Read(r); Health = r.ReadSingle(); Energy = r.ReadSingle(); }
     }
 
     public sealed class VehicleOwnerPacket : Packet
@@ -405,5 +437,37 @@ namespace SubnauticaMP.Shared
         public override PacketType Type => PacketType.PlayerDied;
         public override void Write(BinaryWriter w) { w.Write(Id); Position.Write(w); }
         public override void Read(BinaryReader r) { Id = r.ReadInt32(); Position = Vec3.Read(r); }
+    }
+}
+
+namespace SubnauticaMP.Shared
+{
+    public sealed class VehicleSnapshotPacket : Packet
+    {
+        public string Id;
+        public byte[] Data;
+        public override PacketType Type => PacketType.VehicleSnapshot;
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); Bytes.Write(w, Data); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); Data = Bytes.Read(r); }
+    }
+
+    public sealed class VehicleDockPacket : Packet
+    {
+        public string Id;
+        public bool Docked;
+        public Vec3 DockPosition; // the bay it went into (found by position on the other side)
+        public override PacketType Type => PacketType.VehicleDock;
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); w.Write(Docked); DockPosition.Write(w); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); Docked = r.ReadBoolean(); DockPosition = Vec3.Read(r); }
+    }
+
+    public sealed class CyclopsStatePacket : Packet
+    {
+        public string Id;
+        public bool InternalLights = true, FloodLights = true, SilentRunning;
+        public int MotorMode = -1; // 0 slow, 1 standard, 2 flank
+        public override PacketType Type => PacketType.CyclopsState;
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); w.Write(InternalLights); w.Write(FloodLights); w.Write(SilentRunning); w.Write(MotorMode); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); InternalLights = r.ReadBoolean(); FloodLights = r.ReadBoolean(); SilentRunning = r.ReadBoolean(); MotorMode = r.ReadInt32(); }
     }
 }

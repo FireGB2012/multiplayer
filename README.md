@@ -26,6 +26,11 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Dropped / placed items (handing stuff over, beacons) | ✔ |
 | Doors and hatches opening / closing | ✔ |
 | Deaths: chat message + death beacon | ✔ |
+| Vehicle health + battery / Cyclops power | ✔ from whoever drives it |
+| Vehicle upgrades, power cells, colors, name, storage | ✔ whole vehicle re-sent when the driver gets out (not Cyclops yet) |
+| Docking in moonpool / Cyclops bay | ✔ |
+| Cyclops lights, floodlights, silent running, engine speed mode | ✔ |
+| Teammates walking inside a moving Cyclops | ✔ positioned relative to the Cyclops |
 | Your own inventory | ✖ each player keeps their own (like Nitrox) |
 | Creatures / fauna AI | ✖ each player sees their own |
 | Dropped items, crafting, story events | ✖ not yet |
