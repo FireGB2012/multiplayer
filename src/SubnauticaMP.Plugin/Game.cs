@@ -21,7 +21,8 @@ namespace SubnauticaMP
             GameModeOption, GameModeEnum, ProtobufSerializer, TaskResultOfT, Base, Constructable, BaseDeconstructable,
             ItemsContainer, InventoryItem, PDALog, PDAScanner, PingInstance, PingType, Openable, Inventory, Survival,
             LiveMixin, VehicleDockingBay, CyclopsLightingPanel, CyclopsSilentRunningAbilityButton, CyclopsMotorModeButton,
-            SubControl, LargeWorldStreamer, StoryGoal, StoryGoalManager, StoryGoalScheduler, GoalType, CrashedShipExploder;
+            SubControl, LargeWorldStreamer, StoryGoal, StoryGoalManager, StoryGoalScheduler, GoalType, CrashedShipExploder,
+            Creature, EcoTarget, LastTarget, CellManager, EntitySlot, EntitySlotsPlaceholder, VirtualPrefabIdentifier, DeferredSpawner;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         static readonly Dictionary<string, Func<object, object>> Getters = new Dictionary<string, Func<object, object>>();
@@ -89,6 +90,14 @@ namespace SubnauticaMP
             StoryGoalScheduler = Find("Story.StoryGoalScheduler");
             GoalType = Find("Story.GoalType");
             CrashedShipExploder = Find("CrashedShipExploder");
+            Creature = Find("Creature");
+            EcoTarget = Find("EcoTarget");
+            LastTarget = Find("LastTarget");
+            CellManager = Find("CellManager");
+            EntitySlot = Find("EntitySlot");
+            EntitySlotsPlaceholder = Find("EntitySlotsPlaceholder");
+            VirtualPrefabIdentifier = Find("VirtualPrefabIdentifier");
+            DeferredSpawner = Find("DeferredSpawner");
         }
 
         // ---------- story ----------

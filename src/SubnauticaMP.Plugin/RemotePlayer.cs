@@ -17,6 +17,7 @@ namespace SubnauticaMP
         public byte Food { get; private set; }
         public byte Water { get; private set; }
         public bool HasVitals { get; private set; }
+        public bool Exposed { get; private set; } // swimming in open water: creatures can go for them
 
         string _held = "";
         string _subId = "";
@@ -96,6 +97,7 @@ namespace SubnauticaMP
 
             // In a vehicle their body is inside the seamoth/prawn; hide it so it doesn't poke out.
             _visible = (state.Flags & PlayerFlags.InVehicle) == 0;
+            Exposed = _underwater && (state.Flags & (PlayerFlags.InVehicle | PlayerFlags.InBase)) == 0 && _subId.Length == 0;
             ApplyVisibility();
 
             if (!_hasTarget || Vector3.Distance(transform.position, _targetPos) > SnapDistance)

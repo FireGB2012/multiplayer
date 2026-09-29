@@ -26,6 +26,8 @@ namespace SubnauticaMP
         internal ContainerSync Containers;
         internal ItemSync Items;
         internal StorySync Story;
+        internal CreatureSync Creatures;
+        internal IEnumerable<RemotePlayer> Remotes => _remotes.Values;
 
         NetServer _hostedServer;
         int _hostedPort;
@@ -63,6 +65,7 @@ namespace SubnauticaMP
             Containers = new ContainerSync(this);
             Items = new ItemSync(this);
             Story = new StorySync(this);
+            Creatures = new CreatureSync(this);
 
             if (!_launchRead)
             {
@@ -133,6 +136,7 @@ namespace SubnauticaMP
             SafeRun("lockers", Containers.Update);
             SafeRun("items", Items.Update);
             SafeRun("story", Story.Update);
+            SafeRun("creatures", Creatures.Update);
 
             _sendTimer += Time.unscaledDeltaTime;
             if (_sendTimer >= SendInterval)
@@ -275,6 +279,7 @@ namespace SubnauticaMP
                     Containers.OnWelcome(welcome.World);
                     Items.OnWelcome(welcome.World);
                     Story.OnWelcome(welcome.World);
+                    Creatures.OnWelcome(welcome.World);
                     AddChat($"Connected! {welcome.Players.Count} other player(s) here. {_gameMode} world.");
                     if (_autoStart && !Game.InWorld) StartCoroutine(AutoStart());
                     _autoStart = false;
@@ -324,6 +329,11 @@ namespace SubnauticaMP
                 case CyclopsStatePacket cyc: Vehicles.OnCyclops(cyc); break;
                 case StoryGoalPacket goal: Story.OnGoal(goal); break;
                 case AuroraPacket aurora: Story.OnAurora(aurora); break;
+                case SpawnSlotsPacket slots: Creatures.OnSlots(slots); break;
+                case CreatureOwnerPacket co: Creatures.OnOwner(co); break;
+                case CreatureStatesPacket cs: Creatures.OnStates(cs); break;
+                case CreatureDamagePacket cd: Creatures.OnDamage(cd); break;
+                case CreatureDiedPacket cdied: Creatures.OnDied(cdied.Id); break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
                     AddChat($"{NameOf(died.Id)} died!");
@@ -354,6 +364,7 @@ namespace SubnauticaMP
                 Containers.Reset();
                 Items.Reset();
                 Story.Reset();
+                Creatures.Reset();
             }
             _lastState = state;
         }
@@ -531,6 +542,7 @@ namespace SubnauticaMP
             Containers.Reset();
             Items.Reset();
             Story.Reset();
+            Creatures.Reset();
         }
 
         static string SafeFileName(string s)

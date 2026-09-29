@@ -34,9 +34,10 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Story events (radio messages, Sunbeam, Precursor progress, story PDA) | ✔ every story goal fires for everyone, late joiners catch up |
 | Aurora explosion | ✔ one shared timing, so it blows up for everyone at once |
 | Your own inventory | ✖ each player keeps their own (like Nitrox) |
-| Creatures / fauna AI | ✖ each player sees their own |
-| Dropped items, crafting, story events | ✖ not yet |
-| Player models | capsule placeholder for now |
+| Creatures / fauna AI | ✔ same spawns for everyone, one player runs each creature, attacks hit whoever they chase (new worlds / unexplored areas) |
+| Plants / resources in entity slots | ✔ same spawns + same ids, so picking them up syncs |
+| Eggs hatching, containment breeding, cuddlefish, crabsquid EMP | ✖ not yet |
+| Player models | ✔ real diver suit, swim animation, held tool |
 
 ## In-game Multiplayer menu
 Like Nitrox: the main menu gets a **Multiplayer** button next to Play. It lists **your worlds** and **servers you've played on**
