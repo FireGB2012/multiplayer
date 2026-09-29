@@ -25,6 +25,9 @@ namespace SubnauticaMP.Shared
         Structure = 17,     // a base or built object, saved with the game's own serializer (empty = gone)
         Container = 18,     // everything inside a locker / storage
         Fragment = 19,      // fragment scan progress (e.g. 2 of 3 Seamoth fragments)
+        ItemDropped = 20,   // an item put down in the world (saved with the game's serializer)
+        Door = 21,          // door / hatch opened or closed
+        PlayerDied = 22,
     }
 
     public struct Vec3
@@ -89,6 +92,9 @@ namespace SubnauticaMP.Shared
                 case PacketType.Structure: return new StructurePacket();
                 case PacketType.Container: return new ContainerPacket();
                 case PacketType.Fragment: return new FragmentPacket();
+                case PacketType.ItemDropped: return new ItemDroppedPacket();
+                case PacketType.Door: return new DoorPacket();
+                case PacketType.PlayerDied: return new PlayerDiedPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
@@ -170,6 +176,8 @@ namespace SubnauticaMP.Shared
         public Vec3 Position;
         public Quat Rotation;
         public PlayerFlags Flags;
+        public byte Health, Food, Water; // 0-100
+        public string Held;              // TechType in their hand, "" = empty
         public override PacketType Type => PacketType.PlayerState;
 
         public override void Write(BinaryWriter w)
@@ -178,6 +186,8 @@ namespace SubnauticaMP.Shared
             Position.Write(w);
             Rotation.Write(w);
             w.Write((byte)Flags);
+            w.Write(Health); w.Write(Food); w.Write(Water);
+            w.Write(Held ?? "");
         }
 
         public override void Read(BinaryReader r)
@@ -186,6 +196,8 @@ namespace SubnauticaMP.Shared
             Position = Vec3.Read(r);
             Rotation = Quat.Read(r);
             Flags = (PlayerFlags)r.ReadByte();
+            Health = r.ReadByte(); Food = r.ReadByte(); Water = r.ReadByte();
+            Held = r.ReadString();
         }
     }
 
@@ -362,5 +374,36 @@ namespace SubnauticaMP.Shared
         public override PacketType Type => PacketType.Fragment;
         public override void Write(BinaryWriter w) { w.Write(TechType ?? ""); w.Write(Unlocked); }
         public override void Read(BinaryReader r) { TechType = r.ReadString(); Unlocked = r.ReadInt32(); }
+    }
+}
+
+namespace SubnauticaMP.Shared
+{
+    public sealed class ItemDroppedPacket : Packet
+    {
+        public string Id;
+        public byte[] Data;
+        public override PacketType Type => PacketType.ItemDropped;
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); Bytes.Write(w, Data); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); Data = Bytes.Read(r); }
+    }
+
+    public sealed class DoorPacket : Packet
+    {
+        public string Id;
+        public bool Open;
+        public float Duration;
+        public override PacketType Type => PacketType.Door;
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); w.Write(Open); w.Write(Duration); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); Open = r.ReadBoolean(); Duration = r.ReadSingle(); }
+    }
+
+    public sealed class PlayerDiedPacket : Packet
+    {
+        public int Id; // filled in by the server
+        public Vec3 Position;
+        public override PacketType Type => PacketType.PlayerDied;
+        public override void Write(BinaryWriter w) { w.Write(Id); Position.Write(w); }
+        public override void Read(BinaryReader r) { Id = r.ReadInt32(); Position = Vec3.Read(r); }
     }
 }

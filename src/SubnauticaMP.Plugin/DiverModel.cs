@@ -15,7 +15,7 @@ namespace SubnauticaMP
         static GameObject _prototype;
         static bool _failed;
 
-        const string AttachPoint = "player_view/export_skeleton/head_rig/neck/chest/clav_R/clav_R_aim/shoulder_R/elbow_R/hand_R/attach1";
+        public const string AttachPoint = "player_view/export_skeleton/head_rig/neck/chest/clav_R/clav_R_aim/shoulder_R/elbow_R/hand_R/attach1";
         static readonly HashSet<string> Keep = new HashSet<string> { "SkyApplier" }; // makes the suit lit like the world
 
         // A fresh diver body, or null if we can't make one (then the capsule stays).
@@ -89,7 +89,31 @@ namespace SubnauticaMP
         }
 
         // Scripts can depend on each other, so keep removing until nothing more goes.
-        static void StripScripts(GameObject go)
+        public static Transform Holder
+        {
+            get
+            {
+                if (_holder == null)
+                {
+                    _holder = new GameObject("SubnauticaMP_DiverPrototype");
+                    _holder.SetActive(false);
+                    Game.KeepAlive(_holder);
+                }
+                return _holder.transform;
+            }
+        }
+
+        // Makes a lifeless copy of a tool/item: just the looks, nothing that acts.
+        public static GameObject MakeProp(GameObject prefab)
+        {
+            var copy = UnityEngine.Object.Instantiate(prefab, Holder, false); // inactive parent: nothing wakes up
+            StripScripts(copy);
+            foreach (var c in copy.GetComponentsInChildren<Collider>(true)) UnityEngine.Object.DestroyImmediate(c);
+            foreach (var c in copy.GetComponentsInChildren<Rigidbody>(true)) UnityEngine.Object.DestroyImmediate(c);
+            return copy;
+        }
+
+        public static void StripScripts(GameObject go)
         {
             for (int pass = 0; pass < 5; pass++)
             {

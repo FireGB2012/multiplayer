@@ -140,6 +140,9 @@ namespace SubnauticaMP
             if (_applied) WithRemote(() => Try(() => Game.SetFragmentProgress(p.TechType, p.Unlocked)));
         }
 
+        // An item came back into the world (dropped): stop treating it as taken.
+        public void ForgetRemoved(string id) => _removed.Remove(id);
+
         public void OnEntityRemoved(string id)
         {
             if (string.IsNullOrEmpty(id) || !_removed.Add(id) || !_applied) return;

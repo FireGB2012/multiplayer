@@ -11,7 +11,7 @@ namespace SubnauticaMP.Shared
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 3;
+        const int FileVersion = 4;
         const int MaxEntries = 1_000_000;
 
         public HashSet<string> Blueprints = new HashSet<string>();
@@ -28,6 +28,8 @@ namespace SubnauticaMP.Shared
         public Dictionary<string, int> Fragments = new Dictionary<string, int>();
         public Dictionary<string, byte[]> Structures = new Dictionary<string, byte[]>();
         public Dictionary<string, List<byte[]>> Containers = new Dictionary<string, List<byte[]>>();
+        public Dictionary<string, byte[]> DroppedItems = new Dictionary<string, byte[]>();
+        public Dictionary<string, bool> Doors = new Dictionary<string, bool>();
 
         public HashSet<string> SetFor(UnlockKind kind)
         {
@@ -66,6 +68,10 @@ namespace SubnauticaMP.Shared
                 w.Write(kv.Value.Count);
                 foreach (var item in kv.Value) Bytes.Write(w, item);
             }
+            w.Write(DroppedItems.Count);
+            foreach (var kv in DroppedItems) { w.Write(kv.Key); Bytes.Write(w, kv.Value); }
+            w.Write(Doors.Count);
+            foreach (var kv in Doors) { w.Write(kv.Key); w.Write(kv.Value); }
         }
 
         public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
@@ -114,6 +120,13 @@ namespace SubnauticaMP.Shared
                     s.Containers[id] = list;
                 }
             }
+            if (version >= 4)
+            {
+                int n = ReadCount(r);
+                for (int i = 0; i < n; i++) s.DroppedItems[r.ReadString()] = Bytes.Read(r);
+                n = ReadCount(r);
+                for (int i = 0; i < n; i++) s.Doors[r.ReadString()] = r.ReadBoolean();
+            }
             return s;
         }
 
@@ -135,6 +148,8 @@ namespace SubnauticaMP.Shared
                 Fragments = new Dictionary<string, int>(Fragments),
                 Structures = new Dictionary<string, byte[]>(Structures),        // blobs are never mutated, sharing is fine
                 Containers = Containers.ToDictionary(kv => kv.Key, kv => new List<byte[]>(kv.Value)),
+                DroppedItems = new Dictionary<string, byte[]>(DroppedItems),
+                Doors = new Dictionary<string, bool>(Doors),
             };
         }
 

@@ -19,7 +19,7 @@ namespace SubnauticaMP
             StorageContainer, TechType, VFXConstructing, WorldForces, LightmappedPrefabs, SubConsoleCommand,
             SaveLoadManager, MainMenuType, MainMenuLoadButton, SceneIntro, GameInput, EscapePod, GameModeUtils,
             GameModeOption, GameModeEnum, ProtobufSerializer, TaskResultOfT, Base, Constructable, BaseDeconstructable,
-            ItemsContainer, InventoryItem, PDALog, PDAScanner, PingInstance, PingType;
+            ItemsContainer, InventoryItem, PDALog, PDAScanner, PingInstance, PingType, Openable, Inventory, Survival;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         static readonly Dictionary<string, Func<object, object>> Getters = new Dictionary<string, Func<object, object>>();
@@ -72,6 +72,39 @@ namespace SubnauticaMP
             PingInstance = Find("PingInstance");
             PingType = Find("PingType");
             SceneCleanerPreserve = Find("SceneCleanerPreserve");
+            Openable = Find("Openable");
+            Inventory = Find("Inventory");
+            Survival = Find("Survival");
+        }
+
+        // ---------- vitals / hands ----------
+
+        public static (byte health, byte food, byte water) Vitals(Component player)
+        {
+            byte Pct(object v, float max) => v == null ? (byte)0 : (byte)Mathf.Clamp(Mathf.RoundToInt(Convert.ToSingle(v) / max * 100f), 0, 100);
+            var live = TryGet(Player, player, "liveMixin");
+            var health = live != null ? TryGet(live.GetType(), live, "health") : null;
+            var max = live != null ? TryGet(live.GetType(), live, "maxHealth") : null;
+            var survival = Survival != null ? player.GetComponent(Survival) : null;
+            return (Pct(health, max != null ? Math.Max(1f, Convert.ToSingle(max)) : 100f),
+                    survival != null ? Pct(TryGet(Survival, survival, "food"), 100f) : (byte)0,
+                    survival != null ? Pct(TryGet(Survival, survival, "water"), 100f) : (byte)0);
+        }
+
+        // TechType of whatever the local player is holding, or "".
+        public static string HeldTech()
+        {
+            var inv = TryGet(Inventory, null, "main");
+            var tool = inv != null ? TryGet(Inventory, inv, "GetHeldTool") as Component : null;
+            return tool != null ? TechTypeOf(tool.gameObject) ?? "" : "";
+        }
+
+        public static IEnumerator LoadPrefab(string techName, Action<GameObject> done)
+        {
+            var tt = ParseTechType(techName);
+            var task = tt != null ? Call(CraftData, null, "GetPrefabForTechTypeAsync", tt) : null;
+            if (task is IEnumerator e) yield return e;
+            done(task == null ? null : TryGet(task.GetType(), task, "GetResult") as GameObject);
         }
 
         static Type SceneCleanerPreserve;

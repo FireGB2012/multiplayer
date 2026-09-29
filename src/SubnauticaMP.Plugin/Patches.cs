@@ -53,6 +53,9 @@ namespace SubnauticaMP
             Hook("lockers (add)", Game.ItemsContainer, "NotifyAddItem", postfix: nameof(ContainerChanged));
             Hook("lockers (remove)", Game.ItemsContainer, "NotifyRemoveItem", postfix: nameof(ContainerChanged));
             Hook("PDA logs", Game.PDALog, "Add", postfix: nameof(PdaLogAdded));
+            Hook("dropping items", Game.Pickupable, "Drop", postfix: nameof(Dropped));
+            Hook("doors", Game.Openable, "PlayOpenAnimation", prefix: nameof(DoorMoved));
+            Hook("deaths", Game.Player, "OnKill", prefix: nameof(PlayerKilled));
             Hook("lobby start", Game.GameInput, "get_AnyKeyDown", postfix: nameof(AnyKeyDown));
             Hook("intro sync", Game.EscapePod, "TriggerIntroCinematic", postfix: nameof(IntroCinematicStarted));
 
@@ -107,7 +110,9 @@ namespace SubnauticaMP
         {
             if (ApplyingRemote || S == null || c == null) return;
             var id = Game.GetId(c.gameObject);
-            if (!string.IsNullOrEmpty(id)) S.Send(new EntityRemovedPacket { EntityId = id });
+            if (string.IsNullOrEmpty(id)) return;
+            S.Items.OnPickedUp(id);
+            S.Send(new EntityRemovedPacket { EntityId = id });
         }
 
         static void WrapIntro(ref System.Collections.IEnumerator __result) => __result = Lobby.Hold(__result);
@@ -135,6 +140,26 @@ namespace SubnauticaMP
         {
             if (ApplyingRemote || S == null || __result == null || __args.Length == 0) return;
             S.SendUnlock(UnlockKind.PdaLog, __args[0] as string);
+        }
+
+        static void Dropped(Component __instance)
+        {
+            if (ApplyingRemote || S == null || __instance == null) return;
+            S.Items.OnLocalDrop(__instance.gameObject);
+        }
+
+        static void DoorMoved(Component __instance, object[] __args)
+        {
+            if (ApplyingRemote || S == null || __instance == null || __args.Length < 2) return;
+            if (__args[0] is bool open && __args[1] is float duration) S.Items.OnLocalDoor(__instance, open, duration);
+        }
+
+        static void PlayerKilled(Component __instance)
+        {
+            if (S == null || __instance == null) return;
+            var p = __instance.transform.position;
+            S.Send(new PlayerDiedPacket { Position = new Vec3(p.x, p.y, p.z) });
+            S.AddChat("You died. Your teammates can see where.");
         }
 
         static void VehicleKilled(Component __instance)

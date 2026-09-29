@@ -61,7 +61,9 @@ namespace SubnauticaMP
                 var screen = cam.WorldToScreenPoint(r.transform.position + Vector3.up * 1.3f);
                 if (screen.z <= 0f) continue; // behind us
                 float dist = Vector3.Distance(cam.transform.position, r.transform.position);
-                GUI.Label(new Rect(screen.x - 100, Screen.height - screen.y - 12, 200, 24), $"{r.PlayerName} ({dist:0}m)", _tagStyle);
+                GUI.Label(new Rect(screen.x - 130, Screen.height - screen.y - 12, 260, 24), $"{r.PlayerName} ({dist:0}m)", _tagStyle);
+                if (r.HasVitals)
+                    GUI.Label(new Rect(screen.x - 130, Screen.height - screen.y + 8, 260, 24), $"HP {r.Health}   Food {r.Food}   Water {r.Water}", _tagStyle);
             }
         }
 

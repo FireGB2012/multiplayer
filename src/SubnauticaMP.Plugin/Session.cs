@@ -24,6 +24,7 @@ namespace SubnauticaMP
         internal VehicleSync Vehicles;
         internal StructureSync Structures;
         internal ContainerSync Containers;
+        internal ItemSync Items;
 
         NetServer _hostedServer;
         int _hostedPort;
@@ -59,6 +60,7 @@ namespace SubnauticaMP
             Vehicles = new VehicleSync(this);
             Structures = new StructureSync(this);
             Containers = new ContainerSync(this);
+            Items = new ItemSync(this);
 
             if (!_launchRead)
             {
@@ -127,6 +129,7 @@ namespace SubnauticaMP
             SafeRun("vehicles", Vehicles.Update);
             SafeRun("building", Structures.Update);
             SafeRun("lockers", Containers.Update);
+            SafeRun("items", Items.Update);
 
             _sendTimer += Time.unscaledDeltaTime;
             if (_sendTimer >= SendInterval)
@@ -182,8 +185,17 @@ namespace SubnauticaMP
             Send(new UnlockPacket { Kind = kind, Key = key });
         }
 
+        string _heldCache = "";
+        float _heldCheck;
+
         void SendLocalState()
         {
+            // what's in our hand: checked a few times a second, not every packet
+            if (Time.unscaledTime >= _heldCheck)
+            {
+                _heldCheck = Time.unscaledTime + 0.3f;
+                try { _heldCache = Game.HeldTech(); } catch { _heldCache = ""; }
+            }
             var player = Game.LocalPlayer;
             if (player == null) return;
 
@@ -197,11 +209,16 @@ namespace SubnauticaMP
             if (Game.Is(player, "IsInSub")) flags |= PlayerFlags.InBase;
             if (Game.PlayerVehicle(player) != null) flags |= PlayerFlags.InVehicle;
 
+            var (health, food, water) = Game.Vitals(player);
             Send(new PlayerStatePacket
             {
                 Position = new Vec3(t.position.x, t.position.y, t.position.z),
                 Rotation = new Quat(rot.x, rot.y, rot.z, rot.w),
                 Flags = flags,
+                Health = health,
+                Food = food,
+                Water = water,
+                Held = _heldCache,
             });
         }
 
@@ -231,6 +248,7 @@ namespace SubnauticaMP
                     Vehicles.OnWelcome(welcome.World);
                     Structures.OnWelcome(welcome.World);
                     Containers.OnWelcome(welcome.World);
+                    Items.OnWelcome(welcome.World);
                     AddChat($"Connected! {welcome.Players.Count} other player(s) here. {_gameMode} world.");
                     if (_autoStart && !Game.InWorld) StartCoroutine(AutoStart());
                     _autoStart = false;
@@ -270,7 +288,16 @@ namespace SubnauticaMP
                     break;
 
                 case UnlockPacket unlock: World.OnUnlock(unlock); break;
-                case EntityRemovedPacket removed: World.OnEntityRemoved(removed.EntityId); break;
+                case EntityRemovedPacket removed:
+                    Items.OnPickedUp(removed.EntityId);
+                    World.OnEntityRemoved(removed.EntityId);
+                    break;
+                case ItemDroppedPacket dropped: Items.OnDropped(dropped); break;
+                case DoorPacket door: Items.OnDoor(door); break;
+                case PlayerDiedPacket died:
+                    AddChat($"{NameOf(died.Id)} died!");
+                    SafeRun("death beacon", () => DeathBeacon.Place(NameOf(died.Id), new Vector3(died.Position.X, died.Position.Y, died.Position.Z)));
+                    break;
                 case TimeSyncPacket time: World.OnTime(time.TimePassed); break;
                 case VehicleSpawnedPacket vs: Vehicles.OnSpawned(vs.Vehicle); break;
                 case VehicleStatePacket vst: Vehicles.OnState(vst); break;
@@ -294,6 +321,7 @@ namespace SubnauticaMP
                 Vehicles.Reset();
                 Structures.Reset();
                 Containers.Reset();
+                Items.Reset();
             }
             _lastState = state;
         }
@@ -469,6 +497,7 @@ namespace SubnauticaMP
             Vehicles.Reset();
             Structures.Reset();
             Containers.Reset();
+            Items.Reset();
         }
 
         static string SafeFileName(string s)

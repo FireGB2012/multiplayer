@@ -13,6 +13,14 @@ namespace SubnauticaMP
 
         public int Id { get; private set; }
         public string PlayerName { get; private set; }
+        public byte Health { get; private set; }
+        public byte Food { get; private set; }
+        public byte Water { get; private set; }
+        public bool HasVitals { get; private set; }
+
+        string _held = "";
+        GameObject _heldModel;
+        int _heldRequest;
 
         Vector3 _targetPos;
         Quaternion _targetRot = Quaternion.identity;
@@ -73,6 +81,9 @@ namespace SubnauticaMP
             _lastTargetPos = _targetPos;
             _lastTargetTime = now;
             _underwater = (state.Flags & PlayerFlags.Underwater) != 0;
+            Health = state.Health; Food = state.Food; Water = state.Water;
+            HasVitals = state.Health > 0 || state.Food > 0 || state.Water > 0;
+            if ((state.Held ?? "") != _held) SetHeld(state.Held ?? "");
 
             // In a vehicle their body is inside the seamoth/prawn; hide it so it doesn't poke out.
             _visible = (state.Flags & PlayerFlags.InVehicle) == 0;
@@ -96,6 +107,34 @@ namespace SubnauticaMP
         void OnDestroy()
         {
             if (_diver != null) Destroy(_diver);
+            if (_heldModel != null) Destroy(_heldModel);
+        }
+
+        // Puts a copy of whatever they're holding in the diver's right hand.
+        void SetHeld(string tech)
+        {
+            _held = tech;
+            if (_heldModel != null) Destroy(_heldModel);
+            _heldModel = null;
+            int request = ++_heldRequest;
+            if (tech.Length == 0 || _diver == null) return;
+
+            var hand = _diver.transform.Find(DiverModel.AttachPoint);
+            if (hand == null) return;
+            StartCoroutine(Game.LoadPrefab(tech, prefab =>
+            {
+                if (request != _heldRequest || prefab == null || hand == null) return; // they switched again meanwhile
+                try
+                {
+                    var prop = DiverModel.MakeProp(prefab);
+                    prop.transform.SetParent(hand, false);
+                    prop.transform.localPosition = Vector3.zero;
+                    prop.transform.localRotation = Quaternion.identity;
+                    prop.SetActive(true);
+                    _heldModel = prop;
+                }
+                catch (Exception e) { Game.WarnOnce("held", "Couldn't show held item: " + e.GetBaseException().Message); }
+            }));
         }
 
         void Update()
@@ -109,6 +148,7 @@ namespace SubnauticaMP
                 {
                     _anim = new DiverAnimator(_diver);
                     ApplyVisibility();
+                    if (_held.Length > 0) SetHeld(_held); // they were already holding something
                 }
             }
 

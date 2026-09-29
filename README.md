@@ -20,6 +20,12 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Lockers / storage (lifepod, Cyclops, base lockers, planters...) | ✔ full contents re-sent on every change |
 | PDA data logs + fragment scan progress | ✔ |
 | Teammates on your HUD (beacon-style marker with name + distance) | ✔ |
+| Real diver models with swim animations | ✔ |
+| Teammate health / food / water under their name | ✔ |
+| Item in a teammate's hand | ✔ |
+| Dropped / placed items (handing stuff over, beacons) | ✔ |
+| Doors and hatches opening / closing | ✔ |
+| Deaths: chat message + death beacon | ✔ |
 | Your own inventory | ✖ each player keeps their own (like Nitrox) |
 | Creatures / fauna AI | ✖ each player sees their own |
 | Dropped items, crafting, story events | ✖ not yet |

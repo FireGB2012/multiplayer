@@ -235,7 +235,11 @@ namespace SubnauticaMP.Shared
 
                 case EntityRemovedPacket removed:
                     if (string.IsNullOrEmpty(removed.EntityId)) return;
-                    lock (_lock) isNew = _world.RemovedEntities.Add(removed.EntityId);
+                    lock (_lock)
+                    {
+                        _world.DroppedItems.Remove(removed.EntityId); // someone picked up a dropped item
+                        isNew = _world.RemovedEntities.Add(removed.EntityId);
+                    }
                     if (!isNew) return;
                     _dirty = true;
                     Broadcast(removed, except: conn);
@@ -314,6 +318,30 @@ namespace SubnauticaMP.Shared
                     }
                     _dirty = true;
                     Broadcast(fragment, except: conn);
+                    break;
+
+                case ItemDroppedPacket dropped:
+                    if (string.IsNullOrEmpty(dropped.Id) || dropped.Data == null || dropped.Data.Length == 0) return;
+                    lock (_lock)
+                    {
+                        _world.RemovedEntities.Remove(dropped.Id); // it's back in the world
+                        _world.DroppedItems[dropped.Id] = dropped.Data;
+                    }
+                    _dirty = true;
+                    Broadcast(dropped, except: conn);
+                    break;
+
+                case DoorPacket door:
+                    if (string.IsNullOrEmpty(door.Id)) return;
+                    lock (_lock) _world.Doors[door.Id] = door.Open;
+                    _dirty = true;
+                    Broadcast(door, except: conn);
+                    break;
+
+                case PlayerDiedPacket died:
+                    died.Id = client.Id;
+                    Log?.Invoke($"{client.Name} died");
+                    Broadcast(died, except: conn);
                     break;
 
                 case StartGamePacket _:
