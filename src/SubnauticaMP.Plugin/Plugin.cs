@@ -12,7 +12,7 @@ namespace SubnauticaMP
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.firegb2012.subnauticamp";
-        public const string Version = "0.5.3";
+        public const string Version = "0.5.4";
 
         internal static ManualLogSource Log;
         internal static string Folder;
@@ -27,7 +27,7 @@ namespace SubnauticaMP
             if (Session.Instance != null) return;
             var host = new GameObject("SubnauticaMP");
             host.transform.SetParent(null);
-            DontDestroyOnLoad(host);
+            Game.KeepAlive(host);
             host.AddComponent<Session>();
             Log.LogInfo("Multiplayer session object created");
         }

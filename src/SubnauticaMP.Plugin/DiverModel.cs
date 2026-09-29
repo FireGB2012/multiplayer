@@ -49,7 +49,7 @@ namespace SubnauticaMP
                 {
                     _holder = new GameObject("SubnauticaMP_DiverPrototype");
                     _holder.SetActive(false);
-                    UnityEngine.Object.DontDestroyOnLoad(_holder);
+                    Game.KeepAlive(_holder);
                 }
 
                 // copying into an inactive parent means none of the player's scripts ever run on the copy

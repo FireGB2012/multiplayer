@@ -71,6 +71,18 @@ namespace SubnauticaMP
             PDAScanner = Find("PDAScanner");
             PingInstance = Find("PingInstance");
             PingType = Find("PingType");
+            SceneCleanerPreserve = Find("SceneCleanerPreserve");
+        }
+
+        static Type SceneCleanerPreserve;
+
+        // Subnautica's SceneCleaner deletes every leftover object on the way to the main menu
+        // unless it carries this tag (Nitrox does the same). Use with DontDestroyOnLoad.
+        public static void KeepAlive(GameObject go)
+        {
+            UnityEngine.Object.DontDestroyOnLoad(go);
+            if (SceneCleanerPreserve != null && go.GetComponent(SceneCleanerPreserve) == null)
+                go.AddComponent(SceneCleanerPreserve);
         }
 
         static Type Find(string name)

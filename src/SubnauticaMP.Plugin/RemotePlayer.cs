@@ -29,7 +29,7 @@ namespace SubnauticaMP
         public static RemotePlayer Create(int id, string name)
         {
             var root = new GameObject("RemotePlayer_" + id);
-            DontDestroyOnLoad(root);
+            Game.KeepAlive(root);
 
             var capsule = new GameObject("Capsule");
             capsule.transform.SetParent(root.transform, false);
