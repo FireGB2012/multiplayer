@@ -18,6 +18,14 @@ namespace SubnauticaMP.Shared
         public bool IsOpen => _closed == 0;
         public object Tag; // free slot for whoever owns the connection
         public int MaxPacketSize = Protocol.MaxPacketSize;
+        public string RemoteIp
+        {
+            get
+            {
+                try { return (_tcp.Client.RemoteEndPoint as System.Net.IPEndPoint)?.Address.ToString() ?? ""; }
+                catch { return ""; }
+            }
+        }
 
         public Connection(TcpClient tcp)
         {

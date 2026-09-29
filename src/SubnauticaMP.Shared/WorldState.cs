@@ -6,12 +6,18 @@ using System.Text;
 
 namespace SubnauticaMP.Shared
 {
+    public sealed class BanEntry
+    {
+        public string Name;
+        public string Ip; // "" when we don't know it (e.g. played on the host's own PC)
+    }
+
     // Everything the server remembers about the shared world. Sent to players when they join
     // and saved to disk so the world survives server restarts.
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 7;
+        const int FileVersion = 8;
         const int MaxEntries = 1_000_000;
 
         public HashSet<string> Blueprints = new HashSet<string>();
@@ -34,6 +40,8 @@ namespace SubnauticaMP.Shared
         public List<StoryGoalPacket> StoryGoals = new List<StoryGoalPacket>(); // in the order they happened
         public AuroraPacket Aurora; // null until the first player shares it
         public Dictionary<string, SpawnSlot> SpawnBook = new Dictionary<string, SpawnSlot>();
+        public Dictionary<string, float> Power = new Dictionary<string, float>();
+        public List<BanEntry> Bans = new List<BanEntry>(); // never sent to players
 
         public HashSet<string> SetFor(UnlockKind kind)
         {
@@ -84,6 +92,10 @@ namespace SubnauticaMP.Shared
             Aurora?.Write(w);
             w.Write(SpawnBook.Count);
             foreach (var slot in SpawnBook.Values) slot.Write(w);
+            w.Write(Power.Count);
+            foreach (var kv in Power) { w.Write(kv.Key); w.Write(kv.Value); }
+            w.Write(Bans.Count);
+            foreach (var b in Bans) { w.Write(b.Name ?? ""); w.Write(b.Ip ?? ""); }
         }
 
         public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
@@ -173,6 +185,13 @@ namespace SubnauticaMP.Shared
                     s.SpawnBook[slot.Key] = slot;
                 }
             }
+            if (version >= 8)
+            {
+                int n = ReadCount(r);
+                for (int i = 0; i < n; i++) s.Power[r.ReadString()] = r.ReadSingle();
+                n = ReadCount(r);
+                for (int i = 0; i < n; i++) s.Bans.Add(new BanEntry { Name = r.ReadString(), Ip = r.ReadString() });
+            }
             return s;
         }
 
@@ -200,6 +219,8 @@ namespace SubnauticaMP.Shared
                 StoryGoals = new List<StoryGoalPacket>(StoryGoals),
                 Aurora = Aurora,
                 SpawnBook = new Dictionary<string, SpawnSlot>(SpawnBook),
+                Power = new Dictionary<string, float>(Power),
+                Bans = new List<BanEntry>(Bans),
             };
         }
 

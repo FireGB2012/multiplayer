@@ -38,6 +38,15 @@ namespace SubnauticaMP.Shared
         CreatureStates = 30,  // owner -> others: creature positions
         CreatureDamage = 31,  // hit a creature someone else runs
         CreatureDied = 32,
+        Kick = 33,            // host -> server: kick / ban a player
+        Sleep = 34,           // someone got in / out of bed; server -> all: everyone's asleep, skip the night
+        Power = 35,           // base power levels (solar / thermal / bioreactor / nuclear)
+        Craft = 36,           // fabricator started making something (animation for everyone)
+        BuildGhost = 37,      // the hologram someone is about to build
+        Fires = 38,           // which fire spots in a Cyclops are burning
+        FireDouse = 39,       // someone sprayed a fire
+        HullHealth = 40,      // base / Cyclops damaged or welded (leaks)
+        Picked = 41,          // fruit picked off a plant
     }
 
     public struct Vec3
@@ -63,6 +72,7 @@ namespace SubnauticaMP.Shared
         Underwater = 1,
         InBase = 2,
         InVehicle = 4,
+        Sleeping = 8,
     }
 
     public enum UnlockKind : byte
@@ -115,6 +125,15 @@ namespace SubnauticaMP.Shared
                 case PacketType.CreatureStates: return new CreatureStatesPacket();
                 case PacketType.CreatureDamage: return new CreatureDamagePacket();
                 case PacketType.CreatureDied: return new CreatureDiedPacket();
+                case PacketType.Kick: return new KickPacket();
+                case PacketType.Sleep: return new SleepPacket();
+                case PacketType.Power: return new PowerPacket();
+                case PacketType.Craft: return new CraftPacket();
+                case PacketType.BuildGhost: return new BuildGhostPacket();
+                case PacketType.Fires: return new FiresPacket();
+                case PacketType.FireDouse: return new FireDousePacket();
+                case PacketType.HullHealth: return new HullHealthPacket();
+                case PacketType.Picked: return new PickedPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
@@ -124,9 +143,16 @@ namespace SubnauticaMP.Shared
     {
         public int ProtocolVersion;
         public string Name;
+        public string Password = "";
         public override PacketType Type => PacketType.Hello;
-        public override void Write(BinaryWriter w) { w.Write(ProtocolVersion); w.Write(Name ?? ""); }
-        public override void Read(BinaryReader r) { ProtocolVersion = r.ReadInt32(); Name = r.ReadString(); }
+        public override void Write(BinaryWriter w) { w.Write(ProtocolVersion); w.Write(Name ?? ""); w.Write(Password ?? ""); }
+        public override void Read(BinaryReader r)
+        {
+            ProtocolVersion = r.ReadInt32();
+            Name = r.ReadString();
+            // older mods stop after the name; let them get the "version mismatch" message instead of an error
+            Password = r.BaseStream.Position < r.BaseStream.Length ? r.ReadString() : "";
+        }
     }
 
     public sealed class PlayerInfo
@@ -201,6 +227,8 @@ namespace SubnauticaMP.Shared
         public string SubId = "";        // inside a Cyclops: its id, and Local* are relative to it
         public Vec3 LocalPosition;
         public Quat LocalRotation;
+        public string Gear = "";   // what they wear: "Body=RadiationSuit;Foots=Fins;..."
+        public string Anim = "";   // animation switches that are on: "holding_knife,using_tool"
         public override PacketType Type => PacketType.PlayerState;
 
         public override void Write(BinaryWriter w)
@@ -213,6 +241,8 @@ namespace SubnauticaMP.Shared
             w.Write(Held ?? "");
             w.Write(SubId ?? "");
             if (!string.IsNullOrEmpty(SubId)) { LocalPosition.Write(w); LocalRotation.Write(w); }
+            w.Write(Gear ?? "");
+            w.Write(Anim ?? "");
         }
 
         public override void Read(BinaryReader r)
@@ -225,6 +255,8 @@ namespace SubnauticaMP.Shared
             Held = r.ReadString();
             SubId = r.ReadString();
             if (SubId.Length > 0) { LocalPosition = Vec3.Read(r); LocalRotation = Quat.Read(r); }
+            Gear = r.ReadString();
+            Anim = r.ReadString();
         }
     }
 

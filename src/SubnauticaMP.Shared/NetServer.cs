@@ -20,6 +20,7 @@ namespace SubnauticaMP.Shared
             public string Name;
             public bool Joined;
             public bool IsLocal; // playing on the same PC as the server: that's the host
+            public string Ip = "";
         }
 
         const double TimeSyncSeconds = 5;
@@ -37,12 +38,18 @@ namespace SubnauticaMP.Shared
         int _nextId = 1;
         int _hostId;
         readonly Dictionary<string, int> _creatureOwners = new Dictionary<string, int>(); // creature id -> player id (not saved)
+        readonly HashSet<int> _sleepers = new HashSet<int>();
+        readonly Dictionary<string, (int id, double time)> _powerWriters = new Dictionary<string, (int, double)>();
+        const double PowerWriterTimeout = 8;
+        const float MaxSleepSkip = 1200f;
 
         public event Action<string> Log;
         public event Action PlayersChanged; // also fires when the game starts or the host changes
         public int Port { get; private set; }
         public bool Running => _listener != null;
         public int HostId { get { lock (_lock) return _hostId; } }
+        public string Password { get; set; } = ""; // empty = anyone can join
+        public bool TrustLocalPlayers { get; set; } = true; // the host's own PC skips the password and can't be banned
 
         // savePath = null keeps the world in memory only. gameMode/started only apply when the world is brand new;
         // started = true skips the lobby (e.g. hosting from inside a save you're already playing).
@@ -190,7 +197,8 @@ namespace SubnauticaMP.Shared
                 catch { return; } // listener stopped
 
                 bool local = tcp.Client.RemoteEndPoint is IPEndPoint ep && IPAddress.IsLoopback(ep.Address);
-                var conn = new Connection(tcp) { Tag = new Client { IsLocal = local }, MaxPacketSize = Protocol.MaxHelloPacketSize };
+                var conn = new Connection(tcp) { MaxPacketSize = Protocol.MaxHelloPacketSize };
+                conn.Tag = new Client { IsLocal = local, Ip = local ? "" : conn.RemoteIp };
                 conn.PacketReceived += OnPacket;
                 conn.Closed += OnClosed;
                 lock (_lock) _connections.Add(conn);
@@ -441,6 +449,33 @@ namespace SubnauticaMP.Shared
                     Broadcast(dead, except: conn);
                     break;
 
+                case KickPacket kick:
+                    bool isHost;
+                    lock (_lock) isHost = client.Id == _hostId;
+                    if (isHost && kick.TargetId != client.Id) Kick(kick.TargetId, kick.Ban);
+                    break;
+
+                case SleepPacket sleep:
+                    HandleSleep(client, sleep.Asleep, sleep.Amount);
+                    break;
+
+                case PowerPacket power:
+                    HandlePower(conn, client, power);
+                    break;
+
+                case CraftPacket _:
+                case FiresPacket _:
+                case FireDousePacket _:
+                case HullHealthPacket _:
+                case PickedPacket _:
+                    Broadcast(packet, except: conn);
+                    break;
+
+                case BuildGhostPacket ghost:
+                    ghost.Id = client.Id;
+                    Broadcast(ghost, except: conn);
+                    break;
+
                 case PlayerDiedPacket died:
                     died.Id = client.Id;
                     Log?.Invoke($"{client.Name} died");
@@ -471,6 +506,110 @@ namespace SubnauticaMP.Shared
                     Broadcast(new TimeSyncPacket { TimePassed = time.TimePassed }, except: conn);
                     break;
             }
+        }
+
+        // ---------- kick / ban ----------
+
+        public List<BanEntry> Bans { get { lock (_lock) return _world.Bans.Select(b => new BanEntry { Name = b.Name, Ip = b.Ip }).ToList(); } }
+
+        // Kicks a player; ban = they can't come back (by name and IP). Returns false if they're not here.
+        public bool Kick(int playerId, bool ban)
+        {
+            Connection target;
+            Client tc;
+            lock (_lock)
+            {
+                target = _connections.FirstOrDefault(c => ((Client)c.Tag).Joined && ((Client)c.Tag).Id == playerId);
+                if (target == null) return false;
+                tc = (Client)target.Tag;
+                if (ban && !_world.Bans.Any(b => string.Equals(b.Name, tc.Name, StringComparison.OrdinalIgnoreCase)))
+                    _world.Bans.Add(new BanEntry { Name = tc.Name, Ip = tc.Ip });
+            }
+            if (ban) _dirty = true;
+            Log?.Invoke($"{tc.Name} was {(ban ? "banned" : "kicked")}");
+            Broadcast(new ChatPacket { SenderId = 0, Text = $"{tc.Name} was {(ban ? "banned" : "kicked")}." }, except: target);
+            Reject(target, ban ? "You were banned from this server." : "You were kicked from this server.");
+            return true;
+        }
+
+        public bool Unban(string name)
+        {
+            int removed;
+            lock (_lock) removed = _world.Bans.RemoveAll(b => string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase));
+            if (removed > 0) _dirty = true;
+            return removed > 0;
+        }
+
+        bool IsBanned(Client c, string name) =>
+            !(c.IsLocal && TrustLocalPlayers) && _world.Bans.Any(b =>
+                string.Equals(b.Name, name, StringComparison.OrdinalIgnoreCase) ||
+                (!string.IsNullOrEmpty(b.Ip) && b.Ip == c.Ip));
+
+        // ---------- sleeping ----------
+
+        void HandleSleep(Client client, bool asleep, float amount)
+        {
+            bool skip;
+            lock (_lock)
+            {
+                if (asleep) _sleepers.Add(client.Id); else _sleepers.Remove(client.Id);
+                skip = asleep && AllAsleep();
+                if (skip)
+                {
+                    SetTime(CurrentTime() + Math.Max(0f, Math.Min(MaxSleepSkip, amount)));
+                    _sleepers.Clear();
+                }
+            }
+            Broadcast(new SleepPacket { Id = client.Id, Asleep = asleep }, except: null);
+            if (!skip) return;
+            _dirty = true;
+            Log?.Invoke("Everyone's asleep: skipping the night");
+            Broadcast(new SleepPacket { Id = client.Id, Asleep = false, Skip = true, Amount = amount }, except: null);
+            double now;
+            lock (_lock) now = CurrentTime();
+            Broadcast(new TimeSyncPacket { TimePassed = now }, except: null);
+        }
+
+        // call inside _lock
+        bool AllAsleep()
+        {
+            var ids = _connections.Select(c => (Client)c.Tag).Where(c => c.Joined).Select(c => c.Id).ToList();
+            return ids.Count > 0 && ids.All(_sleepers.Contains);
+        }
+
+        // ---------- power ----------
+
+        void HandlePower(Connection conn, Client client, PowerPacket p)
+        {
+            if (string.IsNullOrEmpty(p.Id) || float.IsNaN(p.Power) || float.IsNaN(p.Drain)) return;
+            double now = _uptime.Elapsed.TotalSeconds;
+            Connection writerConn = null;
+            PowerPacket relay = null;
+            lock (_lock)
+            {
+                _powerWriters.TryGetValue(p.Id, out var writer);
+                bool writerAlive = writer.id != 0 && now - writer.time < PowerWriterTimeout &&
+                                   _connections.Any(c => ((Client)c.Tag).Joined && ((Client)c.Tag).Id == writer.id);
+
+                if (p.Drain > 0)
+                {
+                    // someone used power from a source another player runs
+                    _world.Power.TryGetValue(p.Id, out var level);
+                    _world.Power[p.Id] = Math.Max(0f, level - p.Drain);
+                    if (writerAlive && writer.id != client.Id)
+                        writerConn = _connections.FirstOrDefault(c => ((Client)c.Tag).Id == writer.id);
+                }
+                else
+                {
+                    if (writerAlive && writer.id != client.Id) return; // someone else runs this one
+                    _powerWriters[p.Id] = (client.Id, now);
+                    _world.Power[p.Id] = Math.Max(0f, p.Power);
+                    relay = new PowerPacket { Id = p.Id, Power = p.Power, WriterId = client.Id };
+                }
+            }
+            _dirty = true;
+            if (writerConn != null) writerConn.Send(new PowerPacket { Id = p.Id, Drain = p.Drain, WriterId = 0 });
+            if (relay != null) Broadcast(relay, except: conn);
         }
 
         void HandleCreatureOwner(Client client, CreatureOwnerPacket request)
@@ -528,6 +667,17 @@ namespace SubnauticaMP.Shared
             List<CreatureOwnerPacket> owners;
             lock (_lock)
             {
+                var name = Protocol.CleanName(hello.Name);
+                if (IsBanned(client, name))
+                {
+                    Reject(conn, "You're banned from this server.");
+                    return;
+                }
+                if (!(client.IsLocal && TrustLocalPlayers) && !string.IsNullOrEmpty(Password) && hello.Password != Password)
+                {
+                    Reject(conn, string.IsNullOrEmpty(hello.Password) ? "This server needs a password." : "Wrong password.");
+                    return;
+                }
                 if (_connections.Count(c => ((Client)c.Tag).Joined) >= Protocol.MaxPlayers)
                 {
                     Reject(conn, "Server is full");
@@ -543,6 +693,7 @@ namespace SubnauticaMP.Shared
                 }
                 welcome.YourId = client.Id;
                 welcome.World = _world.Clone();
+                welcome.World.Bans.Clear(); // IPs stay on the server
                 welcome.World.TimePassed = CurrentTime();
                 client.Joined = true;
                 hostChanged = PickHost();
@@ -588,6 +739,7 @@ namespace SubnauticaMP.Shared
                 if (!client.Joined) return;
                 foreach (var v in _world.Vehicles.Values)
                     if (v.OwnerId == client.Id) { v.OwnerId = 0; released.Add(v.Id); }
+                _sleepers.Remove(client.Id);
                 foreach (var id in _creatureOwners.Where(kv => kv.Value == client.Id).Select(kv => kv.Key).ToList())
                 {
                     _creatureOwners.Remove(id);
