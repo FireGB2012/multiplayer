@@ -37,20 +37,23 @@ namespace SubnauticaMP.Launcher
             catch { return null; }
         }
 
-        // Copies the mod DLL packed inside this exe into BepInEx\plugins.
+        // Copies the mod DLLs packed inside this exe into BepInEx\plugins.
         public static void InstallMod(string dir)
         {
             Directory.CreateDirectory(PluginDir(dir));
-            using var res = typeof(GameFolder).Assembly.GetManifestResourceStream("SubnauticaMP.dll")
-                            ?? throw new InvalidOperationException("Mod is missing from this launcher build");
-            try
+            foreach (var name in new[] { "SubnauticaMP.dll", "Mono.Nat.dll" })
             {
-                using var file = File.Create(ModPath(dir));
-                res.CopyTo(file);
-            }
-            catch (IOException)
-            {
-                throw new IOException("Couldn't update the mod file. Close Subnautica first, then try again.");
+                using var res = typeof(GameFolder).Assembly.GetManifestResourceStream(name)
+                                ?? throw new InvalidOperationException(name + " is missing from this launcher build");
+                try
+                {
+                    using var file = File.Create(Path.Combine(PluginDir(dir), name));
+                    res.CopyTo(file);
+                }
+                catch (IOException)
+                {
+                    throw new IOException("Couldn't update the mod files. Close Subnautica first, then try again.");
+                }
             }
         }
 

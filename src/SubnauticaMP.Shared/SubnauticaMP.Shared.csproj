@@ -7,4 +7,9 @@
     <RootNamespace>SubnauticaMP.Shared</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <!-- Same port-forwarding library Nitrox uses (UPnP + NAT-PMP). MIT licensed. -->
+    <PackageReference Include="Mono.Nat" Version="3.0.4" />
+  </ItemGroup>
+
 </Project>

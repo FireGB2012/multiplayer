@@ -13,7 +13,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>SubnauticaMP</AssemblyName>
     <RootNamespace>SubnauticaMP</RootNamespace>
-    <Version>0.5.2</Version>
+    <Version>0.5.3</Version>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Subnautica</GameDir>
     <ManagedDir>$(GameDir)\Subnautica_Data\Managed</ManagedDir>
@@ -27,6 +27,8 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+    <!-- router port forwarding (same library as Nitrox); Mono.Nat.dll ships next to SubnauticaMP.dll -->
+    <PackageReference Include="Mono.Nat" Version="3.0.4" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(UseGameDlls)' == 'true'">
@@ -51,7 +53,7 @@
 
   <Target Name="CopyToGame" AfterTargets="Build" Condition="'$(UseGameDlls)' == 'true'">
     <MakeDir Directories="$(GameDir)\BepInEx\plugins\SubnauticaMP" />
-    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\SubnauticaMP" />
+    <Copy SourceFiles="$(TargetPath);$(TargetDir)Mono.Nat.dll" DestinationFolder="$(GameDir)\BepInEx\plugins\SubnauticaMP" />
   </Target>
 
 </Project>

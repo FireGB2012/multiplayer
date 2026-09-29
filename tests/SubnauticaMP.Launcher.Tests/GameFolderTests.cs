@@ -28,6 +28,7 @@ public class GameFolderTests
             Assert.Equal(GameFolder.BundledModVersion, installed);
             var name = System.Reflection.AssemblyName.GetAssemblyName(Path.Combine(GameFolder.PluginDir(dir), "SubnauticaMP.dll")).Name;
             Assert.Equal("SubnauticaMP", name);
+            Assert.True(File.Exists(Path.Combine(GameFolder.PluginDir(dir), "Mono.Nat.dll")));
 
             var info = LaunchInfo.TryLoad(Path.Combine(GameFolder.PluginDir(dir), LaunchInfo.FileName));
             Assert.Equal("86.12.200.7", info.Host);

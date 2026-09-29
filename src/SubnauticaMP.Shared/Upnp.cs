@@ -38,7 +38,22 @@ namespace SubnauticaMP.Shared
 
         static Gateway _cached;
 
-        public static PortForwardResult OpenPort(int port, string description, int discoveryTimeoutMs = 2500)
+        public static PortForwardResult OpenPort(int port, string description, int discoveryTimeoutMs = 4000)
+        {
+            // 1) Mono.Nat, the library Nitrox uses: searches on every network adapter, UPnP and NAT-PMP.
+            PortForwardResult viaMonoNat;
+            try { viaMonoNat = MonoNatForward.Open(port, description, 12000); }
+            catch (Exception e) { viaMonoNat = new PortForwardResult { Error = "Mono.Nat unavailable: " + e.GetBaseException().Message }; }
+            if (viaMonoNat.Success) return viaMonoNat;
+
+            // 2) our own UPnP code as a backup
+            var ours = OpenPortOurselves(port, description, discoveryTimeoutMs);
+            if (ours.Success) return ours;
+            ours.Error = viaMonoNat.Error + "; " + ours.Error;
+            return ours;
+        }
+
+        static PortForwardResult OpenPortOurselves(int port, string description, int discoveryTimeoutMs)
         {
             var result = new PortForwardResult();
             try
@@ -115,6 +130,7 @@ namespace SubnauticaMP.Shared
 
         public static void ClosePort(int port)
         {
+            try { MonoNatForward.Close(port); } catch { }
             var gw = _cached;
             if (gw == null) return;
             try
@@ -159,38 +175,79 @@ namespace SubnauticaMP.Shared
 
         // ---------- internals ----------
 
+        // Asks for routers from every network adapter (VPNs and virtual adapters can otherwise
+        // swallow the request), repeating a few times since the packets are easy to lose.
         static List<string> Discover(int timeoutMs)
         {
             var found = new List<string>();
-            using (var udp = new UdpClient(new IPEndPoint(IPAddress.Any, 0)))
+            var sockets = new List<UdpClient>();
+            foreach (var local in LocalIPv4Addresses())
+            {
+                try { sockets.Add(new UdpClient(new IPEndPoint(local, 0))); } catch { }
+            }
+            if (sockets.Count == 0) sockets.Add(new UdpClient(new IPEndPoint(IPAddress.Any, 0)));
+
+            try
             {
                 var target = new IPEndPoint(IPAddress.Parse("239.255.255.250"), 1900);
-                foreach (var st in SearchTargets)
-                {
-                    var msg = Encoding.ASCII.GetBytes(
-                        "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: " + st + "\r\n\r\n");
-                    udp.Send(msg, msg.Length, target);
-                }
-
                 var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+                var nextSend = DateTime.MinValue;
                 while (DateTime.UtcNow < deadline)
                 {
-                    int left = (int)(deadline - DateTime.UtcNow).TotalMilliseconds;
-                    if (left <= 0) break;
-                    udp.Client.ReceiveTimeout = left;
-                    byte[] data;
-                    try
+                    if (DateTime.UtcNow >= nextSend)
                     {
-                        var from = new IPEndPoint(IPAddress.Any, 0);
-                        data = udp.Receive(ref from);
+                        nextSend = DateTime.UtcNow.AddMilliseconds(1000);
+                        foreach (var udp in sockets)
+                            foreach (var st in SearchTargets)
+                            {
+                                var msg = Encoding.ASCII.GetBytes(
+                                    "M-SEARCH * HTTP/1.1\r\nHOST: 239.255.255.250:1900\r\nMAN: \"ssdp:discover\"\r\nMX: 2\r\nST: " + st + "\r\n\r\n");
+                                try { udp.Send(msg, msg.Length, target); } catch { }
+                            }
                     }
-                    catch (SocketException) { break; }
 
-                    var location = HeaderValue(Encoding.ASCII.GetString(data), "LOCATION");
-                    if (location != null && !found.Contains(location)) found.Add(location);
+                    foreach (var udp in sockets)
+                    {
+                        while (true)
+                        {
+                            try { if (udp.Available <= 0) break; } catch { break; }
+                            byte[] data;
+                            try
+                            {
+                                var from = new IPEndPoint(IPAddress.Any, 0);
+                                data = udp.Receive(ref from);
+                            }
+                            catch (SocketException) { break; }
+                            var location = HeaderValue(Encoding.ASCII.GetString(data), "LOCATION");
+                            if (location != null && !found.Contains(location)) found.Add(location);
+                        }
+                    }
+                    if (found.Count > 0 && DateTime.UtcNow.AddMilliseconds(timeoutMs / 2) > deadline) break; // got one, don't wait forever
+                    System.Threading.Thread.Sleep(50);
                 }
             }
+            finally
+            {
+                foreach (var udp in sockets) udp.Close();
+            }
             return found;
+        }
+
+        static List<IPAddress> LocalIPv4Addresses()
+        {
+            var list = new List<IPAddress>();
+            try
+            {
+                foreach (var nic in System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces())
+                {
+                    if (nic.OperationalStatus != System.Net.NetworkInformation.OperationalStatus.Up) continue;
+                    if (nic.NetworkInterfaceType == System.Net.NetworkInformation.NetworkInterfaceType.Loopback) continue;
+                    foreach (var a in nic.GetIPProperties().UnicastAddresses)
+                        if (a.Address.AddressFamily == AddressFamily.InterNetwork) list.Add(a.Address);
+                }
+            }
+            catch { }
+            return list;
         }
 
         static string HeaderValue(string response, string header)
