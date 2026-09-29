@@ -417,14 +417,38 @@ namespace SubnauticaMP
             return getter?.Invoke(target);
         }
 
+        const BindingFlags AnyMember = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static | BindingFlags.DeclaredOnly;
+
+        // Like AccessTools.Field/Property but without a warning in the log every time a guess misses.
+        static FieldInfo QuietField(Type type, string name)
+        {
+            for (var t = type; t != null; t = t.BaseType)
+            {
+                var f = t.GetField(name, AnyMember);
+                if (f != null) return f;
+            }
+            return null;
+        }
+
+        static PropertyInfo QuietProperty(Type type, string name)
+        {
+            for (var t = type; t != null; t = t.BaseType)
+            {
+                var p = t.GetProperties(AnyMember).FirstOrDefault(x => x.Name == name && x.GetIndexParameters().Length == 0);
+                if (p != null) return p;
+            }
+            return null;
+        }
+
         static Func<object, object> MakeGetter(Type type, string name)
         {
-            var f = AccessTools.Field(type, name);
+            var f = QuietField(type, name);
             if (f != null) return o => f.GetValue(o);
-            var p = AccessTools.Property(type, name);
+            var p = QuietProperty(type, name);
             if (p != null && p.GetGetMethod(true) != null) return o => p.GetValue(o, null);
-            var m = AccessTools.GetDeclaredMethods(type).FirstOrDefault(x => x.Name == name && x.GetParameters().Length == 0)
-                    ?? AccessTools.Method(type, name, Type.EmptyTypes);
+            MethodInfo m = null;
+            for (var t = type; t != null && m == null; t = t.BaseType)
+                m = t.GetMethods(AnyMember).FirstOrDefault(x => x.Name == name && x.GetParameters().Length == 0);
             if (m != null) return o => m.Invoke(o, null);
             return null;
         }
@@ -443,8 +467,8 @@ namespace SubnauticaMP
             if (type == null) return false;
             if (!Setters.TryGetValue((type, name), out var member))
             {
-                member = (MemberInfo)AccessTools.Field(type, name);
-                if (member == null && AccessTools.Property(type, name) is PropertyInfo prop && prop.GetSetMethod(true) != null) member = prop;
+                member = QuietField(type, name);
+                if (member == null && QuietProperty(type, name) is PropertyInfo prop && prop.GetSetMethod(true) != null) member = prop;
                 Setters[(type, name)] = member;
             }
             if (member is FieldInfo f) { f.SetValue(target, Coerce(value, f.FieldType)); return true; }
@@ -843,6 +867,19 @@ namespace SubnauticaMP
             var uid = go.GetComponent(UniqueIdentifier);
             if (uid != null && !Set(UniqueIdentifier, uid, "Id", id))
                 WarnOnce("setid", "Couldn't set UniqueIdentifier.Id; synced objects may duplicate after reload");
+        }
+
+        // Gives go this id. If another object still holds it (usually an old copy the game is about to unload),
+        // that one gets a throwaway id first, so the game doesn't log "Overwriting id" / "Unregistering failed" errors.
+        public static void TakeId(GameObject go, string id)
+        {
+            var other = FindById(id);
+            if (other != null && other != go)
+            {
+                var uid = other.GetComponent(UniqueIdentifier);
+                if (uid != null) Set(UniqueIdentifier, uid, "Id", id + "~" + Guid.NewGuid().ToString("N").Substring(0, 8));
+            }
+            SetId(go, id);
         }
 
         public static GameObject FindById(string id)

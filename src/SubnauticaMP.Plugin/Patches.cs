@@ -280,7 +280,7 @@ namespace SubnauticaMP
         {
             if (_slotKey == null || S == null || __args.Length == 0 || !(__args[0] is Component lwe) || lwe == null) return;
             if (Game.VirtualPrefabIdentifier == null || lwe.GetComponent(Game.VirtualPrefabIdentifier) == null) return;
-            Game.SetId(lwe.gameObject, _slotKey + "#" + _slotIndex++);
+            Game.TakeId(lwe.gameObject, _slotKey + "#" + _slotIndex++);
         }
 
         // When a placeholder turns into the real fish/plant, the real thing keeps the placeholder's id.
@@ -297,7 +297,7 @@ namespace SubnauticaMP
                 var go = Game.TryGet(task.GetType(), task, "GetResult") as GameObject;
                 if (go == null || owner == null) return;
                 Game.Set(Game.UniqueIdentifier, owner, "Id", Guid.NewGuid().ToString("N")); // placeholder is about to go away
-                Game.SetId(go, id);
+                Game.TakeId(go, id);
             };
             var existing = Game.TryGet(Game.VirtualPrefabIdentifier, owner, "OnInstantiate") as Delegate;
             Game.Set(Game.VirtualPrefabIdentifier, owner, "OnInstantiate", Delegate.Combine(existing, keepId));

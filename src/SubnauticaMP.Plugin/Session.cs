@@ -420,7 +420,7 @@ namespace SubnauticaMP
                     if (!ok) AddChat("Couldn't open your save by itself. Load it from the menu.");
                     yield break;
                 }
-                AddChat("Your save for this world is gone, starting a fresh one.");
+                AddChat("No save for this world on this PC (remember to save before quitting!). Starting fresh; bases, unlocks and story still come from the server.");
             }
 
             AddChat($"Starting a new {_gameMode} game...");
