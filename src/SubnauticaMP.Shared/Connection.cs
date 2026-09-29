@@ -16,8 +16,9 @@ namespace SubnauticaMP.Shared
         readonly TcpClient _tcp;
         readonly NetworkStream _stream;
         readonly object _queueLock = new object();
-        readonly Queue<byte[]> _urgent = new Queue<byte[]>();
-        readonly Queue<byte[]> _normal = new Queue<byte[]>();
+        // each entry is a Packet (turned into bytes on the writer thread) or already-made bytes
+        readonly Queue<object> _urgent = new Queue<object>();
+        readonly Queue<object> _normal = new Queue<object>();
         long _queuedBytes;
         string _closeAfterSend;
         int _closed;
@@ -50,22 +51,28 @@ namespace SubnauticaMP.Shared
             new Thread(WriteLoop) { IsBackground = true, Name = "SubnauticaMP writer" }.Start();
         }
 
+        // The packet is serialized (and compressed) on the writer thread, so the caller never waits.
+        // Don't change the packet after sending it.
         public void Send(Packet packet)
         {
-            if (!IsOpen) return;
-            SendRaw(Protocol.Serialize(packet), Protocol.IsUrgent(packet.Type));
+            if (packet != null) Enqueue(packet, 0, Protocol.IsUrgent(packet.Type));
         }
 
         // Already-serialized bytes (the server serializes a broadcast once for everyone).
         public void SendRaw(byte[] data, bool urgent)
         {
-            if (!IsOpen || data == null) return;
+            if (data != null) Enqueue(data, data.Length, urgent);
+        }
+
+        void Enqueue(object item, int size, bool urgent)
+        {
+            if (!IsOpen) return;
             bool tooMuch;
             lock (_queueLock)
             {
                 if (_closeAfterSend != null) return;
-                (urgent ? _urgent : _normal).Enqueue(data);
-                _queuedBytes += data.Length;
+                (urgent ? _urgent : _normal).Enqueue(item);
+                _queuedBytes += size;
                 tooMuch = _queuedBytes > MaxQueuedBytes;
                 Monitor.Pulse(_queueLock);
             }
@@ -102,17 +109,17 @@ namespace SubnauticaMP.Shared
             {
                 while (IsOpen)
                 {
-                    byte[] data = null;
+                    object item = null;
                     string closeReason = null;
                     lock (_queueLock)
                     {
                         while (IsOpen && _urgent.Count == 0 && _normal.Count == 0 && _closeAfterSend == null)
                             Monitor.Wait(_queueLock);
                         if (!IsOpen) return;
-                        if (_urgent.Count > 0) data = _urgent.Dequeue();
-                        else if (_normal.Count > 0) data = _normal.Dequeue();
+                        if (_urgent.Count > 0) item = _urgent.Dequeue();
+                        else if (_normal.Count > 0) item = _normal.Dequeue();
                         else closeReason = _closeAfterSend; // everything sent, now close
-                        if (data != null) _queuedBytes -= data.Length;
+                        if (item is byte[] raw) _queuedBytes -= raw.Length;
                     }
                     if (closeReason != null)
                     {
@@ -120,6 +127,9 @@ namespace SubnauticaMP.Shared
                         Close(closeReason);
                         return;
                     }
+                    byte[] data;
+                    try { data = item as byte[] ?? Protocol.Serialize((Packet)item); }
+                    catch (InvalidOperationException) { continue; } // too big to send: drop it, keep the connection
                     _stream.Write(data, 0, data.Length);
                 }
             }
