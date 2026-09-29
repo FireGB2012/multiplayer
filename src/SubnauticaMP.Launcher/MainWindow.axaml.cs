@@ -15,6 +15,8 @@ namespace SubnauticaMP.Launcher
     {
         readonly Settings _settings = Settings.Load();
         readonly HostedServer _host = new HostedServer();
+        readonly DispatcherTimer _watchTimer;
+        System.Threading.CancellationTokenSource _search;
 
         public MainWindow()
         {
@@ -27,12 +29,21 @@ namespace SubnauticaMP.Launcher
             ModeBox.ItemsSource = GameModes.All;
             ModeBox.SelectedItem = _settings.Mode;
             PortBox.Text = _settings.Port.ToString();
-            GameDirBox.Text = GameFolder.IsGameDir(_settings.GameDir) ? _settings.GameDir : GameFolder.Detect() ?? _settings.GameDir;
+            GameDirBox.Text = GameFolder.IsGameDir(_settings.GameDir) ? _settings.GameDir : GameFinder.Detect() ?? _settings.GameDir;
 
             JoinButton.Click += (_, _) => Run(JoinAndPlay);
             HostPlayButton.Click += (_, _) => Run(HostAndPlay);
             ServerButton.Click += (_, _) => Run(ToggleServer);
             BrowseButton.Click += (_, _) => Run(Browse);
+            PlayBrowseButton.Click += (_, _) => Run(Browse);
+            SearchButton.Click += (_, _) => Run(SearchPc);
+            PlaySearchButton.Click += (_, _) => Run(SearchPc);
+            GameDirBox.LostFocus += (_, _) => NormalizeGameDir();
+
+            // Not found yet? Keep an eye out for the game being started.
+            _watchTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(3) };
+            _watchTimer.Tick += (_, _) => WatchForRunningGame();
+            _watchTimer.Start();
             InstallBepButton.Click += (_, _) => Run(InstallBepInEx);
             InstallModButton.Click += (_, _) => Run(InstallMod);
             OpenFolderButton.Click += (_, _) => Run(OpenModFolder);
@@ -50,10 +61,18 @@ namespace SubnauticaMP.Launcher
             RefreshServer();
             Status(GameFolder.IsGameDir(GameDir)
                 ? "Ready. Pick Join or Host."
-                : "Couldn't find Subnautica. Set the folder in the Setup tab.");
+                : "Couldn't find Subnautica automatically. Hit 'Search my PC' at the top.");
         }
 
-        string GameDir => (GameDirBox.Text ?? "").Trim().Trim('"');
+        string GameDir
+        {
+            get
+            {
+                var text = (GameDirBox.Text ?? "").Trim().Trim('"');
+                // pasted the path to the exe itself? use its folder
+                return text.EndsWith(GameFolder.Exe, StringComparison.OrdinalIgnoreCase) ? Path.GetDirectoryName(text) ?? text : text;
+            }
+        }
         string WorldName => string.IsNullOrWhiteSpace(WorldBox.Text) ? "My World" : WorldBox.Text.Trim();
         string Mode => ModeBox.SelectedItem as string ?? GameModes.Survival;
         string PlayerName => Protocol.CleanName(NameBox.Text);
@@ -113,10 +132,7 @@ namespace SubnauticaMP.Launcher
         {
             var dir = GameDir;
             if (!GameFolder.IsGameDir(dir))
-            {
-                Tabs.SelectedIndex = 2;
-                throw new Exception("Subnautica.exe isn't in that folder. Set the right one in Setup.");
-            }
+                throw new Exception("Can't find Subnautica yet. Hit 'Search my PC' at the top of the Play tab first.");
             if (!GameFolder.HasBepInEx(dir))
             {
                 Tabs.SelectedIndex = 2;
@@ -242,6 +258,9 @@ namespace SubnauticaMP.Launcher
             var bundled = GameFolder.BundledModVersion;
 
             Mark(GameStatus, game, game ? "Subnautica found" : "Subnautica.exe not found in this folder");
+            Mark(PlayGameStatus, game, game ? "Subnautica: " + dir : "Subnautica not found yet. Hit Search my PC, or Browse to it.");
+            PlaySearchButton.IsVisible = !game;
+            PlayBrowseButton.Content = game ? "Change" : "Browse...";
             Mark(BepStatus, bep, bep ? "BepInEx installed" : "BepInEx not installed (needed to load mods)");
             Mark(ModStatus, installed != null && installed >= bundled,
                 installed == null ? "Mod not installed yet (Play installs it for you)"
@@ -262,10 +281,63 @@ namespace SubnauticaMP.Launcher
 
         async Task Browse()
         {
-            var picked = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Find your Subnautica folder" });
+            var picked = await StorageProvider.OpenFolderPickerAsync(new FolderPickerOpenOptions { Title = "Pick your Subnautica folder (or any folder above it)" });
             var path = picked.FirstOrDefault()?.TryGetLocalPath();
-            if (path != null) GameDirBox.Text = path;
+            if (path == null) return;
+            Status("Looking in " + path + "...");
+            var found = await Task.Run(() => GameFinder.Normalize(path));
+            if (found == null)
+                throw new Exception("No Subnautica.exe in that folder or anywhere inside it. Try 'Search my PC'.");
+            UseGameDir(found, "Found Subnautica in " + found);
+        }
+
+        async Task SearchPc()
+        {
+            if (_search != null) { _search.Cancel(); return; } // second click = stop
+            _search = new System.Threading.CancellationTokenSource();
+            SearchButton.Content = PlaySearchButton.Content = "Stop searching";
+            try
+            {
+                var quick = GameFinder.Detect();
+                var token = _search.Token;
+                var found = quick ?? await Task.Run(() =>
+                    GameFinder.SearchAllDrives(token, new Progress<string>(s => Status(s))));
+                if (found == null)
+                    throw new Exception("Couldn't find Subnautica.exe on any drive. Is it installed? If it's from the Microsoft Store / Xbox app, see the Setup tab.");
+                UseGameDir(found, "Found Subnautica in " + found);
+            }
+            catch (OperationCanceledException) { Status("Search stopped."); }
+            finally
+            {
+                _search = null;
+                SearchButton.Content = PlaySearchButton.Content = "Search my PC";
+            }
+        }
+
+        void WatchForRunningGame()
+        {
+            if (GameFolder.IsGameDir(GameDir)) return;
+            var dir = GameFinder.FromRunningGame();
+            if (dir != null) UseGameDir(dir, "Found Subnautica because it's running: " + dir);
+        }
+
+        void NormalizeGameDir()
+        {
+            if (GameFolder.IsGameDir(GameDir)) return;
+            var dir = GameFinder.Normalize(GameDir);
+            if (dir != null) GameDirBox.Text = dir;
+        }
+
+        void UseGameDir(string dir, string message)
+        {
+            GameDirBox.Text = dir;
+            SaveSettings();
             RefreshSetup();
+            if (GameFinder.IsLockedStoreInstall(dir))
+                Status("That's the Microsoft Store version in a locked folder, mods can't go in there. " +
+                       "In the Xbox app: Subnautica > Manage > Files > move it to a normal folder (like C:\\XboxGames), then Search again.", error: true);
+            else
+                Status(message);
         }
 
         async Task InstallBepInEx()

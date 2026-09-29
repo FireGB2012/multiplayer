@@ -13,8 +13,7 @@ namespace SubnauticaMP.Launcher
     // Finding Subnautica, checking/installing BepInEx and the mod.
     internal static class GameFolder
     {
-        const string SteamAppId = "264710";
-        const string Exe = "Subnautica.exe";
+        internal const string Exe = "Subnautica.exe";
 
         static readonly string[] BepInExUrls =
         {
@@ -27,68 +26,6 @@ namespace SubnauticaMP.Launcher
             File.Exists(Path.Combine(dir, "BepInEx", "core", "BepInEx.dll")) && File.Exists(Path.Combine(dir, "winhttp.dll"));
         public static string PluginDir(string dir) => Path.Combine(dir, "BepInEx", "plugins", "SubnauticaMP");
         static string ModPath(string dir) => Path.Combine(PluginDir(dir), "SubnauticaMP.dll");
-
-        public static string Detect()
-        {
-            foreach (var dir in Candidates())
-                if (IsGameDir(dir)) return dir;
-            return null;
-        }
-
-        static IEnumerable<string> Candidates()
-        {
-            foreach (var steam in SteamRoots())
-            {
-                yield return Path.Combine(steam, "steamapps", "common", "Subnautica");
-                var vdf = Path.Combine(steam, "steamapps", "libraryfolders.vdf");
-                if (!File.Exists(vdf)) continue;
-                string text;
-                try { text = File.ReadAllText(vdf); } catch { continue; }
-                foreach (Match m in Regex.Matches(text, "\"path\"\\s*\"([^\"]+)\""))
-                    yield return Path.Combine(m.Groups[1].Value.Replace("\\\\", "\\"), "steamapps", "common", "Subnautica");
-            }
-
-            // Epic Games
-            var manifests = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Epic", "EpicGamesLauncher", "Data", "Manifests");
-            if (Directory.Exists(manifests))
-            {
-                foreach (var item in SafeFiles(manifests, "*.item"))
-                {
-                    string text;
-                    try { text = File.ReadAllText(item); } catch { continue; }
-                    if (text.IndexOf("Subnautica", StringComparison.OrdinalIgnoreCase) < 0) continue;
-                    var m = Regex.Match(text, "\"InstallLocation\"\\s*:\\s*\"([^\"]+)\"");
-                    if (m.Success) yield return m.Groups[1].Value.Replace("\\\\", "\\");
-                }
-            }
-            yield return @"C:\Program Files\Epic Games\Subnautica";
-            yield return @"C:\Program Files (x86)\Steam\steamapps\common\Subnautica";
-            foreach (var drive in new[] { "C", "D", "E", "F" })
-                yield return drive + @":\SteamLibrary\steamapps\common\Subnautica";
-        }
-
-        static IEnumerable<string> SteamRoots()
-        {
-            var roots = new List<string>();
-            if (OperatingSystem.IsWindows())
-            {
-                try
-                {
-                    using var cu = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Valve\Steam");
-                    if (cu?.GetValue("SteamPath") is string p) roots.Add(p.Replace('/', '\\'));
-                    using var lm = Microsoft.Win32.Registry.LocalMachine.OpenSubKey(@"SOFTWARE\WOW6432Node\Valve\Steam");
-                    if (lm?.GetValue("InstallPath") is string p2) roots.Add(p2);
-                }
-                catch { }
-            }
-            roots.Add(@"C:\Program Files (x86)\Steam");
-            return roots.Distinct(StringComparer.OrdinalIgnoreCase);
-        }
-
-        static IEnumerable<string> SafeFiles(string dir, string pattern)
-        {
-            try { return Directory.GetFiles(dir, pattern); } catch { return Array.Empty<string>(); }
-        }
 
         // ---------- mod ----------
 

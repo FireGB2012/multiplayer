@@ -74,8 +74,9 @@ public class LauncherUiTests
         w.FindControl<TextBox>("GameDirBox").Text = "/nope";
         w.FindControl<TextBox>("JoinBox").Text = "KQ7MX-3HD2P";
         w.FindControl<Button>("JoinButton").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-        Assert.Contains("Subnautica.exe", w.FindControl<TextBlock>("StatusText").Text);
-        Assert.Equal(2, w.FindControl<TabControl>("Tabs").SelectedIndex);
+        Assert.Contains("Search my PC", w.FindControl<TextBlock>("StatusText").Text);
+        Assert.Contains("not found", w.FindControl<TextBlock>("PlayGameStatus").Text);
+        Assert.True(w.FindControl<Button>("PlaySearchButton").IsVisible);
         w.Close();
     }
 
