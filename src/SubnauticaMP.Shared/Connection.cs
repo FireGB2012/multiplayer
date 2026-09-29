@@ -17,6 +17,7 @@ namespace SubnauticaMP.Shared
 
         public bool IsOpen => _closed == 0;
         public object Tag; // free slot for whoever owns the connection
+        public int MaxPacketSize = Protocol.MaxPacketSize;
 
         public Connection(TcpClient tcp)
         {
@@ -58,7 +59,7 @@ namespace SubnauticaMP.Shared
             {
                 while (IsOpen)
                 {
-                    var packet = Protocol.ReadPacket(_stream);
+                    var packet = Protocol.ReadPacket(_stream, MaxPacketSize);
                     if (packet == null) { Close("Connection closed"); return; }
                     PacketReceived?.Invoke(this, packet);
                 }

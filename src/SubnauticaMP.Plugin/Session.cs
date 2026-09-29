@@ -1,0 +1,329 @@
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading;
+using SubnauticaMP.Shared;
+using UnityEngine;
+
+namespace SubnauticaMP
+{
+    // The multiplayer session: owns the connection (and the server when you host in-game),
+    // routes packets to the sync systems, and draws the F8 window + chat + name tags.
+    public sealed partial class Session : MonoBehaviour
+    {
+        public static Session Instance { get; private set; }
+
+        const float SendInterval = 1f / 20f;
+        const float SettleSeconds = 4f; // wait this long after a save loads before syncing
+
+        readonly NetClient _client = new NetClient();
+        readonly Dictionary<int, RemotePlayer> _remotes = new Dictionary<int, RemotePlayer>();
+        readonly Dictionary<int, string> _names = new Dictionary<int, string>();
+        internal WorldSync World;
+        internal VehicleSync Vehicles;
+
+        NetServer _hostedServer;
+        int _hostedPort;
+        string _joinCode;
+        float _sendTimer;
+        float _inWorldTimer;
+        ClientState _lastState;
+        LaunchInfo _autoJoin;
+
+        public bool Joined => _client.State == ClientState.Connected;
+        public int LocalId => _client.LocalId;
+        public bool InWorldAndSettled => _inWorldTimer >= SettleSeconds;
+
+        void Awake()
+        {
+            Instance = this;
+            World = new WorldSync(this);
+            Vehicles = new VehicleSync(this);
+
+            var launchPath = Path.Combine(Plugin.Folder, LaunchInfo.FileName);
+            _autoJoin = LaunchInfo.TryLoad(launchPath);
+            try { File.Delete(launchPath); } catch { }
+            if (_autoJoin != null)
+            {
+                if (!string.IsNullOrEmpty(_autoJoin.PlayerName)) Plugin.PlayerName.Value = Protocol.CleanName(_autoJoin.PlayerName);
+                AddChat($"Launcher: will join {_autoJoin.Host}:{_autoJoin.Port} once your save loads");
+            }
+        }
+
+        void Update()
+        {
+            if (Input.GetKeyDown(Plugin.MenuKey.Value)) _menuOpen = !_menuOpen;
+
+            _inWorldTimer = Game.InWorld ? _inWorldTimer + Time.unscaledDeltaTime : 0f;
+
+            if (_autoJoin != null && InWorldAndSettled && _client.State == ClientState.Disconnected)
+            {
+                var a = _autoJoin;
+                _autoJoin = null;
+                Connect(a.Host, a.Port);
+            }
+
+            PumpPackets();
+            WatchConnection();
+            if (!Joined) return;
+
+            SafeRun("world", World.Update);
+            SafeRun("vehicles", Vehicles.Update);
+
+            _sendTimer += Time.unscaledDeltaTime;
+            if (_sendTimer >= SendInterval)
+            {
+                _sendTimer = 0f;
+                SafeRun("player", SendLocalState);
+            }
+        }
+
+        void LateUpdate()
+        {
+            if (Joined) SafeRun("vehicles", Vehicles.LateUpdate);
+            if (_menuOpen)
+            {
+                // the game re-locks the cursor every frame; keep it free while our window is up
+                Cursor.lockState = CursorLockMode.None;
+                Cursor.visible = true;
+            }
+        }
+
+        // One broken feature shouldn't take the whole mod down with it.
+        readonly HashSet<string> _failedOnce = new HashSet<string>();
+        void SafeRun(string what, Action a)
+        {
+            try { a(); }
+            catch (Exception e)
+            {
+                if (_failedOnce.Add(what)) Plugin.Log.LogError($"[{what}] {e}");
+            }
+        }
+
+        void OnDestroy() => Shutdown();
+        void OnApplicationQuit() => Shutdown();
+
+        void Shutdown()
+        {
+            _client.Disconnect();
+            StopHosting();
+        }
+
+        // ---------- sending ----------
+
+        public void Send(Packet p) => _client.Send(p);
+
+        public void SendUnlock(UnlockKind kind, string key)
+        {
+            if (string.IsNullOrEmpty(key) || !World.RememberUnlock(kind, key)) return;
+            Send(new UnlockPacket { Kind = kind, Key = key });
+        }
+
+        void SendLocalState()
+        {
+            var player = Game.LocalPlayer;
+            if (player == null) return;
+
+            var t = player.transform;
+            var rot = t.rotation;
+            var cam = Game.Camera;
+            if (cam != null) rot = Quaternion.Euler(0f, cam.transform.eulerAngles.y, 0f); // face where they look
+
+            var flags = PlayerFlags.None;
+            if (Game.Is(player, "IsUnderwater")) flags |= PlayerFlags.Underwater;
+            if (Game.Is(player, "IsInSub")) flags |= PlayerFlags.InBase;
+            if (Game.PlayerVehicle(player) != null) flags |= PlayerFlags.InVehicle;
+
+            Send(new PlayerStatePacket
+            {
+                Position = new Vec3(t.position.x, t.position.y, t.position.z),
+                Rotation = new Quat(rot.x, rot.y, rot.z, rot.w),
+                Flags = flags,
+            });
+        }
+
+        // ---------- receiving ----------
+
+        void PumpPackets()
+        {
+            while (_client.TryDequeue(out var packet))
+            {
+                try { Handle(packet); }
+                catch (Exception e) { Plugin.Log.LogError($"Handling {packet.Type} failed: {e}"); }
+            }
+        }
+
+        void Handle(Packet packet)
+        {
+            switch (packet)
+            {
+                case WelcomePacket welcome:
+                    foreach (var p in welcome.Players) AddRemote(p.Id, p.Name);
+                    World.OnWelcome(welcome.World);
+                    Vehicles.OnWelcome(welcome.World);
+                    AddChat($"Connected! {welcome.Players.Count} other player(s) here.");
+                    break;
+
+                case PlayerJoinedPacket joined:
+                    AddRemote(joined.Id, joined.Name);
+                    AddChat($"{joined.Name} joined");
+                    break;
+
+                case PlayerLeftPacket left:
+                    AddChat($"{NameOf(left.Id)} left");
+                    RemoveRemote(left.Id);
+                    break;
+
+                case PlayerStatePacket state:
+                    if (_remotes.TryGetValue(state.Id, out var remote)) remote.SetTarget(state);
+                    break;
+
+                case ChatPacket chat:
+                    AddChat($"{NameOf(chat.SenderId)}: {chat.Text}");
+                    break;
+
+                case RejectedPacket rejected:
+                    AddChat("Server said no: " + rejected.Reason);
+                    break;
+
+                case UnlockPacket unlock: World.OnUnlock(unlock); break;
+                case EntityRemovedPacket removed: World.OnEntityRemoved(removed.EntityId); break;
+                case TimeSyncPacket time: World.OnTime(time.TimePassed); break;
+                case VehicleSpawnedPacket vs: Vehicles.OnSpawned(vs.Vehicle); break;
+                case VehicleStatePacket vst: Vehicles.OnState(vst); break;
+                case VehicleOwnerPacket vo: Vehicles.OnOwner(vo.Id, vo.OwnerId); break;
+                case VehicleRemovedPacket vr: Vehicles.OnRemoved(vr.Id); break;
+            }
+        }
+
+        void WatchConnection()
+        {
+            var state = _client.State;
+            if (state == _lastState) return;
+            if (state == ClientState.Disconnected && _lastState != ClientState.Disconnected)
+            {
+                AddChat("Disconnected: " + _client.LastError);
+                ClearRemotes();
+                World.Reset();
+                Vehicles.Reset();
+            }
+            _lastState = state;
+        }
+
+        // ---------- connect / host ----------
+
+        void Connect(string host, int port)
+        {
+            AddChat($"Joining {host}:{port}...");
+            _client.Connect(host, port, Plugin.PlayerName.Value);
+        }
+
+        void JoinFromUi()
+        {
+            if (!JoinCode.TryParseAddress(Plugin.ServerAddress.Value, Plugin.Port.Value, out var host, out var port))
+            {
+                AddChat("That doesn't look like a join code or IP");
+                return;
+            }
+            Connect(host, port);
+        }
+
+        void Host()
+        {
+            if (_hostedServer == null)
+            {
+                var worldFile = Path.Combine(Path.Combine(Plugin.Folder, "worlds"), SafeFileName(Game.CurrentSaveSlot()) + ".dat");
+                var server = new NetServer(worldFile);
+                server.Log += msg => Plugin.Log.LogInfo("[server] " + msg);
+                try
+                {
+                    server.Start(Plugin.Port.Value);
+                }
+                catch (Exception e)
+                {
+                    AddChat("Couldn't host: " + e.Message);
+                    return;
+                }
+                _hostedServer = server;
+                _hostedPort = server.Port;
+                AddChat($"Hosting on port {_hostedPort}. Opening your router for friends on other wifi...");
+                OpenRouterPort(_hostedPort);
+            }
+            Connect("127.0.0.1", _hostedPort);
+        }
+
+        void OpenRouterPort(int port)
+        {
+            new Thread(() =>
+            {
+                var r = Upnp.OpenPort(port, "Subnautica Multiplayer");
+                string ip = r.Success ? r.ExternalIp : null;
+                if (string.IsNullOrEmpty(ip)) ip = Upnp.LookUpPublicIp();
+                string msg;
+                if (r.Success && !r.BehindCgnat)
+                    msg = "Router opened! Friends anywhere can join.";
+                else if (r.BehindCgnat)
+                    msg = "Your internet provider blocks hosting (CGNAT). Use Radmin VPN / Tailscale / playit.gg, or let a friend host.";
+                else
+                    msg = "Couldn't auto-open your router (" + r.Error + "). Forward TCP port " + port + " by hand, or use Radmin VPN / Tailscale.";
+
+                if (System.Net.IPAddress.TryParse(ip ?? "", out var addr) && addr.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork)
+                    _joinCode = JoinCode.Encode(addr, port);
+                _pendingChat.Enqueue(msg);
+                if (_joinCode != null) _pendingChat.Enqueue("Join code: " + _joinCode + " (F8 to see it again)");
+            }) { IsBackground = true, Name = "SubnauticaMP upnp" }.Start();
+        }
+
+        void StopHosting()
+        {
+            if (_hostedServer == null) return;
+            _hostedServer.Stop();
+            Upnp.ClosePort(_hostedPort);
+            _hostedServer = null;
+            _joinCode = null;
+            AddChat("Stopped hosting.");
+        }
+
+        void Leave()
+        {
+            _client.Disconnect();
+            StopHosting();
+            ClearRemotes();
+            World.Reset();
+            Vehicles.Reset();
+        }
+
+        static string SafeFileName(string s)
+        {
+            foreach (var c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
+            return s;
+        }
+
+        // ---------- remote players ----------
+
+        void AddRemote(int id, string name)
+        {
+            _names[id] = name;
+            if (id == _client.LocalId || _remotes.ContainsKey(id)) return;
+            _remotes[id] = RemotePlayer.Create(id, name);
+        }
+
+        void RemoveRemote(int id)
+        {
+            if (_remotes.TryGetValue(id, out var remote) && remote != null) Destroy(remote.gameObject);
+            _remotes.Remove(id);
+            _names.Remove(id);
+        }
+
+        void ClearRemotes()
+        {
+            foreach (var r in _remotes.Values) if (r != null) Destroy(r.gameObject);
+            _remotes.Clear();
+            _names.Clear();
+        }
+
+        public string NameOf(int id) => id == _client.LocalId ? Plugin.PlayerName.Value
+            : _names.TryGetValue(id, out var n) ? n : "Player " + id;
+    }
+}

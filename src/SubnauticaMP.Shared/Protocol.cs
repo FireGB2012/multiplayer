@@ -6,10 +6,11 @@ namespace SubnauticaMP.Shared
 {
     public static class Protocol
     {
-        public const int Version = 1;
+        public const int Version = 2;
         public const int DefaultPort = 11000;
         public const int MaxPlayers = 16;
-        public const int MaxPacketSize = 64 * 1024;
+        public const int MaxPacketSize = 16 * 1024 * 1024; // server -> client: welcome snapshot can get big
+        public const int MaxClientPacketSize = 64 * 1024; // client -> server: never needs more than this
         public const int MaxNameLength = 24;
         public const int MaxChatLength = 200;
 
@@ -32,12 +33,12 @@ namespace SubnauticaMP.Shared
         }
 
         // Blocks until a full packet arrives. Returns null on clean disconnect.
-        public static Packet ReadPacket(Stream stream)
+        public static Packet ReadPacket(Stream stream, int maxSize = MaxPacketSize)
         {
             var header = new byte[4];
             if (!ReadExactly(stream, header, 4)) return null;
             int length = BitConverter.ToInt32(header, 0);
-            if (length < 1 || length > MaxPacketSize) throw new InvalidDataException("Bad packet length " + length);
+            if (length < 1 || length > maxSize) throw new InvalidDataException("Bad packet length " + length);
 
             var body = new byte[length];
             if (!ReadExactly(stream, body, length)) return null;

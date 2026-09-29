@@ -6,25 +6,36 @@ namespace SubnauticaMP.Shared
 {
     public enum PacketType : byte
     {
-        Hello = 1,        // client -> server: name + protocol version
-        Welcome = 2,      // server -> client: your id + everyone already here
-        Rejected = 3,     // server -> client: reason, then disconnect
-        PlayerJoined = 4, // server -> all
-        PlayerLeft = 5,   // server -> all
-        PlayerState = 6,  // client -> server -> others: position/rotation
-        Chat = 7,         // client -> server -> all
+        Hello = 1,          // client -> server: name + protocol version
+        Welcome = 2,        // server -> client: your id, who's here, full world snapshot
+        Rejected = 3,       // server -> client: reason, then disconnect
+        PlayerJoined = 4,   // server -> all
+        PlayerLeft = 5,     // server -> all
+        PlayerState = 6,    // client -> server -> others: position/rotation
+        Chat = 7,           // client -> server -> all
+        Unlock = 8,         // blueprint / analyzed tech / databank entry learned
+        EntityRemoved = 9,  // world item picked up or broken
+        VehicleSpawned = 10,
+        VehicleState = 11,  // owner -> others: vehicle position
+        VehicleOwner = 12,  // client claims a vehicle (entered it); server -> all: new owner
+        VehicleRemoved = 13,
+        TimeSync = 14,      // server -> clients: world clock. client -> server once to seed a new world
     }
 
     public struct Vec3
     {
         public float X, Y, Z;
         public Vec3(float x, float y, float z) { X = x; Y = y; Z = z; }
+        public void Write(BinaryWriter w) { w.Write(X); w.Write(Y); w.Write(Z); }
+        public static Vec3 Read(BinaryReader r) => new Vec3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
     }
 
     public struct Quat
     {
         public float X, Y, Z, W;
         public Quat(float x, float y, float z, float w) { X = x; Y = y; Z = z; W = w; }
+        public void Write(BinaryWriter w) { w.Write(X); w.Write(Y); w.Write(Z); w.Write(W); }
+        public static Quat Read(BinaryReader r) => new Quat(r.ReadSingle(), r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
     }
 
     [Flags]
@@ -34,6 +45,13 @@ namespace SubnauticaMP.Shared
         Underwater = 1,
         InBase = 2,
         InVehicle = 4,
+    }
+
+    public enum UnlockKind : byte
+    {
+        Blueprint = 0,   // KnownTech.Add
+        Analyzed = 1,    // KnownTech.Analyze
+        Databank = 2,    // PDAEncyclopedia.Add
     }
 
     public abstract class Packet
@@ -53,6 +71,13 @@ namespace SubnauticaMP.Shared
                 case PacketType.PlayerLeft: return new PlayerLeftPacket();
                 case PacketType.PlayerState: return new PlayerStatePacket();
                 case PacketType.Chat: return new ChatPacket();
+                case PacketType.Unlock: return new UnlockPacket();
+                case PacketType.EntityRemoved: return new EntityRemovedPacket();
+                case PacketType.VehicleSpawned: return new VehicleSpawnedPacket();
+                case PacketType.VehicleState: return new VehicleStatePacket();
+                case PacketType.VehicleOwner: return new VehicleOwnerPacket();
+                case PacketType.VehicleRemoved: return new VehicleRemovedPacket();
+                case PacketType.TimeSync: return new TimeSyncPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
@@ -77,6 +102,7 @@ namespace SubnauticaMP.Shared
     {
         public int YourId;
         public List<PlayerInfo> Players = new List<PlayerInfo>();
+        public WorldState World = new WorldState();
         public override PacketType Type => PacketType.Welcome;
 
         public override void Write(BinaryWriter w)
@@ -84,6 +110,7 @@ namespace SubnauticaMP.Shared
             w.Write(YourId);
             w.Write(Players.Count);
             foreach (var p in Players) { w.Write(p.Id); w.Write(p.Name ?? ""); }
+            World.Write(w);
         }
 
         public override void Read(BinaryReader r)
@@ -94,6 +121,7 @@ namespace SubnauticaMP.Shared
             Players = new List<PlayerInfo>(count);
             for (int i = 0; i < count; i++)
                 Players.Add(new PlayerInfo { Id = r.ReadInt32(), Name = r.ReadString() });
+            World = WorldState.Read(r);
         }
     }
 
@@ -133,16 +161,16 @@ namespace SubnauticaMP.Shared
         public override void Write(BinaryWriter w)
         {
             w.Write(Id);
-            w.Write(Position.X); w.Write(Position.Y); w.Write(Position.Z);
-            w.Write(Rotation.X); w.Write(Rotation.Y); w.Write(Rotation.Z); w.Write(Rotation.W);
+            Position.Write(w);
+            Rotation.Write(w);
             w.Write((byte)Flags);
         }
 
         public override void Read(BinaryReader r)
         {
             Id = r.ReadInt32();
-            Position = new Vec3(r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
-            Rotation = new Quat(r.ReadSingle(), r.ReadSingle(), r.ReadSingle(), r.ReadSingle());
+            Position = Vec3.Read(r);
+            Rotation = Quat.Read(r);
             Flags = (PlayerFlags)r.ReadByte();
         }
     }
@@ -154,5 +182,90 @@ namespace SubnauticaMP.Shared
         public override PacketType Type => PacketType.Chat;
         public override void Write(BinaryWriter w) { w.Write(SenderId); w.Write(Text ?? ""); }
         public override void Read(BinaryReader r) { SenderId = r.ReadInt32(); Text = r.ReadString(); }
+    }
+
+    public sealed class UnlockPacket : Packet
+    {
+        public UnlockKind Kind;
+        public string Key; // TechType name, or databank key
+        public override PacketType Type => PacketType.Unlock;
+        public override void Write(BinaryWriter w) { w.Write((byte)Kind); w.Write(Key ?? ""); }
+        public override void Read(BinaryReader r) { Kind = (UnlockKind)r.ReadByte(); Key = r.ReadString(); }
+    }
+
+    public sealed class EntityRemovedPacket : Packet
+    {
+        public string EntityId;
+        public override PacketType Type => PacketType.EntityRemoved;
+        public override void Write(BinaryWriter w) { w.Write(EntityId ?? ""); }
+        public override void Read(BinaryReader r) { EntityId = r.ReadString(); }
+    }
+
+    public sealed class VehicleInfo
+    {
+        public string Id;       // the game's UniqueIdentifier id, same on every machine
+        public string TechType; // "Seamoth", "Exosuit", "Cyclops"
+        public Vec3 Position;
+        public Quat Rotation;
+        public int OwnerId;     // player simulating it right now, 0 = nobody
+
+        public void Write(BinaryWriter w)
+        {
+            w.Write(Id ?? ""); w.Write(TechType ?? "");
+            Position.Write(w); Rotation.Write(w);
+            w.Write(OwnerId);
+        }
+
+        public static VehicleInfo Read(BinaryReader r) => new VehicleInfo
+        {
+            Id = r.ReadString(), TechType = r.ReadString(),
+            Position = Vec3.Read(r), Rotation = Quat.Read(r),
+            OwnerId = r.ReadInt32(),
+        };
+
+        public VehicleInfo Clone() => (VehicleInfo)MemberwiseClone();
+    }
+
+    public sealed class VehicleSpawnedPacket : Packet
+    {
+        public VehicleInfo Vehicle = new VehicleInfo();
+        public override PacketType Type => PacketType.VehicleSpawned;
+        public override void Write(BinaryWriter w) { Vehicle.Write(w); }
+        public override void Read(BinaryReader r) { Vehicle = VehicleInfo.Read(r); }
+    }
+
+    public sealed class VehicleStatePacket : Packet
+    {
+        public string Id;
+        public Vec3 Position;
+        public Quat Rotation;
+        public override PacketType Type => PacketType.VehicleState;
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); Position.Write(w); Rotation.Write(w); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); Position = Vec3.Read(r); Rotation = Quat.Read(r); }
+    }
+
+    public sealed class VehicleOwnerPacket : Packet
+    {
+        public string Id;
+        public int OwnerId; // ignored when a client sends it: the sender becomes owner
+        public override PacketType Type => PacketType.VehicleOwner;
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); w.Write(OwnerId); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); OwnerId = r.ReadInt32(); }
+    }
+
+    public sealed class VehicleRemovedPacket : Packet
+    {
+        public string Id;
+        public override PacketType Type => PacketType.VehicleRemoved;
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); }
+    }
+
+    public sealed class TimeSyncPacket : Packet
+    {
+        public double TimePassed; // DayNightCycle.timePassedAsDouble, 1200 = one day
+        public override PacketType Type => PacketType.TimeSync;
+        public override void Write(BinaryWriter w) { w.Write(TimePassed); }
+        public override void Read(BinaryReader r) { TimePassed = r.ReadDouble(); }
     }
 }

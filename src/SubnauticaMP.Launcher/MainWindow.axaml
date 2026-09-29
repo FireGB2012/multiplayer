@@ -1,0 +1,165 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        x:Class="SubnauticaMP.Launcher.MainWindow"
+        Title="Subnautica Multiplayer"
+        Width="780" Height="620" MinWidth="560" MinHeight="520"
+        Background="#07131F"
+        WindowStartupLocation="CenterScreen">
+
+  <Grid RowDefinitions="Auto,*,Auto">
+
+    <!-- header -->
+    <Border Grid.Row="0" Padding="26,20,26,18">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
+          <GradientStop Offset="0" Color="#0E4A6A" />
+          <GradientStop Offset="0.6" Color="#0A2A40" />
+          <GradientStop Offset="1" Color="#07131F" />
+        </LinearGradientBrush>
+      </Border.Background>
+      <Grid ColumnDefinitions="*,Auto">
+        <StackPanel>
+          <TextBlock Text="SUBNAUTICA" FontSize="30" FontWeight="Bold" Foreground="White" LetterSpacing="5" />
+          <TextBlock Text="MULTIPLAYER" FontSize="13" Foreground="#5FD4E0" LetterSpacing="9" />
+        </StackPanel>
+        <TextBlock Grid.Column="1" x:Name="VersionText" VerticalAlignment="Top" Foreground="#5A8AA0" FontSize="12" />
+      </Grid>
+    </Border>
+
+    <TabControl Grid.Row="1" x:Name="Tabs" Margin="14,4,14,0">
+
+      <!-- PLAY -->
+      <TabItem Header="Play">
+        <ScrollViewer>
+          <StackPanel Spacing="14" Margin="4,12,4,12">
+            <StackPanel Spacing="10">
+              <TextBlock Classes="label" Text="YOUR NAME" />
+              <TextBox x:Name="NameBox" Watermark="Diver" MaxLength="24" />
+            </StackPanel>
+
+            <Grid ColumnDefinitions="*,14,*">
+              <Border Classes="card" Grid.Column="0">
+                <StackPanel Spacing="10">
+                  <TextBlock Classes="h2" Text="Join a friend" />
+                  <TextBlock Classes="hint" Text="Paste their join code (like KQ7MX-3HD2P) or IP address." />
+                  <TextBox x:Name="JoinBox" Watermark="Join code or IP" />
+                  <Button x:Name="JoinButton" Classes="primary" Content="JOIN &amp; PLAY" />
+                </StackPanel>
+              </Border>
+              <Border Classes="card" Grid.Column="2">
+                <StackPanel Spacing="10">
+                  <TextBlock Classes="h2" Text="Host a game" />
+                  <TextBlock Classes="hint" Text="Runs the server on this PC and starts the game. Your join code shows up in the Server tab. Keep this window open while you play." />
+                  <Button x:Name="HostPlayButton" Classes="primary" Content="HOST &amp; PLAY" />
+                </StackPanel>
+              </Border>
+            </Grid>
+
+            <Border Classes="card">
+              <StackPanel Spacing="4">
+                <TextBlock Classes="h2" Text="How it works" FontSize="14" />
+                <TextBlock Classes="hint" Text="1. Hit Join or Host. The game opens with the mod installed." />
+                <TextBlock Classes="hint" Text="2. Load a save or start a new game. You connect by yourself a few seconds after it loads." />
+                <TextBlock Classes="hint" Text="3. F8 in game opens the multiplayer menu (chat, leave, join code)." />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+
+      <!-- SERVER -->
+      <TabItem Header="Server">
+        <Grid RowDefinitions="Auto,Auto,*" Margin="4,12,4,12">
+          <Grid ColumnDefinitions="*,10,110,10,Auto">
+            <StackPanel Spacing="10">
+              <TextBlock Classes="label" Text="WORLD NAME" />
+              <TextBox x:Name="WorldBox" />
+            </StackPanel>
+            <StackPanel Grid.Column="2" Spacing="10">
+              <TextBlock Classes="label" Text="PORT" />
+              <TextBox x:Name="PortBox" />
+            </StackPanel>
+            <Button Grid.Column="4" x:Name="ServerButton" Classes="primary" Content="START SERVER"
+                    VerticalAlignment="Bottom" MinWidth="170" />
+          </Grid>
+
+          <Border Grid.Row="1" Classes="card" Margin="0,14,0,0" x:Name="CodesCard" IsVisible="False">
+            <StackPanel Spacing="8">
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="JOIN CODE (INTERNET)" Margin="0" />
+                  <TextBlock x:Name="InternetCodeText" Classes="code" Text="..." />
+                </StackPanel>
+                <Button Grid.Column="1" x:Name="CopyInternetButton" Content="Copy" VerticalAlignment="Center" />
+              </Grid>
+              <Grid ColumnDefinitions="*,Auto">
+                <StackPanel>
+                  <TextBlock Classes="label" Text="JOIN CODE (SAME WIFI)" Margin="0" />
+                  <TextBlock x:Name="LanCodeText" Classes="code" FontSize="18" Text="..." />
+                </StackPanel>
+                <Button Grid.Column="1" x:Name="CopyLanButton" Content="Copy" VerticalAlignment="Center" />
+              </Grid>
+              <TextBlock x:Name="RouterText" Classes="hint" />
+            </StackPanel>
+          </Border>
+
+          <Grid Grid.Row="2" ColumnDefinitions="200,14,*" Margin="0,14,0,0">
+            <Border Classes="card" Padding="10">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Classes="label" Text="PLAYERS ONLINE" Margin="4,0,0,8" />
+                <ListBox x:Name="PlayersList" Background="Transparent" />
+              </DockPanel>
+            </Border>
+            <Border Grid.Column="2" Classes="card" Padding="10">
+              <DockPanel>
+                <TextBlock DockPanel.Dock="Top" Classes="label" Text="SERVER LOG" Margin="4,0,0,8" />
+                <TextBox x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
+                         FontFamily="Consolas,Menlo,monospace" FontSize="12" Background="#081826" BorderThickness="0" />
+              </DockPanel>
+            </Border>
+          </Grid>
+        </Grid>
+      </TabItem>
+
+      <!-- SETUP -->
+      <TabItem Header="Setup">
+        <ScrollViewer>
+          <StackPanel Spacing="14" Margin="4,12,4,12">
+            <StackPanel Spacing="10">
+              <TextBlock Classes="label" Text="SUBNAUTICA FOLDER" />
+              <Grid ColumnDefinitions="*,8,Auto">
+                <TextBox x:Name="GameDirBox" Watermark="C:\Program Files (x86)\Steam\steamapps\common\Subnautica" />
+                <Button Grid.Column="2" x:Name="BrowseButton" Content="Browse..." />
+              </Grid>
+            </StackPanel>
+
+            <Border Classes="card">
+              <StackPanel Spacing="10">
+                <TextBlock x:Name="GameStatus" />
+                <TextBlock x:Name="BepStatus" />
+                <TextBlock x:Name="ModStatus" />
+                <WrapPanel>
+                  <Button x:Name="InstallBepButton" Content="Install BepInEx for me" Margin="0,0,8,8" />
+                  <Button x:Name="InstallModButton" Content="Install / update mod" Margin="0,0,8,8" />
+                  <Button x:Name="OpenFolderButton" Content="Open mod folder" Margin="0,0,8,8" />
+                </WrapPanel>
+              </StackPanel>
+            </Border>
+
+            <Border Classes="card">
+              <StackPanel Spacing="4">
+                <TextBlock Classes="h2" Text="Friends on different wifi" FontSize="14" />
+                <TextBlock Classes="hint" Text="The host's launcher asks the router to open the port by itself (UPnP). Most home routers allow it." />
+                <TextBlock Classes="hint" Text="If the Server tab says it couldn't: turn on UPnP in the router, forward the port by hand, or have everyone install Radmin VPN / Tailscale and join with the host's VPN IP." />
+              </StackPanel>
+            </Border>
+          </StackPanel>
+        </ScrollViewer>
+      </TabItem>
+    </TabControl>
+
+    <Border Grid.Row="2" Background="#0A1C2B" Padding="16,9">
+      <TextBlock x:Name="StatusText" Foreground="#8FB3C4" FontSize="12" TextWrapping="Wrap" />
+    </Border>
+  </Grid>
+</Window>

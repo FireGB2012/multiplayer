@@ -1,0 +1,59 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    The launcher app (Windows .exe): installs the mod, hosts servers, launches the game.
+    Build the single-file exe with:
+      dotnet publish src/SubnauticaMP.Launcher -c Release -r win-x64
+  -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>SubnauticaMP-Launcher</AssemblyName>
+    <RootNamespace>SubnauticaMP.Launcher</RootNamespace>
+    <Version>0.2.0</Version>
+    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>none</DebugType>
+    <AllowedReferenceRelatedFileExtensions>.none</AllowedReferenceRelatedFileExtensions>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Avalonia" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
+    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.22" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SubnauticaMP.Launcher.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SubnauticaMP.Shared\SubnauticaMP.Shared.csproj" />
+    <!-- build the mod first so we can pack it inside the exe -->
+    <ProjectReference Include="..\SubnauticaMP.Plugin\SubnauticaMP.Plugin.csproj"
+                      ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true"
+                      SetTargetFramework="TargetFramework=net472"
+                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained;PublishSingleFile" />
+  </ItemGroup>
+
+  <Target Name="EmbedMod" AfterTargets="ResolveProjectReferences">
+    <PropertyGroup>
+      <ModDll>$(MSBuildThisFileDirectory)..\SubnauticaMP.Plugin\bin\$(Configuration)\SubnauticaMP.dll</ModDll>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(ModDll)')" Text="Mod DLL not built: $(ModDll)" />
+    <ItemGroup>
+      <EmbeddedResource Include="$(ModDll)" LogicalName="SubnauticaMP.dll" />
+    </ItemGroup>
+  </Target>
+
+</Project>

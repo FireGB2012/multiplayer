@@ -1,0 +1,66 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="SubnauticaMP.Launcher.App"
+             RequestedThemeVariant="Dark">
+  <Application.Styles>
+    <FluentTheme />
+
+    <Style Selector="Window">
+      <Setter Property="FontFamily" Value="fonts:Inter#Inter" />
+    </Style>
+    <Style Selector="Border.card">
+      <Setter Property="Background" Value="#0D2233" />
+      <Setter Property="BorderBrush" Value="#16405A" />
+      <Setter Property="BorderThickness" Value="1" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Padding" Value="16" />
+    </Style>
+    <Style Selector="TextBlock.h2">
+      <Setter Property="FontSize" Value="17" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="Foreground" Value="White" />
+    </Style>
+    <Style Selector="TextBlock.hint">
+      <Setter Property="Foreground" Value="#8FB3C4" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style Selector="TextBlock.label">
+      <Setter Property="Foreground" Value="#8FB3C4" />
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Margin" Value="0,0,0,-6" />
+    </Style>
+    <Style Selector="TextBlock.code">
+      <Setter Property="FontSize" Value="26" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="Foreground" Value="#5FD4E0" />
+      <Setter Property="LetterSpacing" Value="2" />
+    </Style>
+    <Style Selector="TextBlock.ok">
+      <Setter Property="Foreground" Value="#5BD68B" />
+    </Style>
+    <Style Selector="TextBlock.bad">
+      <Setter Property="Foreground" Value="#FF8A7A" />
+    </Style>
+    <Style Selector="Button.primary">
+      <Setter Property="Background" Value="#1FB6C9" />
+      <Setter Property="Foreground" Value="#04121C" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="HorizontalAlignment" Value="Stretch" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="Padding" Value="12" />
+      <Setter Property="CornerRadius" Value="8" />
+    </Style>
+    <Style Selector="Button.primary:pointerover /template/ ContentPresenter">
+      <Setter Property="Background" Value="#4FD6E6" />
+      <Setter Property="Foreground" Value="#04121C" />
+    </Style>
+    <Style Selector="Button.primary:disabled /template/ ContentPresenter">
+      <Setter Property="Background" Value="#1A3A4A" />
+      <Setter Property="Foreground" Value="#5A7A8A" />
+    </Style>
+    <Style Selector="TabItem">
+      <Setter Property="FontSize" Value="16" />
+    </Style>
+  </Application.Styles>
+</Application>

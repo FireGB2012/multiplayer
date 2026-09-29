@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    Builds against YOUR Subnautica install (game DLLs can't be shipped in the repo).
-    Set GameDir if the game isn't in the default Steam spot:
+    The mod itself (runs inside the game through BepInEx 5).
+    It talks to Subnautica's code by name at runtime, so it doesn't need the game to build.
+    If GameDir points at your install, it builds against the real BepInEx/Unity DLLs there
+    and copies itself into BepInEx\plugins. Otherwise it builds against reference copies.
       dotnet build -c Release -p:GameDir="D:\SteamLibrary\steamapps\common\Subnautica"
-    Needs BepInEx 5 installed in the game folder first.
   -->
   <PropertyGroup>
     <TargetFramework>net472</TargetFramework>
@@ -12,9 +13,11 @@
     <Nullable>disable</Nullable>
     <AssemblyName>SubnauticaMP</AssemblyName>
     <RootNamespace>SubnauticaMP</RootNamespace>
+    <Version>0.2.0</Version>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Subnautica</GameDir>
     <ManagedDir>$(GameDir)\Subnautica_Data\Managed</ManagedDir>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <UseGameDlls Condition="Exists('$(GameDir)\BepInEx\core\BepInEx.dll')">true</UseGameDlls>
   </PropertyGroup>
 
   <!-- Shared networking code is compiled straight in so the mod is a single DLL. -->
@@ -26,18 +29,25 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(UseGameDlls)' == 'true'">
     <Reference Include="BepInEx" HintPath="$(GameDir)\BepInEx\core\BepInEx.dll" Private="false" />
-    <Reference Include="Assembly-CSharp" HintPath="$(ManagedDir)\Assembly-CSharp.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(GameDir)\BepInEx\core\0Harmony.dll" Private="false" />
     <Reference Include="UnityEngine" HintPath="$(ManagedDir)\UnityEngine.dll" Private="false" />
     <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
     <Reference Include="UnityEngine.IMGUIModule" HintPath="$(ManagedDir)\UnityEngine.IMGUIModule.dll" Private="false" />
     <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(ManagedDir)\UnityEngine.InputLegacyModule.dll" Private="false" />
     <Reference Include="UnityEngine.PhysicsModule" HintPath="$(ManagedDir)\UnityEngine.PhysicsModule.dll" Private="false" />
+    <Reference Include="UnityEngine.TextRenderingModule" HintPath="$(ManagedDir)\UnityEngine.TextRenderingModule.dll" Private="false" />
   </ItemGroup>
 
-  <!-- Drops the built DLL straight into the game's plugin folder. -->
-  <Target Name="CopyToGame" AfterTargets="Build" Condition="Exists('$(GameDir)\BepInEx\plugins')">
+  <!-- No game here: compile against reference copies (never shipped, the game's own DLLs are used at runtime). -->
+  <ItemGroup Condition="'$(UseGameDlls)' != 'true'">
+    <ProjectReference Include="..\..\lib\BepInEx.Ref\BepInEx.Ref.csproj" Private="false" />
+    <PackageReference Include="HarmonyX" Version="2.9.0" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <Target Name="CopyToGame" AfterTargets="Build" Condition="'$(UseGameDlls)' == 'true'">
     <MakeDir Directories="$(GameDir)\BepInEx\plugins\SubnauticaMP" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\SubnauticaMP" />
   </Target>
