@@ -32,10 +32,13 @@ namespace SubnauticaMP
         float _inWorldTimer;
         ClientState _lastState;
         LaunchInfo _autoJoin;
+        static LaunchInfo _pendingLaunch;
+        static bool _launchRead;
         bool _autoStart;        // came from the launcher: start/load the game ourselves once connected
         bool _newGameStarted;   // we clicked New Game for this world, so set its game mode after loading
         bool _modeApplied;
         bool _slotRecorded;
+        bool _wasInMenu;
         int _hostId;
         string _worldId;
         string _gameMode = GameModes.Survival;
@@ -57,9 +60,14 @@ namespace SubnauticaMP
             Structures = new StructureSync(this);
             Containers = new ContainerSync(this);
 
-            var launchPath = Path.Combine(Plugin.Folder, LaunchInfo.FileName);
-            _autoJoin = LaunchInfo.TryLoad(launchPath);
-            try { File.Delete(launchPath); } catch { }
+            if (!_launchRead)
+            {
+                _launchRead = true;
+                var launchPath = Path.Combine(Plugin.Folder, LaunchInfo.FileName);
+                _pendingLaunch = LaunchInfo.TryLoad(launchPath);
+                try { File.Delete(launchPath); } catch { }
+            }
+            _autoJoin = _pendingLaunch; // survives the session being rebuilt
             if (_autoJoin != null)
             {
                 if (!string.IsNullOrEmpty(_autoJoin.PlayerName)) Plugin.PlayerName.Value = Protocol.CleanName(_autoJoin.PlayerName);
@@ -70,7 +78,13 @@ namespace SubnauticaMP
         void Update()
         {
             if (Input.GetKeyDown(Plugin.MenuKey.Value)) _menuOpen = !_menuOpen;
-            if (Game.MainMenu != null) MainMenuButton.Update(OpenMultiplayerMenu);
+            bool inMenu = Game.MainMenu != null;
+            if (inMenu != _wasInMenu)
+            {
+                _wasInMenu = inMenu;
+                Plugin.Log.LogInfo(inMenu ? "Main menu detected" : "Left the main menu");
+            }
+            if (inMenu) MainMenuButton.Update(OpenMultiplayerMenu);
             else _mpMenuOpen = false;
 
             _inWorldTimer = Game.InWorld ? _inWorldTimer + Time.unscaledDeltaTime : 0f;
@@ -79,7 +93,7 @@ namespace SubnauticaMP
             if (_autoJoin != null && _client.State == ClientState.Disconnected && (Game.MainMenu != null || Game.InWorld))
             {
                 var a = _autoJoin;
-                _autoJoin = null;
+                _autoJoin = _pendingLaunch = null;
                 _autoStart = !Game.InWorld;
                 _lastAddress = a.Host == "127.0.0.1" ? null : a.Host + ":" + a.Port;
                 Connect(a.Host, a.Port);
@@ -144,7 +158,12 @@ namespace SubnauticaMP
             }
         }
 
-        void OnDestroy() => Shutdown();
+        void OnDestroy()
+        {
+            Plugin.Log.LogWarning("Multiplayer session object was destroyed (will be recreated on next scene load)");
+            if (Instance == this) Instance = null;
+            Shutdown();
+        }
         void OnApplicationQuit() => Shutdown();
 
         void Shutdown()
