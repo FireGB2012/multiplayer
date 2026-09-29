@@ -4,7 +4,8 @@ using UnityEngine;
 
 namespace SubnauticaMP
 {
-    // Placeholder body for another diver: a colored capsule with a "visor" showing which way they face.
+    // Another player: a real diver model (copied from your own body, animated) once you're in the world,
+    // or a colored capsule until then / if the copy fails.
     // Smoothly chases the latest position from the network so 20Hz updates don't look choppy.
     public sealed class RemotePlayer : MonoBehaviour
     {
@@ -16,21 +17,30 @@ namespace SubnauticaMP
         Vector3 _targetPos;
         Quaternion _targetRot = Quaternion.identity;
         bool _hasTarget;
-        Renderer[] _renderers;
+        Renderer[] _renderers;       // capsule placeholder
+        GameObject _capsule;
+        GameObject _diver;
+        DiverAnimator _anim;
+        Vector3 _velocity, _lastTargetPos;
+        float _lastTargetTime;
+        bool _underwater = true, _visible = true;
+        float _nextModelTry;
 
         public static RemotePlayer Create(int id, string name)
         {
             var root = new GameObject("RemotePlayer_" + id);
             DontDestroyOnLoad(root);
 
+            var capsule = new GameObject("Capsule");
+            capsule.transform.SetParent(root.transform, false);
             var body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             Destroy(body.GetComponent<Collider>()); // ghosts shouldn't block anyone
-            body.transform.SetParent(root.transform, false);
+            body.transform.SetParent(capsule.transform, false);
             body.transform.localScale = new Vector3(0.6f, 0.9f, 0.6f);
 
             var visor = GameObject.CreatePrimitive(PrimitiveType.Cube);
             Destroy(visor.GetComponent<Collider>());
-            visor.transform.SetParent(root.transform, false);
+            visor.transform.SetParent(capsule.transform, false);
             visor.transform.localPosition = new Vector3(0f, 0.55f, 0.28f);
             visor.transform.localScale = new Vector3(0.4f, 0.15f, 0.1f);
             visor.GetComponent<Renderer>().material.color = Color.yellow;
@@ -39,7 +49,8 @@ namespace SubnauticaMP
             remote.Id = id;
             remote.PlayerName = name;
             body.GetComponent<Renderer>().material.color = ColorFor(id);
-            remote._renderers = root.GetComponentsInChildren<Renderer>();
+            remote._capsule = capsule;
+            remote._renderers = capsule.GetComponentsInChildren<Renderer>();
             // teammates show on your HUD like beacons, with their name and distance
             try { Game.AddPing(root, name); }
             catch (Exception e) { Game.WarnOnce("ping", "Couldn't add player marker: " + e.GetBaseException().Message); }
@@ -55,9 +66,17 @@ namespace SubnauticaMP
             _targetPos = new Vector3(state.Position.X, state.Position.Y, state.Position.Z);
             _targetRot = new Quaternion(state.Rotation.X, state.Rotation.Y, state.Rotation.Z, state.Rotation.W);
 
-            // In a vehicle their body is inside the seamoth/prawn; hide the capsule so it doesn't poke out.
-            bool visible = (state.Flags & PlayerFlags.InVehicle) == 0;
-            foreach (var r in _renderers) r.enabled = visible;
+            // how fast they're going, for the swim animation
+            float now = Time.unscaledTime;
+            if (_hasTarget && now > _lastTargetTime)
+                _velocity = Vector3.Lerp(_velocity, (_targetPos - _lastTargetPos) / (now - _lastTargetTime), 0.5f);
+            _lastTargetPos = _targetPos;
+            _lastTargetTime = now;
+            _underwater = (state.Flags & PlayerFlags.Underwater) != 0;
+
+            // In a vehicle their body is inside the seamoth/prawn; hide it so it doesn't poke out.
+            _visible = (state.Flags & PlayerFlags.InVehicle) == 0;
+            ApplyVisibility();
 
             if (!_hasTarget || Vector3.Distance(transform.position, _targetPos) > SnapDistance)
             {
@@ -67,9 +86,38 @@ namespace SubnauticaMP
             if (!gameObject.activeSelf) gameObject.SetActive(true);
         }
 
+        void ApplyVisibility()
+        {
+            bool diver = _diver != null;
+            if (_capsule != null) _capsule.SetActive(_visible && !diver);
+            if (diver) _diver.SetActive(_visible);
+        }
+
+        void OnDestroy()
+        {
+            if (_diver != null) Destroy(_diver);
+        }
+
         void Update()
         {
+            // swap the capsule for a real diver once there's a local player to copy
+            if (_diver == null && Time.unscaledTime >= _nextModelTry && Game.InWorld)
+            {
+                _nextModelTry = Time.unscaledTime + 5f;
+                _diver = DiverModel.Create(transform);
+                if (_diver != null)
+                {
+                    _anim = new DiverAnimator(_diver);
+                    ApplyVisibility();
+                }
+            }
+
             if (!_hasTarget) return;
+            if (_anim != null && _diver != null && _diver.activeSelf)
+            {
+                if (Time.unscaledTime - _lastTargetTime > 0.5f) _velocity = Vector3.zero; // stopped sending = standing still
+                _anim.Update(transform, _velocity, _underwater, Time.unscaledDeltaTime);
+            }
             float t = 1f - Mathf.Exp(-12f * Time.unscaledDeltaTime);
             transform.position = Vector3.Lerp(transform.position, _targetPos, t);
             transform.rotation = Quaternion.Slerp(transform.rotation, _targetRot, t);
