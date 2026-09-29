@@ -22,7 +22,9 @@ namespace SubnauticaMP
             ItemsContainer, InventoryItem, PDALog, PDAScanner, PingInstance, PingType, Openable, Inventory, Survival,
             LiveMixin, VehicleDockingBay, CyclopsLightingPanel, CyclopsSilentRunningAbilityButton, CyclopsMotorModeButton,
             SubControl, LargeWorldStreamer, StoryGoal, StoryGoalManager, StoryGoalScheduler, GoalType, CrashedShipExploder,
-            Creature, EcoTarget, LastTarget, CellManager, EntitySlot, EntitySlotsPlaceholder, VirtualPrefabIdentifier, DeferredSpawner;
+            Creature, EcoTarget, LastTarget, CellManager, EntitySlot, EntitySlotsPlaceholder, VirtualPrefabIdentifier, DeferredSpawner,
+            PowerSource, SolarPanel, ThermalPlant, BaseBioReactor, BaseNuclearReactor, Crafter, SubFire, Fire, PrefabSpawnBase,
+            PickPrefab, WaterPark, WaterParkCreature, Builder;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         static readonly Dictionary<string, Func<object, object>> Getters = new Dictionary<string, Func<object, object>>();
@@ -98,6 +100,19 @@ namespace SubnauticaMP
             EntitySlotsPlaceholder = Find("EntitySlotsPlaceholder");
             VirtualPrefabIdentifier = Find("VirtualPrefabIdentifier");
             DeferredSpawner = Find("DeferredSpawner");
+            PowerSource = Find("PowerSource");
+            SolarPanel = Find("SolarPanel");
+            ThermalPlant = Find("ThermalPlant");
+            BaseBioReactor = Find("BaseBioReactor");
+            BaseNuclearReactor = Find("BaseNuclearReactor");
+            Crafter = Find("Crafter");
+            SubFire = Find("SubFire");
+            Fire = Find("Fire");
+            PrefabSpawnBase = Find("PrefabSpawnBase");
+            PickPrefab = Find("PickPrefab");
+            WaterPark = Find("WaterPark");
+            WaterParkCreature = Find("WaterParkCreature");
+            Builder = Find("Builder");
         }
 
         // ---------- story ----------

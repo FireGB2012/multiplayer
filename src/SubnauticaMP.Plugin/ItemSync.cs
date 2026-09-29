@@ -53,11 +53,18 @@ namespace SubnauticaMP
 
         // ---------- dropped items ----------
 
+        string _lastDropId;
+        float _lastDropTime;
+
         public void OnLocalDrop(GameObject item)
         {
             if (!_applied) return;
             var id = Game.GetId(item);
             if (string.IsNullOrEmpty(id)) return;
+            // dropping a fish into containment reports it twice (drop + tank); once is enough
+            if (id == _lastDropId && Time.unscaledTime - _lastDropTime < 1f) return;
+            _lastDropId = id;
+            _lastDropTime = Time.unscaledTime;
             byte[] data;
             try { data = Game.Serialize(item); }
             catch (Exception e)
@@ -99,6 +106,7 @@ namespace SubnauticaMP
                 go.transform.SetParent(null, true);
                 go.SetActive(true);
                 Game.Register(go);
+                BaseLifeSync.PutInWaterPark(go); // fish / eggs dropped into alien containment
             }));
         }
 

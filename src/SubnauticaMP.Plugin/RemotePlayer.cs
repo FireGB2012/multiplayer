@@ -20,6 +20,8 @@ namespace SubnauticaMP
         public bool Exposed { get; private set; } // swimming in open water: creatures can go for them
 
         string _held = "";
+        string _gear = "", _anims = "";
+        public bool Sleeping { get; private set; }
         string _subId = "";
         Vector3 _localPos;
         Quaternion _localRot = Quaternion.identity;
@@ -94,6 +96,17 @@ namespace SubnauticaMP
             Health = state.Health; Food = state.Food; Water = state.Water;
             HasVitals = state.Health > 0 || state.Food > 0 || state.Water > 0;
             if ((state.Held ?? "") != _held) SetHeld(state.Held ?? "");
+            if ((state.Gear ?? "") != _gear)
+            {
+                _gear = state.Gear ?? "";
+                if (_diver != null) PlayerLooks.ApplyGear(_diver, _gear);
+            }
+            if ((state.Anim ?? "") != _anims)
+            {
+                _anims = state.Anim ?? "";
+                _anim?.SetToolAnims(_anims);
+            }
+            Sleeping = (state.Flags & PlayerFlags.Sleeping) != 0;
 
             // In a vehicle their body is inside the seamoth/prawn; hide it so it doesn't poke out.
             _visible = (state.Flags & PlayerFlags.InVehicle) == 0;
@@ -160,6 +173,8 @@ namespace SubnauticaMP
                     _anim = new DiverAnimator(_diver);
                     ApplyVisibility();
                     if (_held.Length > 0) SetHeld(_held); // they were already holding something
+                    PlayerLooks.ApplyGear(_diver, _gear);
+                    _anim.SetToolAnims(_anims);
                 }
             }
 

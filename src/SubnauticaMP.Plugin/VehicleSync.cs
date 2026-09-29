@@ -69,6 +69,9 @@ namespace SubnauticaMP
         public Transform CyclopsTransform(string id) =>
             !string.IsNullOrEmpty(id) && _vehicles.TryGetValue(id, out var t) && t.Go != null ? t.Go.transform : null;
 
+        // who's driving / last drove it (0 = nobody)
+        public int OwnerOf(string id) => !string.IsNullOrEmpty(id) && _vehicles.TryGetValue(id, out var t) ? t.Info.OwnerId : 0;
+
         public bool IsTracked(string id) => !string.IsNullOrEmpty(id) && _vehicles.ContainsKey(id);
 
         Tracked NewTracked(VehicleInfo info) => new Tracked

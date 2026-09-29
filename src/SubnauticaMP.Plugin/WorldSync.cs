@@ -152,7 +152,7 @@ namespace SubnauticaMP
         public void OnTime(double time)
         {
             _serverTime = time;
-            if (!_applied) return;
+            if (!_applied || _s.Sleep.Skipping) return; // let the sleep fade play; it catches up after
             var local = Game.GetTime();
             if (local.HasValue && Math.Abs(local.Value - time) > TimeTolerance) Game.SetTime(time);
         }

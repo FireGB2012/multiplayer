@@ -85,6 +85,22 @@ namespace SubnauticaMP
             Hook("creature damage", Game.LiveMixin, "TakeDamage", prefix: nameof(Damaged));
             Hook("creature deaths", Game.LiveMixin, "Kill", prefix: nameof(Killed));
 
+            // batch 5: beds, power, fabricators, fires, leaks, fruit, containment
+            Hook("beds", Game.DayNightCycle, "SkipTime", prefix: nameof(SkipTimeAsked));
+            Hook("solar power", Game.SolarPanel, "Update", prefix: nameof(Generate));
+            Hook("thermal power", Game.ThermalPlant, "AddPower", prefix: nameof(Generate));
+            Hook("bioreactor power", Game.BaseBioReactor, "Update", prefix: nameof(Generate));
+            Hook("nuclear power", Game.BaseNuclearReactor, "Update", prefix: nameof(Generate));
+            Hook("fabricators", Game.CrafterLogic, "Craft", postfix: nameof(Crafted));
+            Hook("fabricator pickup", Game.CrafterLogic, "TryPickup", prefix: nameof(CraftPickup));
+            Hook("Cyclops fires", Game.SubFire, "CreateFire", prefix: nameof(FireStarting));
+            Hook("fire extinguishing", Game.Fire, "Douse", prefix: nameof(Doused));
+            Hook("hull damage", Game.LiveMixin, "TakeDamage", prefix: nameof(HullBefore), postfix: nameof(HullDamaged));
+            Hook("welding", Game.LiveMixin, "AddHealth", prefix: nameof(HullBefore), postfix: nameof(HullRepaired));
+            Hook("fruit", Game.PickPrefab, "SetPickedUp", postfix: nameof(Picked));
+            Hook("containment breeding", Game.WaterParkCreature, "Born", prefix: nameof(BornHere));
+            HookExact("containment", Game.FindMethod(Game.WaterPark, "AddItem", Game.Pickupable ?? typeof(void)), postfix: nameof(ParkAdded));
+
             Plugin.Log.LogInfo("Synced features: " + string.Join(", ", ok.ToArray()));
             if (failed.Count > 0) Plugin.Log.LogWarning("Could NOT hook (these won't sync): " + string.Join("; ", failed.ToArray()));
         }
@@ -288,6 +304,63 @@ namespace SubnauticaMP
         {
             if (ApplyingRemote || S == null || __instance == null) return;
             S.Creatures.OnLocalDeath(__instance.gameObject);
+        }
+
+        // ---------- batch 5 ----------
+
+        static bool SkipTimeAsked(Component __instance, object[] __args) =>
+            S == null || __args.Length == 0 || !(__args[0] is float amount) || S.Sleep.OnLocalSkip(__instance, amount);
+
+        static bool Generate(Component __instance) => S == null || __instance == null || S.Power.ShouldGenerate(__instance);
+
+        static void Crafted(Component __instance, object[] __args, bool __result)
+        {
+            if (ApplyingRemote || S == null || !__result || __instance == null || __args.Length < 2) return;
+            S.BaseLife.OnLocalCraft(__instance, __args[0], __args[1] is float d ? d : 0f);
+        }
+
+        static bool CraftPickup(Component __instance) => S == null || S.BaseLife.AllowPickup(__instance);
+
+        static bool FireStarting(Component __instance) => ApplyingRemote || S == null || S.BaseLife.RunsFires(__instance);
+
+        static void Doused(Component __instance, object[] __args)
+        {
+            if (ApplyingRemote || S == null || __instance == null || __args.Length == 0 || !(__args[0] is float amount)) return;
+            S.BaseLife.OnLocalDouse(__instance, amount);
+        }
+
+        static void HullBefore(Component __instance, out float __state) =>
+            __state = __instance != null && Game.Get(Game.LiveMixin, __instance, "health") is float h ? h : 0f;
+
+        static void HullDamaged(Component __instance, object[] __args, float __state)
+        {
+            if (ApplyingRemote || S == null || __instance == null) return;
+            var type = __args.Length > 2 ? __args[2]?.ToString() : "";
+            if (type == "Pressure" || type == "Fire") return; // those happen on every PC anyway
+            if (!BaseLifeSync.IsHull(__instance) || !(Game.Get(Game.LiveMixin, __instance, "health") is float now)) return;
+            if (now < __state) S.BaseLife.OnLocalHullChange(__instance, now - __state);
+        }
+
+        static void HullRepaired(Component __instance, float __state)
+        {
+            if (ApplyingRemote || S == null || __instance == null || !BaseLifeSync.IsHull(__instance)) return;
+            if (Game.Get(Game.LiveMixin, __instance, "health") is float now && now > __state)
+                S.BaseLife.OnLocalHullChange(__instance, now - __state);
+        }
+
+        static void Picked(Component __instance)
+        {
+            if (ApplyingRemote || S == null || __instance == null) return;
+            S.BaseLife.OnLocalPicked(__instance);
+        }
+
+        // Babies / hatchlings are made by the host only, then sent to everyone like a dropped item.
+        static bool BornHere() => S == null || S.IsHost;
+
+        static void ParkAdded(object[] __args)
+        {
+            if (ApplyingRemote || S == null || __args.Length == 0 || !(__args[0] is Component p) || p == null) return;
+            S.Items.OnLocalDrop(p.gameObject);
         }
     }
 }

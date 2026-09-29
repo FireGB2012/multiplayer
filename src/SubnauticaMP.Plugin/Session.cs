@@ -27,6 +27,10 @@ namespace SubnauticaMP
         internal ItemSync Items;
         internal StorySync Story;
         internal CreatureSync Creatures;
+        internal SleepSync Sleep;
+        internal PowerSync Power;
+        internal BaseLifeSync BaseLife;
+        internal GhostSync Ghosts;
         internal IEnumerable<RemotePlayer> Remotes => _remotes.Values;
 
         NetServer _hostedServer;
@@ -66,6 +70,10 @@ namespace SubnauticaMP
             Items = new ItemSync(this);
             Story = new StorySync(this);
             Creatures = new CreatureSync(this);
+            Sleep = new SleepSync(this);
+            Power = new PowerSync(this);
+            BaseLife = new BaseLifeSync(this);
+            Ghosts = new GhostSync(this);
 
             if (!_launchRead)
             {
@@ -137,6 +145,10 @@ namespace SubnauticaMP
             SafeRun("items", Items.Update);
             SafeRun("story", Story.Update);
             SafeRun("creatures", Creatures.Update);
+            SafeRun("beds", Sleep.Update);
+            SafeRun("power", Power.Update);
+            SafeRun("base life", BaseLife.Update);
+            SafeRun("build holograms", Ghosts.Update);
 
             _sendTimer += Time.unscaledDeltaTime;
             if (_sendTimer >= SendInterval)
@@ -192,7 +204,7 @@ namespace SubnauticaMP
             Send(new UnlockPacket { Kind = kind, Key = key });
         }
 
-        string _heldCache = "";
+        string _heldCache = "", _gearCache = "", _animCache = "";
         float _heldCheck;
 
         void SendLocalState()
@@ -202,7 +214,9 @@ namespace SubnauticaMP
             {
                 _heldCheck = Time.unscaledTime + 0.3f;
                 try { _heldCache = Game.HeldTech(); } catch { _heldCache = ""; }
+                try { _gearCache = PlayerLooks.ReadGear(); } catch { _gearCache = ""; }
             }
+            try { _animCache = PlayerLooks.ReadAnim(); } catch { _animCache = ""; }
             var player = Game.LocalPlayer;
             if (player == null) return;
 
@@ -215,6 +229,7 @@ namespace SubnauticaMP
             if (Game.Is(player, "IsUnderwater")) flags |= PlayerFlags.Underwater;
             if (Game.Is(player, "IsInSub")) flags |= PlayerFlags.InBase;
             if (Game.PlayerVehicle(player) != null) flags |= PlayerFlags.InVehicle;
+            if (Sleep.LocalAsleep) flags |= PlayerFlags.Sleeping;
 
             var (health, food, water) = Game.Vitals(player);
 
@@ -248,6 +263,8 @@ namespace SubnauticaMP
                 SubId = subId,
                 LocalPosition = localPos,
                 LocalRotation = localRot,
+                Gear = _gearCache,
+                Anim = _animCache,
             });
         }
 
@@ -280,6 +297,10 @@ namespace SubnauticaMP
                     Items.OnWelcome(welcome.World);
                     Story.OnWelcome(welcome.World);
                     Creatures.OnWelcome(welcome.World);
+                    Power.OnWelcome(welcome.World);
+                    Sleep.Reset();
+                    BaseLife.Reset();
+                    Ghosts.Reset();
                     AddChat($"Connected! {welcome.Players.Count} other player(s) here. {_gameMode} world.");
                     if (_autoStart && !Game.InWorld) StartCoroutine(AutoStart());
                     _autoStart = false;
@@ -304,6 +325,7 @@ namespace SubnauticaMP
                 case PlayerLeftPacket left:
                     AddChat($"{NameOf(left.Id)} left");
                     RemoveRemote(left.Id);
+                    Ghosts.Remove(left.Id);
                     break;
 
                 case PlayerStatePacket state:
@@ -311,7 +333,7 @@ namespace SubnauticaMP
                     break;
 
                 case ChatPacket chat:
-                    AddChat($"{NameOf(chat.SenderId)}: {chat.Text}");
+                    AddChat(chat.SenderId == 0 ? chat.Text : $"{NameOf(chat.SenderId)}: {chat.Text}");
                     break;
 
                 case RejectedPacket rejected:
@@ -334,6 +356,14 @@ namespace SubnauticaMP
                 case CreatureStatesPacket cs: Creatures.OnStates(cs); break;
                 case CreatureDamagePacket cd: Creatures.OnDamage(cd); break;
                 case CreatureDiedPacket cdied: Creatures.OnDied(cdied.Id); break;
+                case SleepPacket sleep: Sleep.OnSleep(sleep); break;
+                case PowerPacket power: Power.OnPower(power); break;
+                case CraftPacket craft: BaseLife.OnCraft(craft); break;
+                case FiresPacket fires: BaseLife.OnFires(fires); break;
+                case FireDousePacket douse: BaseLife.OnDouse(douse); break;
+                case HullHealthPacket hull: BaseLife.OnHull(hull); break;
+                case PickedPacket picked: BaseLife.OnPicked(picked); break;
+                case BuildGhostPacket ghost: Ghosts.OnGhost(ghost); break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
                     AddChat($"{NameOf(died.Id)} died!");
@@ -365,6 +395,10 @@ namespace SubnauticaMP
                 Items.Reset();
                 Story.Reset();
                 Creatures.Reset();
+                Sleep.Reset();
+                Power.Reset();
+                BaseLife.Reset();
+                Ghosts.Reset();
             }
             _lastState = state;
         }
@@ -543,6 +577,10 @@ namespace SubnauticaMP
             Items.Reset();
             Story.Reset();
             Creatures.Reset();
+            Sleep.Reset();
+            Power.Reset();
+            BaseLife.Reset();
+            Ghosts.Reset();
         }
 
         static string SafeFileName(string s)

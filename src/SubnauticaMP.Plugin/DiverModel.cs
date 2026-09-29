@@ -133,6 +133,7 @@ namespace SubnauticaMP
             if (_prototype != null) UnityEngine.Object.Destroy(_prototype);
             _prototype = null;
             _failed = false;
+            PlayerLooks.Forget();
         }
     }
 
@@ -164,6 +165,15 @@ namespace SubnauticaMP
             SetFloat("move_speed_y", _smoothed.y);
             SetFloat("move_speed_z", _smoothed.z);
             SetFloat("view_pitch", 0f);
+        }
+
+        // tool / PDA / builder switches from the other player's own animator
+        public void SetToolAnims(string anims)
+        {
+            if (_animator == null) return;
+            var on = new HashSet<string>((anims ?? "").Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries));
+            foreach (var p in _params)
+                if (PlayerLooks.IsToolAnim(p)) SetBool(p, on.Contains(p));
         }
 
         void SetBool(string n, bool v) { if (_params.Contains(n)) _animator.SetBool(n, v); }
