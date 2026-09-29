@@ -24,6 +24,8 @@ namespace SubnauticaMP.Launcher
             NameBox.Text = _settings.PlayerName;
             JoinBox.Text = _settings.LastJoin;
             WorldBox.Text = _settings.WorldName;
+            ModeBox.ItemsSource = GameModes.All;
+            ModeBox.SelectedItem = _settings.Mode;
             PortBox.Text = _settings.Port.ToString();
             GameDirBox.Text = GameFolder.IsGameDir(_settings.GameDir) ? _settings.GameDir : GameFolder.Detect() ?? _settings.GameDir;
 
@@ -37,11 +39,14 @@ namespace SubnauticaMP.Launcher
             CopyInternetButton.Click += (_, _) => Run(() => Copy(_host.InternetCode));
             CopyLanButton.Click += (_, _) => Run(() => Copy(_host.LanCode));
             GameDirBox.TextChanged += (_, _) => RefreshSetup();
+            WorldBox.TextChanged += (_, _) => RefreshWorld();
+            ModeBox.SelectionChanged += (_, _) => RefreshWorld();
 
             _host.Log += line => Dispatcher.UIThread.Post(() => AppendLog(line));
             _host.Changed += () => Dispatcher.UIThread.Post(RefreshServer);
 
             RefreshSetup();
+            RefreshWorld();
             RefreshServer();
             Status(GameFolder.IsGameDir(GameDir)
                 ? "Ready. Pick Join or Host."
@@ -49,6 +54,8 @@ namespace SubnauticaMP.Launcher
         }
 
         string GameDir => (GameDirBox.Text ?? "").Trim().Trim('"');
+        string WorldName => string.IsNullOrWhiteSpace(WorldBox.Text) ? "My World" : WorldBox.Text.Trim();
+        string Mode => ModeBox.SelectedItem as string ?? GameModes.Survival;
         string PlayerName => Protocol.CleanName(NameBox.Text);
 
         protected override void OnClosing(WindowClosingEventArgs e)
@@ -62,7 +69,8 @@ namespace SubnauticaMP.Launcher
         {
             _settings.PlayerName = NameBox.Text ?? "";
             _settings.LastJoin = JoinBox.Text ?? "";
-            _settings.WorldName = WorldBox.Text ?? "My World";
+            _settings.WorldName = WorldName;
+            _settings.Mode = Mode;
             _settings.GameDir = GameDir;
             if (int.TryParse(PortBox.Text, out var p)) _settings.Port = p;
             _settings.Save();
@@ -98,7 +106,7 @@ namespace SubnauticaMP.Launcher
             if (!_host.Running) StartServer();
             LaunchGame("127.0.0.1", _host.Port);
             Tabs.SelectedIndex = 1;
-            Status("Server running + game starting. Send friends the join code. Keep this window open!");
+            Status("Server running + game starting. Send friends the join code, then press ENTER in game when everyone's in. Keep this window open!");
         }
 
         void LaunchGame(string host, int port)
@@ -149,11 +157,10 @@ namespace SubnauticaMP.Launcher
         {
             if (!int.TryParse(PortBox.Text, out var port) || port < 1 || port > 65535)
                 throw new Exception("Port has to be a number between 1 and 65535.");
-            var world = string.IsNullOrWhiteSpace(WorldBox.Text) ? "My World" : WorldBox.Text.Trim();
             LogBox.Text = "";
             try
             {
-                _host.Start(world, port);
+                _host.Start(WorldName, port, Mode);
             }
             catch (System.Net.Sockets.SocketException)
             {
@@ -168,6 +175,16 @@ namespace SubnauticaMP.Launcher
             bool running = _host.Running;
             ServerButton.Content = running ? "STOP SERVER" : "START SERVER";
             WorldBox.IsEnabled = PortBox.IsEnabled = !running;
+            ModeBox.IsEnabled = !running && HostedServer.TryLoadWorld(WorldName) == null;
+            var world = running ? _host.World : HostedServer.TryLoadWorld(WorldName);
+            WorldSummary.Text = $"{WorldName}  ·  {(world?.GameMode ?? Mode)}" + (world == null ? "  ·  new" : "");
+            if (world != null && running)
+            {
+                LobbyText.Text = world.Started
+                    ? "Game started. Friends can still join any time."
+                    : "Lobby: new world. Everyone waits on a black screen until the host presses ENTER in game.";
+                LobbyText.Foreground = Avalonia.Media.Brush.Parse(world.Started ? "#5BD68B" : "#5FD4E0");
+            }
             CodesCard.IsVisible = running;
             InternetCodeText.Text = _host.InternetCode ?? "finding...";
             LanCodeText.Text = _host.LanCode ?? "-";
@@ -175,7 +192,8 @@ namespace SubnauticaMP.Launcher
             CopyLanButton.IsEnabled = _host.LanCode != null;
             RouterText.Text = _host.RouterStatus ?? "";
             RouterText.Foreground = Avalonia.Media.Brush.Parse(_host.RouterOk ? "#5BD68B" : "#E8C27A");
-            PlayersList.ItemsSource = _host.Players.Select(p => p.Name).ToList();
+            int hostId = _host.HostId;
+            PlayersList.ItemsSource = _host.Players.Select(p => p.Id == hostId ? p.Name + "  (host)" : p.Name).ToList();
         }
 
         void AppendLog(string line)
@@ -191,6 +209,26 @@ namespace SubnauticaMP.Launcher
             if (string.IsNullOrEmpty(text) || Clipboard == null) return;
             await Clipboard.SetTextAsync(text);
             Status("Copied " + text + ". Send it to your friends!");
+        }
+
+        // Existing worlds keep the mode they were made with.
+        void RefreshWorld()
+        {
+            if (ModeBox == null || ModeHint == null) return;
+            var existing = HostedServer.TryLoadWorld(WorldName);
+            if (existing != null)
+            {
+                if (!Equals(ModeBox.SelectedItem, existing.GameMode)) ModeBox.SelectedItem = existing.GameMode;
+                ModeBox.IsEnabled = false;
+                ModeHint.Text = $"'{WorldName}' already exists ({existing.GameMode}" +
+                                (existing.Started ? ", in progress" : "") + "). Type a new name to make a new world.";
+            }
+            else
+            {
+                ModeBox.IsEnabled = !_host.Running;
+                ModeHint.Text = "New world. " + GameModes.Describe(Mode);
+            }
+            if (WorldSummary != null && !_host.Running) RefreshServer();
         }
 
         // ---------- setup ----------

@@ -11,7 +11,7 @@ namespace SubnauticaMP.Shared
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 1;
+        const int FileVersion = 2;
         const int MaxEntries = 1_000_000;
 
         public HashSet<string> Blueprints = new HashSet<string>();
@@ -21,6 +21,9 @@ namespace SubnauticaMP.Shared
         public Dictionary<string, VehicleInfo> Vehicles = new Dictionary<string, VehicleInfo>();
         public bool HasTime;
         public double TimePassed;
+        public string WorldId = Guid.NewGuid().ToString("N"); // lets each player find their own save for this world
+        public string GameMode = GameModes.Survival;
+        public bool Started; // false = still in the lobby, waiting for the host to start
 
         public HashSet<string> SetFor(UnlockKind kind)
         {
@@ -42,9 +45,14 @@ namespace SubnauticaMP.Shared
             foreach (var v in Vehicles.Values) v.Write(w);
             w.Write(HasTime);
             w.Write(TimePassed);
+            w.Write(WorldId ?? "");
+            w.Write(GameMode ?? GameModes.Survival);
+            w.Write(Started);
         }
 
-        public static WorldState Read(BinaryReader r)
+        public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
+
+        static WorldState Read(BinaryReader r, int version)
         {
             var s = new WorldState
             {
@@ -61,6 +69,16 @@ namespace SubnauticaMP.Shared
             }
             s.HasTime = r.ReadBoolean();
             s.TimePassed = r.ReadDouble();
+            if (version >= 2)
+            {
+                s.WorldId = r.ReadString();
+                s.GameMode = GameModes.Normalize(r.ReadString());
+                s.Started = r.ReadBoolean();
+            }
+            else
+            {
+                s.Started = true; // worlds from v0.2 were already being played
+            }
             return s;
         }
 
@@ -75,6 +93,9 @@ namespace SubnauticaMP.Shared
                 Vehicles = Vehicles.ToDictionary(kv => kv.Key, kv => kv.Value.Clone()),
                 HasTime = HasTime,
                 TimePassed = TimePassed,
+                WorldId = WorldId,
+                GameMode = GameMode,
+                Started = Started,
             };
         }
 
@@ -101,8 +122,8 @@ namespace SubnauticaMP.Shared
             {
                 if (r.ReadInt32() != FileMagic) throw new InvalidDataException("Not a SubnauticaMP world file");
                 int version = r.ReadInt32();
-                if (version != FileVersion) throw new InvalidDataException("Unsupported world file version " + version);
-                return Read(r);
+                if (version < 1 || version > FileVersion) throw new InvalidDataException("Unsupported world file version " + version);
+                return Read(r, version);
             }
         }
 

@@ -18,7 +18,7 @@ namespace SubnauticaMP
         Rect _window = new Rect(40, 40, 380, 380);
         string _chatInput = "";
         Vector2 _chatScroll;
-        GUIStyle _tagStyle, _codeStyle;
+        GUIStyle _tagStyle, _codeStyle, _bigStyle, _midStyle;
 
         public void AddChat(string line)
         {
@@ -35,8 +35,10 @@ namespace SubnauticaMP
 
         void OnGUI()
         {
+            GUI.depth = -1000; // above the game's own UI
             DrainPendingChat();
-            DrawNameTags();
+            if (Lobby.Holding) DrawLobby();
+            else DrawNameTags();
             DrawChatOverlay();
             if (_menuOpen) _window = GUILayout.Window(0x5B4D50, _window, DrawWindow, "Subnautica Multiplayer  (F8)");
         }
@@ -59,6 +61,49 @@ namespace SubnauticaMP
                 if (screen.z <= 0f) continue; // behind us
                 float dist = Vector3.Distance(cam.transform.position, r.transform.position);
                 GUI.Label(new Rect(screen.x - 100, Screen.height - screen.y - 12, 200, 24), $"{r.PlayerName} ({dist:0}m)", _tagStyle);
+            }
+        }
+
+        // Black "waiting for players" screen shown instead of the intro until the host starts.
+        void DrawLobby()
+        {
+            if (_bigStyle == null)
+            {
+                _bigStyle = new GUIStyle(GUI.skin.label) { fontSize = 42, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter };
+                _bigStyle.normal.textColor = new Color(0.37f, 0.83f, 0.88f);
+                _midStyle = new GUIStyle(GUI.skin.label) { fontSize = 20, alignment = TextAnchor.MiddleCenter, wordWrap = true };
+                _midStyle.normal.textColor = Color.white;
+            }
+
+            GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.blackTexture);
+
+            float w = Mathf.Min(900f, Screen.width - 40f);
+            float x = (Screen.width - w) / 2f;
+            float y = Screen.height * 0.28f;
+
+            GUI.Label(new Rect(x, y, w, 60), "WAITING FOR PLAYERS", _bigStyle);
+            y += 80;
+
+            var names = new List<string> { Plugin.PlayerName.Value };
+            foreach (var r in _remotes.Values) if (r != null) names.Add(r.PlayerName);
+            GUI.Label(new Rect(x, y, w, 32), $"{names.Count} {(names.Count == 1 ? "player" : "players")} in the server", _midStyle);
+            y += 34;
+            GUI.Label(new Rect(x, y, w, 60), string.Join("   ", names.ToArray()), _midStyle);
+            y += 70;
+            GUI.Label(new Rect(x, y, w, 30), $"{_gameMode} mode", _midStyle);
+            y += 50;
+
+            if (IsHost)
+            {
+                GUI.Label(new Rect(x, y, w, 30), "Everyone in? Press ENTER to start", _midStyle);
+                y += 44;
+                if (GUI.Button(new Rect(Screen.width / 2f - 110, y, 220, 50), "START")) StartForEveryone();
+                if (_joinCode != null)
+                    GUI.Label(new Rect(x, y + 80, w, 30), "Join code: " + _joinCode, _midStyle);
+            }
+            else
+            {
+                GUI.Label(new Rect(x, y, w, 30), $"Waiting for {HostName} to start the game...", _midStyle);
             }
         }
 

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using HarmonyLib;
+using SubnauticaMP.Shared;
 using UnityEngine;
 
 namespace SubnauticaMP
@@ -16,7 +17,8 @@ namespace SubnauticaMP
         internal static Type Player, MainCamera, Vehicle, SubRoot, KnownTech, PDAEncyclopedia, CraftData,
             UniqueIdentifier, Pickupable, BreakableResource, DayNightCycle, LargeWorldEntity, CrafterLogic,
             StorageContainer, TechType, VFXConstructing, WorldForces, LightmappedPrefabs, SubConsoleCommand,
-            SaveLoadManager;
+            SaveLoadManager, MainMenuType, MainMenuLoadButton, SceneIntro, GameInput, EscapePod, GameModeUtils,
+            GameModeOption, GameModeEnum;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         static readonly Dictionary<string, Func<object, object>> Getters = new Dictionary<string, Func<object, object>>();
@@ -49,6 +51,14 @@ namespace SubnauticaMP
             LightmappedPrefabs = Find("LightmappedPrefabs");
             SubConsoleCommand = Find("SubConsoleCommand");
             SaveLoadManager = Find("SaveLoadManager");
+            MainMenuType = Find("uGUI_MainMenu");
+            MainMenuLoadButton = Find("MainMenuLoadButton");
+            SceneIntro = Find("uGUI_SceneIntro");
+            GameInput = Find("GameInput");
+            EscapePod = Find("EscapePod");
+            GameModeUtils = Find("GameModeUtils");
+            GameModeOption = Find("GameModeOption");
+            GameModeEnum = Find("GameMode");
         }
 
         static Type Find(string name)
@@ -89,6 +99,15 @@ namespace SubnauticaMP
                     ?? AccessTools.Method(type, name, Type.EmptyTypes);
             if (m != null) return o => m.Invoke(o, null);
             return null;
+        }
+
+        // Like Get, but quiet when the member doesn't exist (for guessing between a few possible names).
+        internal static object TryGet(Type type, object target, string name)
+        {
+            if (type == null) return null;
+            var key = type.FullName + "." + name;
+            if (!Getters.TryGetValue(key, out var getter)) Getters[key] = getter = MakeGetter(type, name);
+            return getter?.Invoke(target);
         }
 
         internal static bool Set(Type type, object target, string name, object value)
@@ -189,11 +208,102 @@ namespace SubnauticaMP
         {
             try
             {
-                var mgr = Get(SaveLoadManager, null, "main");
-                var slot = mgr != null ? Get(SaveLoadManager, mgr, "GetCurrentSlot") as string : null;
+                var mgr = TryGet(SaveLoadManager, null, "main");
+                var slot = mgr != null ? TryGet(SaveLoadManager, mgr, "GetCurrentSlot") as string : null;
                 return string.IsNullOrEmpty(slot) ? "default" : slot;
             }
             catch { return "default"; }
+        }
+
+        // ---------- main menu: new game / load save ----------
+
+        public static Component MainMenu
+        {
+            get
+            {
+                var menu = As<Component>(TryGet(MainMenuType, null, "main"));
+                if (menu == null && MainMenuType != null) menu = UnityEngine.Object.FindObjectOfType(MainMenuType) as Component;
+                return menu != null ? menu : null;
+            }
+        }
+
+        public static bool StartNewGame(string mode, MonoBehaviour runner)
+        {
+            var menu = MainMenu;
+            if (menu == null || GameModeEnum == null) return false;
+            object gm;
+            try { gm = Enum.Parse(GameModeEnum, mode); }
+            catch { gm = Enum.ToObject(GameModeEnum, 0); } // Survival; the real mode gets set after loading
+            if (!(Call(MainMenuType, menu, "StartNewGame", gm) is IEnumerator e)) return false;
+            runner.StartCoroutine(e);
+            return true;
+        }
+
+        public static string CurrentGameMode()
+        {
+            var current = TryGet(GameModeUtils, null, "currentGameMode");
+            if (current == null) return GameModes.Survival;
+            int value = Convert.ToInt32(current);
+            foreach (var m in GameModes.All)
+                if (GameModes.OptionValue(m) == value) return m;
+            return GameModes.Survival;
+        }
+
+        public static void SetGameMode(string mode)
+        {
+            if (GameModeUtils == null || GameModeOption == null) return;
+            Call(GameModeUtils, null, "SetGameMode", Enum.ToObject(GameModeOption, GameModes.OptionValue(mode)));
+        }
+
+        static object SaveInfo(string slot)
+        {
+            var mgr = TryGet(SaveLoadManager, null, "main");
+            return mgr == null ? null : Call(SaveLoadManager, mgr, "GetGameInfo", slot);
+        }
+
+        public static bool SaveExists(string slot) => !string.IsNullOrEmpty(slot) && SaveInfo(slot) != null;
+
+        // Loads a save slot as if you clicked it in the Load menu.
+        public static bool TryLoadSlot(string slot, MonoBehaviour runner)
+        {
+            var menu = MainMenu;
+            if (menu == null) return false;
+
+            if (MainMenuLoadButton != null)
+            {
+                foreach (var button in Resources.FindObjectsOfTypeAll(MainMenuLoadButton))
+                {
+                    if (TryGet(MainMenuLoadButton, button, "saveGame") as string != slot) continue;
+                    if (FindMethod(MainMenuLoadButton, "Load") == null) break;
+                    Call(MainMenuLoadButton, button, "Load");
+                    return true;
+                }
+            }
+
+            // No button to click: call the menu's loader ourselves with the save's details.
+            var info = SaveInfo(slot);
+            var load = FindMethod(MainMenuType, "LoadGameAsync", typeof(string));
+            if (info == null || load == null) return false;
+            var ps = load.GetParameters();
+            var args = new object[ps.Length];
+            args[0] = slot;
+            for (int i = 1; i < ps.Length; i++)
+            {
+                var name = ps[i].Name;
+                var value = TryGet(info.GetType(), info, name)
+                            ?? (name.EndsWith("Id") ? TryGet(info.GetType(), info, name.Substring(0, name.Length - 2)) : null);
+                var type = ps[i].ParameterType;
+                if (value != null && !type.IsInstanceOfType(value))
+                {
+                    try { value = type.IsEnum ? Enum.ToObject(type, value) : Convert.ChangeType(value, type); }
+                    catch { value = null; }
+                }
+                args[i] = value ?? (ps[i].IsOptional && ps[i].DefaultValue != DBNull.Value ? ps[i].DefaultValue
+                    : type.IsValueType ? Activator.CreateInstance(type) : null);
+            }
+            if (!(load.Invoke(menu, args) is IEnumerator e)) return false;
+            runner.StartCoroutine(e);
+            return true;
         }
 
         // ---------- ids ----------

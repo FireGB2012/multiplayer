@@ -31,11 +31,24 @@ namespace SubnauticaMP.Launcher
 
         public System.Collections.Generic.List<PlayerInfo> Players =>
             _server?.Players ?? new System.Collections.Generic.List<PlayerInfo>();
+        public int HostId => _server?.HostId ?? 0;
+        public WorldState World => _server?.SnapshotWorld();
 
-        public void Start(string worldName, int port)
+        // The saved world with this name, or null if it's new.
+        public static WorldState TryLoadWorld(string worldName)
+        {
+            try
+            {
+                var path = WorldPath(worldName);
+                return File.Exists(path) ? WorldState.LoadFromFile(path) : null;
+            }
+            catch { return null; }
+        }
+
+        public void Start(string worldName, int port, string gameMode)
         {
             if (Running) return;
-            var server = new NetServer(WorldPath(worldName));
+            var server = new NetServer(WorldPath(worldName), gameMode);
             server.Log += m => Log?.Invoke(m);
             server.PlayersChanged += () => Changed?.Invoke();
             server.Start(port); // throws if the port is taken

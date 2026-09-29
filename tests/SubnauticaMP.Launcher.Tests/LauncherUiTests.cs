@@ -49,16 +49,21 @@ public class LauncherUiTests
         w.Show();
         w.FindControl<TabControl>("Tabs").SelectedIndex = 1;
         w.FindControl<TextBox>("PortBox").Text = FreePort().ToString();
-        w.FindControl<TextBox>("WorldBox").Text = "UiTest-" + Guid.NewGuid().ToString("N");
+        w.FindControl<TextBox>("WorldBox").Text = "My World";
+        File.Delete(HostedServer.WorldPath("My World"));
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        w.FindControl<ComboBox>("ModeBox").SelectedItem = "Creative";
         w.FindControl<Button>("ServerButton").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
 
         Assert.True(w.FindControl<Border>("CodesCard").IsVisible);
+        Assert.Contains("Lobby", w.FindControl<TextBlock>("LobbyText").Text);
         Assert.Equal("STOP SERVER", w.FindControl<Button>("ServerButton").Content);
         Snap(w, "4-server-running");
 
         w.FindControl<Button>("ServerButton").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
         Assert.Equal("START SERVER", w.FindControl<Button>("ServerButton").Content);
         w.Close();
+        File.Delete(HostedServer.WorldPath("My World"));
     }
 
     [AvaloniaFact]
@@ -72,6 +77,33 @@ public class LauncherUiTests
         Assert.Contains("Subnautica.exe", w.FindControl<TextBlock>("StatusText").Text);
         Assert.Equal(2, w.FindControl<TabControl>("Tabs").SelectedIndex);
         w.Close();
+    }
+
+    [AvaloniaFact]
+    public void ExistingWorldKeepsItsGameMode()
+    {
+        var name = "ModeTest-" + Guid.NewGuid().ToString("N");
+        var saved = new SubnauticaMP.Shared.WorldState { GameMode = SubnauticaMP.Shared.GameModes.Creative };
+        saved.SaveToFile(HostedServer.WorldPath(name));
+        try
+        {
+            var w = new MainWindow();
+            w.Show();
+            var mode = w.FindControl<ComboBox>("ModeBox");
+            w.FindControl<TextBox>("WorldBox").Text = "Brand new " + Guid.NewGuid().ToString("N");
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.True(mode.IsEnabled);
+            mode.SelectedItem = "Hardcore";
+            Assert.Contains("one life", w.FindControl<TextBlock>("ModeHint").Text);
+
+            w.FindControl<TextBox>("WorldBox").Text = name;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs(); // TextChanged fires on the next UI tick
+            Assert.False(mode.IsEnabled);
+            Assert.Equal("Creative", mode.SelectedItem);
+            Assert.Contains("already exists", w.FindControl<TextBlock>("ModeHint").Text);
+            w.Close();
+        }
+        finally { File.Delete(HostedServer.WorldPath(name)); }
     }
 
     static int FreePort()

@@ -2,7 +2,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SubnauticaMP.Launcher.MainWindow"
         Title="Subnautica Multiplayer"
-        Width="780" Height="620" MinWidth="560" MinHeight="520"
+        Width="800" Height="680" MinWidth="560" MinHeight="520"
         Background="#07131F"
         WindowStartupLocation="CenterScreen">
 
@@ -49,7 +49,15 @@
               <Border Classes="card" Grid.Column="2">
                 <StackPanel Spacing="10">
                   <TextBlock Classes="h2" Text="Host a game" />
-                  <TextBlock Classes="hint" Text="Runs the server on this PC and starts the game. Your join code shows up in the Server tab. Keep this window open while you play." />
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="label" Text="WORLD NAME" />
+                    <TextBox x:Name="WorldBox" />
+                  </StackPanel>
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="label" Text="GAME MODE" />
+                    <ComboBox x:Name="ModeBox" HorizontalAlignment="Stretch" />
+                  </StackPanel>
+                  <TextBlock x:Name="ModeHint" Classes="hint" />
                   <Button x:Name="HostPlayButton" Classes="primary" Content="HOST &amp; PLAY" />
                 </StackPanel>
               </Border>
@@ -58,9 +66,10 @@
             <Border Classes="card">
               <StackPanel Spacing="4">
                 <TextBlock Classes="h2" Text="How it works" FontSize="14" />
-                <TextBlock Classes="hint" Text="1. Hit Join or Host. The game opens with the mod installed." />
-                <TextBlock Classes="hint" Text="2. Load a save or start a new game. You connect by yourself a few seconds after it loads." />
-                <TextBlock Classes="hint" Text="3. F8 in game opens the multiplayer menu (chat, leave, join code)." />
+                <TextBlock Classes="hint" Text="1. Hit Host or Join. The game opens and goes straight into the world by itself." />
+                <TextBlock Classes="hint" Text="2. New world: everyone waits on a black screen. When all your friends are in, the host presses ENTER and the intro plays for everyone." />
+                <TextBlock Classes="hint" Text="3. Next time, the same buttons load your save for that world." />
+                <TextBlock Classes="hint" Text="4. F8 in game opens the multiplayer menu (chat, leave, join code)." />
               </StackPanel>
             </Border>
           </StackPanel>
@@ -72,8 +81,8 @@
         <Grid RowDefinitions="Auto,Auto,*" Margin="4,12,4,12">
           <Grid ColumnDefinitions="*,10,110,10,Auto">
             <StackPanel Spacing="10">
-              <TextBlock Classes="label" Text="WORLD NAME" />
-              <TextBox x:Name="WorldBox" />
+              <TextBlock Classes="label" Text="WORLD (SET ON THE PLAY TAB)" />
+              <TextBlock x:Name="WorldSummary" FontSize="15" Foreground="White" Margin="0,6,0,0" />
             </StackPanel>
             <StackPanel Grid.Column="2" Spacing="10">
               <TextBlock Classes="label" Text="PORT" />
@@ -99,6 +108,7 @@
                 </StackPanel>
                 <Button Grid.Column="1" x:Name="CopyLanButton" Content="Copy" VerticalAlignment="Center" />
               </Grid>
+              <TextBlock x:Name="LobbyText" FontWeight="SemiBold" />
               <TextBlock x:Name="RouterText" Classes="hint" />
             </StackPanel>
           </Border>

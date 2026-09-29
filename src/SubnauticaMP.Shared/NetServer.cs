@@ -19,6 +19,7 @@ namespace SubnauticaMP.Shared
             public int Id;
             public string Name;
             public bool Joined;
+            public bool IsLocal; // playing on the same PC as the server: that's the host
         }
 
         const double TimeSyncSeconds = 5;
@@ -34,16 +35,21 @@ namespace SubnauticaMP.Shared
         TcpListener _listener;
         Timer _tick;
         int _nextId = 1;
+        int _hostId;
 
         public event Action<string> Log;
-        public event Action PlayersChanged;
+        public event Action PlayersChanged; // also fires when the game starts or the host changes
         public int Port { get; private set; }
         public bool Running => _listener != null;
+        public int HostId { get { lock (_lock) return _hostId; } }
 
-        // savePath = null keeps the world in memory only.
-        public NetServer(string savePath = null)
+        // savePath = null keeps the world in memory only. gameMode/started only apply when the world is brand new;
+        // started = true skips the lobby (e.g. hosting from inside a save you're already playing).
+        public NetServer(string savePath = null, string gameMode = GameModes.Survival, bool started = false)
         {
             _savePath = savePath;
+            _world.GameMode = GameModes.Normalize(gameMode);
+            _world.Started = started;
         }
 
         public int PlayerCount
@@ -182,7 +188,8 @@ namespace SubnauticaMP.Shared
                 try { tcp = listener.AcceptTcpClient(); }
                 catch { return; } // listener stopped
 
-                var conn = new Connection(tcp) { Tag = new Client(), MaxPacketSize = Protocol.MaxClientPacketSize };
+                bool local = tcp.Client.RemoteEndPoint is IPEndPoint ep && IPAddress.IsLoopback(ep.Address);
+                var conn = new Connection(tcp) { Tag = new Client { IsLocal = local }, MaxPacketSize = Protocol.MaxClientPacketSize };
                 conn.PacketReceived += OnPacket;
                 conn.Closed += OnClosed;
                 lock (_lock) _connections.Add(conn);
@@ -279,6 +286,18 @@ namespace SubnauticaMP.Shared
                     Broadcast(vremoved, except: conn);
                     break;
 
+                case StartGamePacket _:
+                    lock (_lock)
+                    {
+                        if (client.Id != _hostId || _world.Started) return;
+                        _world.Started = true;
+                    }
+                    _dirty = true;
+                    Log?.Invoke($"{client.Name} started the game!");
+                    Broadcast(new StartGamePacket(), except: null);
+                    PlayersChanged?.Invoke();
+                    break;
+
                 case TimeSyncPacket time:
                     // first player into a brand-new world sets the clock (usually the host's save)
                     lock (_lock)
@@ -302,6 +321,7 @@ namespace SubnauticaMP.Shared
             }
 
             var welcome = new WelcomePacket();
+            bool hostChanged;
             lock (_lock)
             {
                 if (_connections.Count(c => ((Client)c.Tag).Joined) >= Protocol.MaxPlayers)
@@ -321,12 +341,26 @@ namespace SubnauticaMP.Shared
                 welcome.World = _world.Clone();
                 welcome.World.TimePassed = CurrentTime();
                 client.Joined = true;
+                hostChanged = PickHost();
+                welcome.HostId = _hostId;
             }
 
             conn.Send(welcome);
             Broadcast(new PlayerJoinedPacket { Id = client.Id, Name = client.Name }, except: conn);
+            if (hostChanged) Broadcast(new HostPacket { HostId = HostId }, except: conn);
             Log?.Invoke($"{client.Name} joined (id {client.Id})");
             PlayersChanged?.Invoke();
+        }
+
+        // Host = whoever plays on the server's own PC, otherwise whoever has been here longest. Call inside _lock.
+        bool PickHost()
+        {
+            var joined = _connections.Select(c => (Client)c.Tag).Where(c => c.Joined).OrderBy(c => c.Id).ToList();
+            var host = joined.FirstOrDefault(c => c.IsLocal) ?? joined.FirstOrDefault();
+            int id = host?.Id ?? 0;
+            if (id == _hostId) return false;
+            _hostId = id;
+            return true;
         }
 
         static void Reject(Connection conn, string reason)
@@ -339,16 +373,19 @@ namespace SubnauticaMP.Shared
         {
             var client = (Client)conn.Tag;
             var released = new List<string>();
+            bool hostChanged;
             lock (_lock)
             {
                 _connections.Remove(conn);
                 if (!client.Joined) return;
                 foreach (var v in _world.Vehicles.Values)
                     if (v.OwnerId == client.Id) { v.OwnerId = 0; released.Add(v.Id); }
+                hostChanged = PickHost();
             }
 
             foreach (var id in released) Broadcast(new VehicleOwnerPacket { Id = id, OwnerId = 0 }, except: null);
             Broadcast(new PlayerLeftPacket { Id = client.Id }, except: null);
+            if (hostChanged) Broadcast(new HostPacket { HostId = HostId }, except: null);
             Log?.Invoke($"{client.Name} left ({reason})");
             PlayersChanged?.Invoke();
         }

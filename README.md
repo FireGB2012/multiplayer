@@ -5,6 +5,8 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 ## What syncs
 | Thing | Status |
 |---|---|
+| Lobby: new worlds wait on a black screen, host starts the intro for everyone | ✔ |
+| Game mode picked in the launcher (Survival / Hardcore / Creative / Freedom) | ✔ |
 | Players (position, facing, name tags) | ✔ |
 | Chat | ✔ |
 | Blueprints (unlocks, fragment scans) | ✔ everyone shares one tech tree |
@@ -25,13 +27,17 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 2. **Setup tab**: check it found your Subnautica folder. If BepInEx is missing, hit **Install BepInEx for me**
    (or install BepInEx 5 x64 yourself). Start the game once after installing BepInEx, then close it.
 3. **Play tab**:
-   - **Host & Play**: starts a server on your PC and opens the game. Your join code is in the **Server** tab. Keep the launcher open.
+   - **Host & Play**: pick a world name + game mode, and it starts a server on your PC and opens the game.
+     Your join code is in the **Server** tab. Keep the launcher open.
    - **Join & Play**: paste a friend's join code (like `KQ7MX-3HD2P`) or IP.
-4. Load a save or start a new game. You connect automatically a few seconds after it loads.
+4. The game goes straight into the world by itself (no menus):
+   - **New world**: everyone lands on a black *Waiting for players* screen showing who's in.
+     When everyone's there the host presses **ENTER** (or clicks START) and the lifepod intro plays for everyone at once.
+   - **Existing world**: it loads your save for that world. First time joining someone's world? You get a fresh game in their mode.
 5. In game, **F8** opens the multiplayer window (chat, join code, leave).
 
-Tip: the first person into a server's world "seeds" it with their save's blueprints and time.
-Joiners usually start a **new game** so their world lines up with the host's.
+The host is whoever plays on the server's PC (otherwise whoever joined first).
+Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.
 
 ## Friends on a different wifi
 The host's launcher asks the router to open the port automatically (UPnP). The Server tab tells you if it worked.
@@ -53,7 +59,7 @@ Commands: `players`, `save`, `quit`.
 ## Building
 Needs the .NET 8 SDK.
 ```
-dotnet test                                                   # 30 tests: networking, world sync, UPnP, launcher UI
+dotnet test                                                   # 37 tests: networking, world sync, lobby, UPnP, launcher UI
 dotnet publish src/SubnauticaMP.Launcher -c Release -r win-x64   # -> SubnauticaMP-Launcher.exe (mod packed inside)
 dotnet build src/SubnauticaMP.Plugin -c Release -p:GameDir="C:\...\Subnautica"   # mod only, copies into the game
 ```

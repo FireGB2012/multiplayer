@@ -46,6 +46,9 @@ namespace SubnauticaMP
             Hook("pickups", Game.Pickupable, "Pickup", prefix: nameof(PickedUp));
             Hook("breaking", Game.BreakableResource, "BreakIntoResources", prefix: nameof(Broken));
             Hook("vehicle deaths", Game.Vehicle, "OnKill", prefix: nameof(VehicleKilled));
+            Hook("lobby", Game.SceneIntro, "IntroSequence", postfix: nameof(WrapIntro));
+            Hook("lobby start", Game.GameInput, "get_AnyKeyDown", postfix: nameof(AnyKeyDown));
+            Hook("intro sync", Game.EscapePod, "TriggerIntroCinematic", postfix: nameof(IntroCinematicStarted));
 
             Plugin.Log.LogInfo("Synced features: " + string.Join(", ", ok.ToArray()));
             if (failed.Count > 0) Plugin.Log.LogWarning("Could NOT hook (these won't sync): " + string.Join("; ", failed.ToArray()));
@@ -100,6 +103,15 @@ namespace SubnauticaMP
             var id = Game.GetId(c.gameObject);
             if (!string.IsNullOrEmpty(id)) S.Send(new EntityRemovedPacket { EntityId = id });
         }
+
+        static void WrapIntro(ref System.Collections.IEnumerator __result) => __result = Lobby.Hold(__result);
+
+        static void AnyKeyDown(ref bool __result)
+        {
+            if (Lobby.ForceAnyKey) __result = true;
+        }
+
+        static void IntroCinematicStarted() => Lobby.OnIntroCinematicStarted();
 
         static void VehicleKilled(Component __instance)
         {

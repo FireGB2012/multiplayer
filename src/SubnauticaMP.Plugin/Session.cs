@@ -30,10 +30,22 @@ namespace SubnauticaMP
         float _inWorldTimer;
         ClientState _lastState;
         LaunchInfo _autoJoin;
+        bool _autoStart;        // came from the launcher: start/load the game ourselves once connected
+        bool _newGameStarted;   // we clicked New Game for this world, so set its game mode after loading
+        bool _modeApplied;
+        bool _slotRecorded;
+        int _hostId;
+        string _worldId;
+        string _gameMode = GameModes.Survival;
 
         public bool Joined => _client.State == ClientState.Connected;
+        public bool Connecting => _client.State == ClientState.Connecting;
         public int LocalId => _client.LocalId;
         public bool InWorldAndSettled => _inWorldTimer >= SettleSeconds;
+        public bool WorldStarted { get; private set; }
+        public bool InLobby => Joined && !WorldStarted;
+        public bool IsHost => Joined && _hostId == LocalId;
+        public string HostName => NameOf(_hostId);
 
         void Awake()
         {
@@ -47,7 +59,7 @@ namespace SubnauticaMP
             if (_autoJoin != null)
             {
                 if (!string.IsNullOrEmpty(_autoJoin.PlayerName)) Plugin.PlayerName.Value = Protocol.CleanName(_autoJoin.PlayerName);
-                AddChat($"Launcher: will join {_autoJoin.Host}:{_autoJoin.Port} once your save loads");
+                AddChat($"Launcher: joining {_autoJoin.Host}:{_autoJoin.Port}...");
             }
         }
 
@@ -57,16 +69,38 @@ namespace SubnauticaMP
 
             _inWorldTimer = Game.InWorld ? _inWorldTimer + Time.unscaledDeltaTime : 0f;
 
-            if (_autoJoin != null && InWorldAndSettled && _client.State == ClientState.Disconnected)
+            // From the launcher: connect as soon as the main menu is up, then the server tells us what to load.
+            if (_autoJoin != null && _client.State == ClientState.Disconnected && (Game.MainMenu != null || Game.InWorld))
             {
                 var a = _autoJoin;
                 _autoJoin = null;
+                _autoStart = !Game.InWorld;
                 Connect(a.Host, a.Port);
             }
 
             PumpPackets();
             WatchConnection();
+            Lobby.Update();
             if (!Joined) return;
+
+            if (Lobby.Holding && IsHost &&
+                (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter) || Input.GetKeyDown(KeyCode.Space)))
+                StartForEveryone();
+
+            if (!InWorldAndSettled) _slotRecorded = false;
+            else
+            {
+                if (!_slotRecorded)
+                {
+                    _slotRecorded = true;
+                    SafeRun("save slot", () => WorldSlots.Set(_worldId, Game.CurrentSaveSlot()));
+                }
+                if (_newGameStarted && !_modeApplied)
+                {
+                    _modeApplied = true;
+                    SafeRun("gamemode", () => Game.SetGameMode(_gameMode));
+                }
+            }
 
             SafeRun("world", World.Update);
             SafeRun("vehicles", Vehicles.Update);
@@ -82,7 +116,7 @@ namespace SubnauticaMP
         void LateUpdate()
         {
             if (Joined) SafeRun("vehicles", Vehicles.LateUpdate);
-            if (_menuOpen)
+            if (_menuOpen || Lobby.Holding)
             {
                 // the game re-locks the cursor every frame; keep it free while our window is up
                 Cursor.lockState = CursorLockMode.None;
@@ -160,9 +194,26 @@ namespace SubnauticaMP
             {
                 case WelcomePacket welcome:
                     foreach (var p in welcome.Players) AddRemote(p.Id, p.Name);
+                    _hostId = welcome.HostId;
+                    _worldId = welcome.World.WorldId;
+                    _slotRecorded = false;
+                    _gameMode = welcome.World.GameMode;
+                    WorldStarted = welcome.World.Started;
                     World.OnWelcome(welcome.World);
                     Vehicles.OnWelcome(welcome.World);
-                    AddChat($"Connected! {welcome.Players.Count} other player(s) here.");
+                    AddChat($"Connected! {welcome.Players.Count} other player(s) here. {_gameMode} world.");
+                    if (_autoStart && !Game.InWorld) StartCoroutine(AutoStart());
+                    _autoStart = false;
+                    break;
+
+                case HostPacket host:
+                    _hostId = host.HostId;
+                    if (Joined) AddChat($"{NameOf(_hostId)} is the host now");
+                    break;
+
+                case StartGamePacket _:
+                    WorldStarted = true;
+                    AddChat($"{HostName} started the game!");
                     break;
 
                 case PlayerJoinedPacket joined:
@@ -211,6 +262,45 @@ namespace SubnauticaMP
             _lastState = state;
         }
 
+        // ---------- launcher auto-start ----------
+
+        // We're on the main menu and connected: load our save for this world, or start a new game in its mode.
+        System.Collections.IEnumerator AutoStart()
+        {
+            yield return new WaitForSecondsRealtime(1f); // let the menu finish setting up
+
+            var slot = WorldSlots.Get(_worldId);
+            if (slot != null)
+            {
+                // the save list loads in the background; give it a few seconds
+                for (float t = 0f; t < 8f && !Game.SaveExists(slot); t += 0.5f)
+                    yield return new WaitForSecondsRealtime(0.5f);
+
+                if (Game.SaveExists(slot))
+                {
+                    AddChat("Loading your save for this world...");
+                    bool ok = false;
+                    SafeRun("load save", () => ok = Game.TryLoadSlot(slot, this));
+                    if (!ok) AddChat("Couldn't open your save by itself. Load it from the menu.");
+                    yield break;
+                }
+                AddChat("Your save for this world is gone, starting a fresh one.");
+            }
+
+            AddChat($"Starting a new {_gameMode} game...");
+            bool started = false;
+            SafeRun("new game", () => started = Game.StartNewGame(_gameMode, this));
+            _newGameStarted = started;
+            _modeApplied = false;
+            if (!started) AddChat("Couldn't start the game by itself. Click Play > New Game.");
+        }
+
+        void StartForEveryone()
+        {
+            if (!IsHost || WorldStarted) return;
+            Send(new StartGamePacket());
+        }
+
         // ---------- connect / host ----------
 
         void Connect(string host, int port)
@@ -234,7 +324,8 @@ namespace SubnauticaMP
             if (_hostedServer == null)
             {
                 var worldFile = Path.Combine(Path.Combine(Plugin.Folder, "worlds"), SafeFileName(Game.CurrentSaveSlot()) + ".dat");
-                var server = new NetServer(worldFile);
+                // hosting from inside a save you're already playing: no lobby
+                var server = new NetServer(worldFile, Game.CurrentGameMode(), started: true);
                 server.Log += msg => Plugin.Log.LogInfo("[server] " + msg);
                 try
                 {

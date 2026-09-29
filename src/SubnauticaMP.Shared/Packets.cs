@@ -20,6 +20,8 @@ namespace SubnauticaMP.Shared
         VehicleOwner = 12,  // client claims a vehicle (entered it); server -> all: new owner
         VehicleRemoved = 13,
         TimeSync = 14,      // server -> clients: world clock. client -> server once to seed a new world
+        StartGame = 15,     // host -> server -> all: leave the lobby, play the intro together
+        Host = 16,          // server -> all: who the host is now
     }
 
     public struct Vec3
@@ -78,6 +80,8 @@ namespace SubnauticaMP.Shared
                 case PacketType.VehicleOwner: return new VehicleOwnerPacket();
                 case PacketType.VehicleRemoved: return new VehicleRemovedPacket();
                 case PacketType.TimeSync: return new TimeSyncPacket();
+                case PacketType.StartGame: return new StartGamePacket();
+                case PacketType.Host: return new HostPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
@@ -101,6 +105,7 @@ namespace SubnauticaMP.Shared
     public sealed class WelcomePacket : Packet
     {
         public int YourId;
+        public int HostId;
         public List<PlayerInfo> Players = new List<PlayerInfo>();
         public WorldState World = new WorldState();
         public override PacketType Type => PacketType.Welcome;
@@ -108,6 +113,7 @@ namespace SubnauticaMP.Shared
         public override void Write(BinaryWriter w)
         {
             w.Write(YourId);
+            w.Write(HostId);
             w.Write(Players.Count);
             foreach (var p in Players) { w.Write(p.Id); w.Write(p.Name ?? ""); }
             World.Write(w);
@@ -116,6 +122,7 @@ namespace SubnauticaMP.Shared
         public override void Read(BinaryReader r)
         {
             YourId = r.ReadInt32();
+            HostId = r.ReadInt32();
             int count = r.ReadInt32();
             if (count < 0 || count > Protocol.MaxPlayers) throw new InvalidDataException("Bad player count");
             Players = new List<PlayerInfo>(count);
@@ -267,5 +274,23 @@ namespace SubnauticaMP.Shared
         public override PacketType Type => PacketType.TimeSync;
         public override void Write(BinaryWriter w) { w.Write(TimePassed); }
         public override void Read(BinaryReader r) { TimePassed = r.ReadDouble(); }
+    }
+}
+
+namespace SubnauticaMP.Shared
+{
+    public sealed class StartGamePacket : Packet
+    {
+        public override PacketType Type => PacketType.StartGame;
+        public override void Write(BinaryWriter w) { }
+        public override void Read(BinaryReader r) { }
+    }
+
+    public sealed class HostPacket : Packet
+    {
+        public int HostId;
+        public override PacketType Type => PacketType.Host;
+        public override void Write(BinaryWriter w) { w.Write(HostId); }
+        public override void Read(BinaryReader r) { HostId = r.ReadInt32(); }
     }
 }
