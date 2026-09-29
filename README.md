@@ -16,8 +16,11 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Seamoth / Prawn suit / Cyclops | ✔ show up for everyone, whoever drives it moves it |
 | Vehicle destroyed | ✔ |
 | World saves on the server | ✔ keeps all of the above between sessions |
-| Base building | ✖ not yet |
-| Inventory / lockers | ✖ each player keeps their own |
+| Base building (build + deconstruct, furniture inside) | ✔ the builder sends the whole base, saved with the game's own save format |
+| Lockers / storage (lifepod, Cyclops, base lockers, planters...) | ✔ full contents re-sent on every change |
+| PDA data logs + fragment scan progress | ✔ |
+| Teammates on your HUD (beacon-style marker with name + distance) | ✔ |
+| Your own inventory | ✖ each player keeps their own (like Nitrox) |
 | Creatures / fauna AI | ✖ each player sees their own |
 | Dropped items, crafting, story events | ✖ not yet |
 | Player models | capsule placeholder for now |

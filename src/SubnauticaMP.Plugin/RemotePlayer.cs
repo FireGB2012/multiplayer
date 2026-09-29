@@ -1,3 +1,4 @@
+using System;
 using SubnauticaMP.Shared;
 using UnityEngine;
 
@@ -39,6 +40,10 @@ namespace SubnauticaMP
             remote.PlayerName = name;
             body.GetComponent<Renderer>().material.color = ColorFor(id);
             remote._renderers = root.GetComponentsInChildren<Renderer>();
+            // teammates show on your HUD like beacons, with their name and distance
+            try { Game.AddPing(root, name); }
+            catch (Exception e) { Game.WarnOnce("ping", "Couldn't add player marker: " + e.GetBaseException().Message); }
+
             root.SetActive(false); // hidden until we get their first position
             return remote;
         }

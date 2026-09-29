@@ -22,6 +22,9 @@ namespace SubnauticaMP.Shared
         TimeSync = 14,      // server -> clients: world clock. client -> server once to seed a new world
         StartGame = 15,     // host -> server -> all: leave the lobby, play the intro together
         Host = 16,          // server -> all: who the host is now
+        Structure = 17,     // a base or built object, saved with the game's own serializer (empty = gone)
+        Container = 18,     // everything inside a locker / storage
+        Fragment = 19,      // fragment scan progress (e.g. 2 of 3 Seamoth fragments)
     }
 
     public struct Vec3
@@ -54,6 +57,7 @@ namespace SubnauticaMP.Shared
         Blueprint = 0,   // KnownTech.Add
         Analyzed = 1,    // KnownTech.Analyze
         Databank = 2,    // PDAEncyclopedia.Add
+        PdaLog = 3,      // PDALog.Add (voice logs / messages)
     }
 
     public abstract class Packet
@@ -82,6 +86,9 @@ namespace SubnauticaMP.Shared
                 case PacketType.TimeSync: return new TimeSyncPacket();
                 case PacketType.StartGame: return new StartGamePacket();
                 case PacketType.Host: return new HostPacket();
+                case PacketType.Structure: return new StructurePacket();
+                case PacketType.Container: return new ContainerPacket();
+                case PacketType.Fragment: return new FragmentPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
@@ -292,5 +299,68 @@ namespace SubnauticaMP.Shared
         public override PacketType Type => PacketType.Host;
         public override void Write(BinaryWriter w) { w.Write(HostId); }
         public override void Read(BinaryReader r) { HostId = r.ReadInt32(); }
+    }
+}
+
+namespace SubnauticaMP.Shared
+{
+    internal static class Bytes
+    {
+        public const int MaxBlob = 8 * 1024 * 1024;
+
+        public static void Write(BinaryWriter w, byte[] data)
+        {
+            data = data ?? new byte[0];
+            w.Write(data.Length);
+            w.Write(data);
+        }
+
+        public static byte[] Read(BinaryReader r)
+        {
+            int len = r.ReadInt32();
+            if (len < 0 || len > MaxBlob) throw new InvalidDataException("Bad blob length " + len);
+            return r.ReadBytes(len);
+        }
+    }
+
+    public sealed class StructurePacket : Packet
+    {
+        public string Id;
+        public byte[] Data; // empty = deconstructed / gone
+        public override PacketType Type => PacketType.Structure;
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); Bytes.Write(w, Data); }
+        public override void Read(BinaryReader r) { Id = r.ReadString(); Data = Bytes.Read(r); }
+    }
+
+    public sealed class ContainerPacket : Packet
+    {
+        public string Id;
+        public List<byte[]> Items = new List<byte[]>();
+        public override PacketType Type => PacketType.Container;
+
+        public override void Write(BinaryWriter w)
+        {
+            w.Write(Id ?? "");
+            w.Write(Items.Count);
+            foreach (var item in Items) Bytes.Write(w, item);
+        }
+
+        public override void Read(BinaryReader r)
+        {
+            Id = r.ReadString();
+            int count = r.ReadInt32();
+            if (count < 0 || count > 10000) throw new InvalidDataException("Bad item count");
+            Items = new List<byte[]>(count);
+            for (int i = 0; i < count; i++) Items.Add(Bytes.Read(r));
+        }
+    }
+
+    public sealed class FragmentPacket : Packet
+    {
+        public string TechType;
+        public int Unlocked;
+        public override PacketType Type => PacketType.Fragment;
+        public override void Write(BinaryWriter w) { w.Write(TechType ?? ""); w.Write(Unlocked); }
+        public override void Read(BinaryReader r) { TechType = r.ReadString(); Unlocked = r.ReadInt32(); }
     }
 }

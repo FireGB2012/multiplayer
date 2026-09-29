@@ -18,7 +18,8 @@ namespace SubnauticaMP
             UniqueIdentifier, Pickupable, BreakableResource, DayNightCycle, LargeWorldEntity, CrafterLogic,
             StorageContainer, TechType, VFXConstructing, WorldForces, LightmappedPrefabs, SubConsoleCommand,
             SaveLoadManager, MainMenuType, MainMenuLoadButton, SceneIntro, GameInput, EscapePod, GameModeUtils,
-            GameModeOption, GameModeEnum;
+            GameModeOption, GameModeEnum, ProtobufSerializer, TaskResultOfT, Base, Constructable, BaseDeconstructable,
+            ItemsContainer, InventoryItem, PDALog, PDAScanner, PingInstance, PingType;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         static readonly Dictionary<string, Func<object, object>> Getters = new Dictionary<string, Func<object, object>>();
@@ -59,6 +60,17 @@ namespace SubnauticaMP
             GameModeUtils = Find("GameModeUtils");
             GameModeOption = Find("GameModeOption");
             GameModeEnum = Find("GameMode");
+            ProtobufSerializer = Find("ProtobufSerializer");
+            TaskResultOfT = Find("TaskResult`1");
+            Base = Find("Base");
+            Constructable = Find("Constructable");
+            BaseDeconstructable = Find("BaseDeconstructable");
+            ItemsContainer = Find("ItemsContainer");
+            InventoryItem = Find("InventoryItem");
+            PDALog = Find("PDALog");
+            PDAScanner = Find("PDAScanner");
+            PingInstance = Find("PingInstance");
+            PingType = Find("PingType");
         }
 
         static Type Find(string name)
@@ -114,10 +126,17 @@ namespace SubnauticaMP
         {
             if (type == null) return false;
             var f = AccessTools.Field(type, name);
-            if (f != null) { f.SetValue(target, Convert.ChangeType(value, f.FieldType)); return true; }
+            if (f != null) { f.SetValue(target, Coerce(value, f.FieldType)); return true; }
             var p = AccessTools.Property(type, name);
-            if (p != null && p.GetSetMethod(true) != null) { p.SetValue(target, Convert.ChangeType(value, p.PropertyType), null); return true; }
+            if (p != null && p.GetSetMethod(true) != null) { p.SetValue(target, Coerce(value, p.PropertyType), null); return true; }
             return false;
+        }
+
+        static object Coerce(object value, Type type)
+        {
+            if (value == null || type.IsInstanceOfType(value)) return value;
+            if (type.IsEnum) return Enum.ToObject(type, value);
+            return Convert.ChangeType(value, type);
         }
 
         // Finds a method by name whose first parameters accept `leading`.
@@ -304,6 +323,179 @@ namespace SubnauticaMP
             if (!(load.Invoke(menu, args) is IEnumerator e)) return false;
             runner.StartCoroutine(e);
             return true;
+        }
+
+        // ---------- the game's own save serializer ----------
+        // Bases, lockers etc. are sent as exactly what the game would write into your save file.
+
+        public static byte[] Serialize(GameObject go)
+        {
+            var serializer = Activator.CreateInstance(ProtobufSerializer, true);
+            var m = FindMethod(ProtobufSerializer, "SerializeObjectTree", typeof(System.IO.Stream), typeof(GameObject))
+                    ?? throw new MissingMethodException("ProtobufSerializer", "SerializeObjectTree");
+            using (var ms = new System.IO.MemoryStream())
+            {
+                m.Invoke(serializer, new object[] { ms, go });
+                return ms.ToArray();
+            }
+        }
+
+        public static IEnumerator Deserialize(byte[] data, Action<GameObject> done)
+        {
+            var serializer = Activator.CreateInstance(ProtobufSerializer, true);
+            var stream = new System.IO.MemoryStream(data);
+            var async = FindMethod(ProtobufSerializer, "DeserializeObjectTreeAsync", typeof(System.IO.Stream));
+            if (async != null)
+            {
+                object result = TaskResultOfT != null ? Activator.CreateInstance(TaskResultOfT.MakeGenericType(typeof(GameObject))) : null;
+                var ps = async.GetParameters();
+                var args = new object[ps.Length];
+                args[0] = stream;
+                for (int i = 1; i < ps.Length; i++)
+                {
+                    var t = ps[i].ParameterType;
+                    if (result != null && t.IsInstanceOfType(result)) args[i] = result;
+                    else args[i] = t.IsValueType ? Activator.CreateInstance(t) : null; // false / 0
+                }
+                if (async.Invoke(serializer, args) is IEnumerator e) yield return e;
+                done(result == null ? null : Get(result.GetType(), result, "Get") as GameObject);
+                yield break;
+            }
+
+            var sync = FindMethod(ProtobufSerializer, "DeserializeObjectTree", typeof(System.IO.Stream));
+            if (sync == null) throw new MissingMethodException("ProtobufSerializer", "DeserializeObjectTree");
+            var sp = sync.GetParameters();
+            var sargs = new object[sp.Length];
+            sargs[0] = stream;
+            for (int i = 1; i < sp.Length; i++) sargs[i] = sp[i].ParameterType.IsValueType ? Activator.CreateInstance(sp[i].ParameterType) : null;
+            done(sync.Invoke(serializer, sargs) as GameObject);
+        }
+
+        public static void Register(GameObject go) => TryDo("register", () => Call(LargeWorldEntity, null, "Register", go));
+
+        // ---------- building ----------
+
+        // The thing to send when a piece changes: its whole base, or the object itself if it stands alone.
+        public static GameObject StructureRoot(GameObject go)
+        {
+            if (go == null) return null;
+            if (Base != null && go.GetComponentInParent(Base) is Component b) return b.gameObject;
+            return go;
+        }
+
+        public static List<GameObject> FindBases()
+        {
+            var list = new List<GameObject>();
+            if (Base != null)
+                foreach (var o in UnityEngine.Object.FindObjectsOfType(Base)) list.Add(((Component)o).gameObject);
+            return list;
+        }
+
+        // ---------- storage ----------
+
+        // The ItemsContainer behind a locker / storage object (found via any component's 'container' field).
+        public static object ContainerOf(GameObject go)
+        {
+            for (var t = go != null ? go.transform : null; t != null; t = t.parent)
+            {
+                foreach (var c in t.GetComponents<Component>())
+                {
+                    if (c == null) continue;
+                    var value = TryGet(c.GetType(), c, "container");
+                    if (value != null && value.GetType().Name == "ItemsContainer") return value;
+                }
+            }
+            return null;
+        }
+
+        public static Transform ContainerRoot(object container) => TryGet(ItemsContainer, container, "tr") as Transform;
+
+        // Where to look for the container by id: its root, or the object holding it.
+        public static string ContainerId(object container)
+        {
+            var tr = ContainerRoot(container);
+            if (tr == null) return null;
+            return GetId(tr.gameObject) ?? (tr.parent != null ? GetId(tr.parent.gameObject) : null);
+        }
+
+        public static List<Component> ContainerItems(object container)
+        {
+            var list = new List<Component>();
+            if (container is IEnumerable items)
+                foreach (var inv in items)
+                    if (inv != null && Get(inv.GetType(), inv, "item") is Component p && p != null) list.Add(p);
+            return list;
+        }
+
+        public static void EmptyContainer(object container)
+        {
+            foreach (var pickupable in ContainerItems(container))
+            {
+                Call(ItemsContainer, container, "RemoveItem", pickupable, true);
+                UnityEngine.Object.Destroy(pickupable.gameObject);
+            }
+        }
+
+        public static bool AddToContainer(object container, GameObject item)
+        {
+            var pickupable = Pickupable != null ? item.GetComponent(Pickupable) : null;
+            if (pickupable == null || InventoryItem == null) return false;
+            var inv = Activator.CreateInstance(InventoryItem, pickupable);
+            Call(ItemsContainer, container, "UnsafeAdd", inv);
+            item.SetActive(false); // stored items are inactive
+            return true;
+        }
+
+        // ---------- PDA ----------
+
+        public static void AddPdaLog(string key) => Call(PDALog, null, "Add", key);
+
+        // Fragment scan progress: techType name -> how many scanned.
+        public static Dictionary<string, int> FragmentProgress()
+        {
+            var map = new Dictionary<string, int>();
+            if (TryGet(PDAScanner, null, "partial") is IEnumerable partial)
+                foreach (var entry in partial)
+                {
+                    if (entry == null) continue;
+                    var tech = TryGet(entry.GetType(), entry, "techType")?.ToString();
+                    if (tech != null && TryGet(entry.GetType(), entry, "unlocked") is int n) map[tech] = n;
+                }
+            return map;
+        }
+
+        public static void SetFragmentProgress(string techName, int unlocked)
+        {
+            var tt = ParseTechType(techName);
+            if (tt == null || PDAScanner == null) return;
+            if (TryGet(PDAScanner, null, "partial") is IEnumerable partial)
+                foreach (var entry in partial)
+                {
+                    if (entry == null || !Equals(TryGet(entry.GetType(), entry, "techType"), tt)) continue;
+                    if (TryGet(entry.GetType(), entry, "unlocked") is int have && have < unlocked)
+                        Set(entry.GetType(), entry, "unlocked", unlocked);
+                    return;
+                }
+            Call(PDAScanner, null, "Add", tt, unlocked);
+        }
+
+        // ---------- HUD markers ----------
+
+        // Shows a beacon-style marker with a name and distance on everyone's HUD.
+        public static void AddPing(GameObject target, string label)
+        {
+            if (PingInstance == null) return;
+            var ping = target.AddComponent(PingInstance);
+            if (PingType != null)
+            {
+                try { Set(PingInstance, ping, "pingType", Enum.Parse(PingType, "Signal")); } catch { }
+            }
+            Set(PingInstance, ping, "origin", target.transform);
+            Set(PingInstance, ping, "minDist", 5f);
+            Set(PingInstance, ping, "_label", label);
+            Set(PingInstance, ping, "displayPingInManager", false);
+            Set(PingInstance, ping, "visible", true);
+            TryDo("ping", () => Call(PingInstance, ping, "Initialize"));
         }
 
         // ---------- ids ----------
@@ -506,7 +698,7 @@ namespace SubnauticaMP
             done(go);
         }
 
-        static void TryDo(string what, Action a)
+        internal static void TryDo(string what, Action a)
         {
             try { a(); }
             catch (Exception ex) { WarnOnce("try:" + what, $"{what} failed: {ex.GetBaseException().Message}"); }

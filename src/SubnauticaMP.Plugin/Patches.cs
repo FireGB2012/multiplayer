@@ -47,6 +47,12 @@ namespace SubnauticaMP
             Hook("breaking", Game.BreakableResource, "BreakIntoResources", prefix: nameof(Broken));
             Hook("vehicle deaths", Game.Vehicle, "OnKill", prefix: nameof(VehicleKilled));
             Hook("lobby", Game.SceneIntro, "IntroSequence", postfix: nameof(WrapIntro));
+            Hook("building", Game.Constructable, "Construct", postfix: nameof(Built));
+            Hook("deconstructing", Game.Constructable, "ProgressDeconstruction", prefix: nameof(Built));
+            Hook("base deconstructing", Game.BaseDeconstructable, "Deconstruct", prefix: nameof(Built));
+            Hook("lockers (add)", Game.ItemsContainer, "NotifyAddItem", postfix: nameof(ContainerChanged));
+            Hook("lockers (remove)", Game.ItemsContainer, "NotifyRemoveItem", postfix: nameof(ContainerChanged));
+            Hook("PDA logs", Game.PDALog, "Add", postfix: nameof(PdaLogAdded));
             Hook("lobby start", Game.GameInput, "get_AnyKeyDown", postfix: nameof(AnyKeyDown));
             Hook("intro sync", Game.EscapePod, "TriggerIntroCinematic", postfix: nameof(IntroCinematicStarted));
 
@@ -112,6 +118,24 @@ namespace SubnauticaMP
         }
 
         static void IntroCinematicStarted() => Lobby.OnIntroCinematicStarted();
+
+        static void Built(Component __instance)
+        {
+            if (ApplyingRemote || S == null || __instance == null) return;
+            S.Structures.OnLocalBuild(__instance.gameObject);
+        }
+
+        static void ContainerChanged(object __instance)
+        {
+            if (ApplyingRemote || S == null || __instance == null) return;
+            S.Containers.OnLocalChange(__instance);
+        }
+
+        static void PdaLogAdded(object[] __args, object __result)
+        {
+            if (ApplyingRemote || S == null || __result == null || __args.Length == 0) return;
+            S.SendUnlock(UnlockKind.PdaLog, __args[0] as string);
+        }
 
         static void VehicleKilled(Component __instance)
         {

@@ -189,7 +189,7 @@ namespace SubnauticaMP.Shared
                 catch { return; } // listener stopped
 
                 bool local = tcp.Client.RemoteEndPoint is IPEndPoint ep && IPAddress.IsLoopback(ep.Address);
-                var conn = new Connection(tcp) { Tag = new Client { IsLocal = local }, MaxPacketSize = Protocol.MaxClientPacketSize };
+                var conn = new Connection(tcp) { Tag = new Client { IsLocal = local }, MaxPacketSize = Protocol.MaxHelloPacketSize };
                 conn.PacketReceived += OnPacket;
                 conn.Closed += OnClosed;
                 lock (_lock) _connections.Add(conn);
@@ -286,6 +286,36 @@ namespace SubnauticaMP.Shared
                     Broadcast(vremoved, except: conn);
                     break;
 
+                case StructurePacket structure:
+                    if (string.IsNullOrEmpty(structure.Id)) return;
+                    lock (_lock)
+                    {
+                        if (structure.Data == null || structure.Data.Length == 0) _world.Structures.Remove(structure.Id);
+                        else _world.Structures[structure.Id] = structure.Data;
+                    }
+                    _dirty = true;
+                    Broadcast(structure, except: conn);
+                    break;
+
+                case ContainerPacket container:
+                    if (string.IsNullOrEmpty(container.Id)) return;
+                    lock (_lock) _world.Containers[container.Id] = container.Items;
+                    _dirty = true;
+                    Broadcast(container, except: conn);
+                    break;
+
+                case FragmentPacket fragment:
+                    if (string.IsNullOrEmpty(fragment.TechType) || fragment.Unlocked <= 0) return;
+                    lock (_lock)
+                    {
+                        // progress only goes up
+                        if (_world.Fragments.TryGetValue(fragment.TechType, out var had) && had >= fragment.Unlocked) return;
+                        _world.Fragments[fragment.TechType] = fragment.Unlocked;
+                    }
+                    _dirty = true;
+                    Broadcast(fragment, except: conn);
+                    break;
+
                 case StartGamePacket _:
                     lock (_lock)
                     {
@@ -345,6 +375,7 @@ namespace SubnauticaMP.Shared
                 welcome.HostId = _hostId;
             }
 
+            conn.MaxPacketSize = Protocol.MaxClientPacketSize;
             conn.Send(welcome);
             Broadcast(new PlayerJoinedPacket { Id = client.Id, Name = client.Name }, except: conn);
             if (hostChanged) Broadcast(new HostPacket { HostId = HostId }, except: conn);

@@ -11,7 +11,7 @@ namespace SubnauticaMP.Shared
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 2;
+        const int FileVersion = 3;
         const int MaxEntries = 1_000_000;
 
         public HashSet<string> Blueprints = new HashSet<string>();
@@ -24,6 +24,10 @@ namespace SubnauticaMP.Shared
         public string WorldId = Guid.NewGuid().ToString("N"); // lets each player find their own save for this world
         public string GameMode = GameModes.Survival;
         public bool Started; // false = still in the lobby, waiting for the host to start
+        public HashSet<string> PdaLog = new HashSet<string>();
+        public Dictionary<string, int> Fragments = new Dictionary<string, int>();
+        public Dictionary<string, byte[]> Structures = new Dictionary<string, byte[]>();
+        public Dictionary<string, List<byte[]>> Containers = new Dictionary<string, List<byte[]>>();
 
         public HashSet<string> SetFor(UnlockKind kind)
         {
@@ -31,6 +35,7 @@ namespace SubnauticaMP.Shared
             {
                 case UnlockKind.Analyzed: return Analyzed;
                 case UnlockKind.Databank: return Databank;
+                case UnlockKind.PdaLog: return PdaLog;
                 default: return Blueprints;
             }
         }
@@ -48,6 +53,19 @@ namespace SubnauticaMP.Shared
             w.Write(WorldId ?? "");
             w.Write(GameMode ?? GameModes.Survival);
             w.Write(Started);
+
+            WriteSet(w, PdaLog);
+            w.Write(Fragments.Count);
+            foreach (var kv in Fragments) { w.Write(kv.Key); w.Write(kv.Value); }
+            w.Write(Structures.Count);
+            foreach (var kv in Structures) { w.Write(kv.Key); Bytes.Write(w, kv.Value); }
+            w.Write(Containers.Count);
+            foreach (var kv in Containers)
+            {
+                w.Write(kv.Key);
+                w.Write(kv.Value.Count);
+                foreach (var item in kv.Value) Bytes.Write(w, item);
+            }
         }
 
         public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
@@ -79,6 +97,23 @@ namespace SubnauticaMP.Shared
             {
                 s.Started = true; // worlds from v0.2 were already being played
             }
+            if (version >= 3)
+            {
+                s.PdaLog = ReadSet(r);
+                int n = ReadCount(r);
+                for (int i = 0; i < n; i++) s.Fragments[r.ReadString()] = r.ReadInt32();
+                n = ReadCount(r);
+                for (int i = 0; i < n; i++) s.Structures[r.ReadString()] = Bytes.Read(r);
+                n = ReadCount(r);
+                for (int i = 0; i < n; i++)
+                {
+                    var id = r.ReadString();
+                    int items = ReadCount(r);
+                    var list = new List<byte[]>(items);
+                    for (int j = 0; j < items; j++) list.Add(Bytes.Read(r));
+                    s.Containers[id] = list;
+                }
+            }
             return s;
         }
 
@@ -96,6 +131,10 @@ namespace SubnauticaMP.Shared
                 WorldId = WorldId,
                 GameMode = GameMode,
                 Started = Started,
+                PdaLog = new HashSet<string>(PdaLog),
+                Fragments = new Dictionary<string, int>(Fragments),
+                Structures = new Dictionary<string, byte[]>(Structures),        // blobs are never mutated, sharing is fine
+                Containers = Containers.ToDictionary(kv => kv.Key, kv => new List<byte[]>(kv.Value)),
             };
         }
 

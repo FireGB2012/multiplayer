@@ -22,6 +22,8 @@ namespace SubnauticaMP
         readonly Dictionary<int, string> _names = new Dictionary<int, string>();
         internal WorldSync World;
         internal VehicleSync Vehicles;
+        internal StructureSync Structures;
+        internal ContainerSync Containers;
 
         NetServer _hostedServer;
         int _hostedPort;
@@ -52,6 +54,8 @@ namespace SubnauticaMP
             Instance = this;
             World = new WorldSync(this);
             Vehicles = new VehicleSync(this);
+            Structures = new StructureSync(this);
+            Containers = new ContainerSync(this);
 
             var launchPath = Path.Combine(Plugin.Folder, LaunchInfo.FileName);
             _autoJoin = LaunchInfo.TryLoad(launchPath);
@@ -107,6 +111,8 @@ namespace SubnauticaMP
 
             SafeRun("world", World.Update);
             SafeRun("vehicles", Vehicles.Update);
+            SafeRun("building", Structures.Update);
+            SafeRun("lockers", Containers.Update);
 
             _sendTimer += Time.unscaledDeltaTime;
             if (_sendTimer >= SendInterval)
@@ -204,6 +210,8 @@ namespace SubnauticaMP
                     WorldStarted = welcome.World.Started;
                     World.OnWelcome(welcome.World);
                     Vehicles.OnWelcome(welcome.World);
+                    Structures.OnWelcome(welcome.World);
+                    Containers.OnWelcome(welcome.World);
                     AddChat($"Connected! {welcome.Players.Count} other player(s) here. {_gameMode} world.");
                     if (_autoStart && !Game.InWorld) StartCoroutine(AutoStart());
                     _autoStart = false;
@@ -249,6 +257,9 @@ namespace SubnauticaMP
                 case VehicleStatePacket vst: Vehicles.OnState(vst); break;
                 case VehicleOwnerPacket vo: Vehicles.OnOwner(vo.Id, vo.OwnerId); break;
                 case VehicleRemovedPacket vr: Vehicles.OnRemoved(vr.Id); break;
+                case StructurePacket st: Structures.OnStructure(st); break;
+                case ContainerPacket ct: Containers.OnContainer(ct); break;
+                case FragmentPacket fr: World.OnFragment(fr); break;
             }
         }
 
@@ -262,6 +273,8 @@ namespace SubnauticaMP
                 ClearRemotes();
                 World.Reset();
                 Vehicles.Reset();
+                Structures.Reset();
+                Containers.Reset();
             }
             _lastState = state;
         }
@@ -428,6 +441,8 @@ namespace SubnauticaMP
             ClearRemotes();
             World.Reset();
             Vehicles.Reset();
+            Structures.Reset();
+            Containers.Reset();
         }
 
         static string SafeFileName(string s)
