@@ -22,6 +22,11 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Dropped items, crafting, story events | ✖ not yet |
 | Player models | capsule placeholder for now |
 
+## In-game Multiplayer menu
+Like Nitrox: the main menu gets a **Multiplayer** button next to Play. It lists **your worlds** and **servers you've played on**
+(saved with their join codes), lets you **host a world** (name + game mode) straight from the game, and **add a server** by code.
+Multiplayer saves are kept out of the normal single-player Load list. The launcher is optional.
+
 ## Quick start (players)
 1. Download `SubnauticaMP-Launcher.exe` and run it.
 2. **Setup tab**: check it found your Subnautica folder. If BepInEx is missing, hit **Install BepInEx for me**

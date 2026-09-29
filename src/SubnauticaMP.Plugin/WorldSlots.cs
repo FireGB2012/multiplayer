@@ -26,6 +26,8 @@ namespace SubnauticaMP
             return map;
         }
 
+        public static HashSet<string> AllSlots() => new HashSet<string>(Load().Values);
+
         public static string Get(string worldId) =>
             !string.IsNullOrEmpty(worldId) && Load().TryGetValue(worldId, out var slot) ? slot : null;
 

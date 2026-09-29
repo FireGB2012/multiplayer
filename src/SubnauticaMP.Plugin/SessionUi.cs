@@ -37,6 +37,7 @@ namespace SubnauticaMP
         {
             GUI.depth = -1000; // above the game's own UI
             DrainPendingChat();
+            DrawMainMenuUi();
             if (Lobby.Holding) DrawLobby();
             else DrawNameTags();
             DrawChatOverlay();

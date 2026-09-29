@@ -66,6 +66,8 @@ namespace SubnauticaMP
         void Update()
         {
             if (Input.GetKeyDown(Plugin.MenuKey.Value)) _menuOpen = !_menuOpen;
+            if (Game.MainMenu != null) MainMenuButton.Update(OpenMultiplayerMenu);
+            else _mpMenuOpen = false;
 
             _inWorldTimer = Game.InWorld ? _inWorldTimer + Time.unscaledDeltaTime : 0f;
 
@@ -75,6 +77,7 @@ namespace SubnauticaMP
                 var a = _autoJoin;
                 _autoJoin = null;
                 _autoStart = !Game.InWorld;
+                _lastAddress = a.Host == "127.0.0.1" ? null : a.Host + ":" + a.Port;
                 Connect(a.Host, a.Port);
             }
 
@@ -204,6 +207,7 @@ namespace SubnauticaMP
                     AddChat($"Connected! {welcome.Players.Count} other player(s) here. {_gameMode} world.");
                     if (_autoStart && !Game.InWorld) StartCoroutine(AutoStart());
                     _autoStart = false;
+                    if (_lastAddress != null) SafeRun("server list", () => ServerList.Remember(_lastAddress));
                     break;
 
                 case HostPacket host:
@@ -302,6 +306,47 @@ namespace SubnauticaMP
         }
 
         // ---------- connect / host ----------
+
+        string _lastAddress; // what the player typed, remembered in the server list once it works
+
+        // From the main menu's Multiplayer screen: join, then load/start the world by ourselves.
+        public void JoinFromMenu(string address)
+        {
+            if (_client.State != ClientState.Disconnected) return;
+            if (!JoinCode.TryParseAddress(address, Protocol.DefaultPort, out var host, out var port))
+            {
+                AddChat("That doesn't look like a join code or IP");
+                return;
+            }
+            _autoStart = !Game.InWorld;
+            _lastAddress = address.Trim();
+            Connect(host, port);
+        }
+
+        // Host a world from the main menu: server runs inside this game, then we join it like everyone else.
+        public void HostFromMenu(string worldName, string gameMode)
+        {
+            if (_client.State != ClientState.Disconnected) return;
+            StopHosting();
+            var path = Path.Combine(Path.Combine(Plugin.Folder, "worlds"), SafeFileName(worldName.Trim()) + ".dat");
+            var server = new NetServer(path, gameMode);
+            server.Log += msg => Plugin.Log.LogInfo("[server] " + msg);
+            try { server.Start(Plugin.Port.Value); }
+            catch (Exception e)
+            {
+                AddChat("Couldn't host: " + e.Message);
+                return;
+            }
+            _hostedServer = server;
+            _hostedPort = server.Port;
+            AddChat($"Hosting '{worldName}' on port {_hostedPort}. Opening your router for friends...");
+            OpenRouterPort(_hostedPort);
+            _autoStart = !Game.InWorld;
+            _lastAddress = null;
+            Connect("127.0.0.1", _hostedPort);
+        }
+
+        public static string WorldsFolder => Path.Combine(Plugin.Folder, "worlds");
 
         void Connect(string host, int port)
         {
