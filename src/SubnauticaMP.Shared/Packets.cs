@@ -31,6 +31,8 @@ namespace SubnauticaMP.Shared
         VehicleSnapshot = 23, // whole vehicle (upgrades, power cells, colors, storage) when the driver gets out
         VehicleDock = 24,
         CyclopsState = 25,    // lights, silent running, engine mode
+        StoryGoal = 26,       // a story event happened (radio message, Sunbeam, Precursor...)
+        Aurora = 27,          // when the Aurora's countdown / warnings start
     }
 
     public struct Vec3
@@ -101,6 +103,8 @@ namespace SubnauticaMP.Shared
                 case PacketType.VehicleSnapshot: return new VehicleSnapshotPacket();
                 case PacketType.VehicleDock: return new VehicleDockPacket();
                 case PacketType.CyclopsState: return new CyclopsStatePacket();
+                case PacketType.StoryGoal: return new StoryGoalPacket();
+                case PacketType.Aurora: return new AuroraPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
@@ -469,5 +473,25 @@ namespace SubnauticaMP.Shared
         public override PacketType Type => PacketType.CyclopsState;
         public override void Write(BinaryWriter w) { w.Write(Id ?? ""); w.Write(InternalLights); w.Write(FloodLights); w.Write(SilentRunning); w.Write(MotorMode); }
         public override void Read(BinaryReader r) { Id = r.ReadString(); InternalLights = r.ReadBoolean(); FloodLights = r.ReadBoolean(); SilentRunning = r.ReadBoolean(); MotorMode = r.ReadInt32(); }
+    }
+}
+
+namespace SubnauticaMP.Shared
+{
+    public sealed class StoryGoalPacket : Packet
+    {
+        public string Key;
+        public int GoalType; // Story.GoalType
+        public override PacketType Type => PacketType.StoryGoal;
+        public override void Write(BinaryWriter w) { w.Write(Key ?? ""); w.Write(GoalType); }
+        public override void Read(BinaryReader r) { Key = r.ReadString(); GoalType = r.ReadInt32(); }
+    }
+
+    public sealed class AuroraPacket : Packet
+    {
+        public float TimeToStartCountdown, TimeToStartWarning;
+        public override PacketType Type => PacketType.Aurora;
+        public override void Write(BinaryWriter w) { w.Write(TimeToStartCountdown); w.Write(TimeToStartWarning); }
+        public override void Read(BinaryReader r) { TimeToStartCountdown = r.ReadSingle(); TimeToStartWarning = r.ReadSingle(); }
     }
 }

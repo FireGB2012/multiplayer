@@ -31,6 +31,8 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Docking in moonpool / Cyclops bay | ✔ |
 | Cyclops lights, floodlights, silent running, engine speed mode | ✔ |
 | Teammates walking inside a moving Cyclops | ✔ positioned relative to the Cyclops |
+| Story events (radio messages, Sunbeam, Precursor progress, story PDA) | ✔ every story goal fires for everyone, late joiners catch up |
+| Aurora explosion | ✔ one shared timing, so it blows up for everyone at once |
 | Your own inventory | ✖ each player keeps their own (like Nitrox) |
 | Creatures / fauna AI | ✖ each player sees their own |
 | Dropped items, crafting, story events | ✖ not yet |

@@ -21,7 +21,7 @@ namespace SubnauticaMP
             GameModeOption, GameModeEnum, ProtobufSerializer, TaskResultOfT, Base, Constructable, BaseDeconstructable,
             ItemsContainer, InventoryItem, PDALog, PDAScanner, PingInstance, PingType, Openable, Inventory, Survival,
             LiveMixin, VehicleDockingBay, CyclopsLightingPanel, CyclopsSilentRunningAbilityButton, CyclopsMotorModeButton,
-            SubControl, LargeWorldStreamer;
+            SubControl, LargeWorldStreamer, StoryGoal, StoryGoalManager, StoryGoalScheduler, GoalType, CrashedShipExploder;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         static readonly Dictionary<string, Func<object, object>> Getters = new Dictionary<string, Func<object, object>>();
@@ -84,6 +84,49 @@ namespace SubnauticaMP
             CyclopsMotorModeButton = Find("CyclopsMotorModeButton");
             SubControl = Find("SubControl");
             LargeWorldStreamer = Find("LargeWorldStreamer");
+            StoryGoal = Find("Story.StoryGoal");
+            StoryGoalManager = Find("Story.StoryGoalManager");
+            StoryGoalScheduler = Find("Story.StoryGoalScheduler");
+            GoalType = Find("Story.GoalType");
+            CrashedShipExploder = Find("CrashedShipExploder");
+        }
+
+        // ---------- story ----------
+
+        public static bool GoalDone(string key)
+        {
+            var mgr = TryGet(StoryGoalManager, null, "main");
+            var done = mgr != null ? TryGet(StoryGoalManager, mgr, "completedGoals") : null;
+            return done is System.Collections.Generic.ICollection<string> set && set.Contains(key);
+        }
+
+        // Runs a story goal the way the game would, and drops it from the "later" schedule if it was waiting there.
+        public static void RunGoal(string key, int goalType)
+        {
+            if (GoalDone(key) || GoalType == null) return;
+            var sched = TryGet(StoryGoalScheduler, null, "main");
+            if (sched != null && TryGet(StoryGoalScheduler, sched, "schedule") is IList list)
+                for (int i = list.Count - 1; i >= 0; i--)
+                    if (list[i] != null && TryGet(list[i].GetType(), list[i], "goalKey") as string == key) list.RemoveAt(i);
+            Call(StoryGoal, null, "Execute", key, Enum.ToObject(GoalType, goalType));
+        }
+
+        public static AuroraPacket ReadAurora()
+        {
+            var ex = TryGet(CrashedShipExploder, null, "main");
+            if (ex == null) return null;
+            var c = TryGet(CrashedShipExploder, ex, "timeToStartCountdown");
+            var w = TryGet(CrashedShipExploder, ex, "timeToStartWarning");
+            if (c == null || w == null) return null;
+            return new AuroraPacket { TimeToStartCountdown = Convert.ToSingle(c), TimeToStartWarning = Convert.ToSingle(w) };
+        }
+
+        public static void ApplyAurora(AuroraPacket a)
+        {
+            var ex = TryGet(CrashedShipExploder, null, "main");
+            if (ex == null || a == null) return;
+            Set(CrashedShipExploder, ex, "timeToStartCountdown", a.TimeToStartCountdown);
+            Set(CrashedShipExploder, ex, "timeToStartWarning", a.TimeToStartWarning);
         }
 
         // ---------- vehicle health / energy (0..1, -1 = unknown) ----------

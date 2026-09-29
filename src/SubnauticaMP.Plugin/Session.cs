@@ -25,6 +25,7 @@ namespace SubnauticaMP
         internal StructureSync Structures;
         internal ContainerSync Containers;
         internal ItemSync Items;
+        internal StorySync Story;
 
         NetServer _hostedServer;
         int _hostedPort;
@@ -61,6 +62,7 @@ namespace SubnauticaMP
             Structures = new StructureSync(this);
             Containers = new ContainerSync(this);
             Items = new ItemSync(this);
+            Story = new StorySync(this);
 
             if (!_launchRead)
             {
@@ -130,6 +132,7 @@ namespace SubnauticaMP
             SafeRun("building", Structures.Update);
             SafeRun("lockers", Containers.Update);
             SafeRun("items", Items.Update);
+            SafeRun("story", Story.Update);
 
             _sendTimer += Time.unscaledDeltaTime;
             if (_sendTimer >= SendInterval)
@@ -271,6 +274,7 @@ namespace SubnauticaMP
                     Structures.OnWelcome(welcome.World);
                     Containers.OnWelcome(welcome.World);
                     Items.OnWelcome(welcome.World);
+                    Story.OnWelcome(welcome.World);
                     AddChat($"Connected! {welcome.Players.Count} other player(s) here. {_gameMode} world.");
                     if (_autoStart && !Game.InWorld) StartCoroutine(AutoStart());
                     _autoStart = false;
@@ -318,6 +322,8 @@ namespace SubnauticaMP
                 case VehicleSnapshotPacket vsnap: Vehicles.OnSnapshot(vsnap); break;
                 case VehicleDockPacket vdock: Vehicles.OnDock(vdock); break;
                 case CyclopsStatePacket cyc: Vehicles.OnCyclops(cyc); break;
+                case StoryGoalPacket goal: Story.OnGoal(goal); break;
+                case AuroraPacket aurora: Story.OnAurora(aurora); break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
                     AddChat($"{NameOf(died.Id)} died!");
@@ -347,6 +353,7 @@ namespace SubnauticaMP
                 Structures.Reset();
                 Containers.Reset();
                 Items.Reset();
+                Story.Reset();
             }
             _lastState = state;
         }
@@ -523,6 +530,7 @@ namespace SubnauticaMP
             Structures.Reset();
             Containers.Reset();
             Items.Reset();
+            Story.Reset();
         }
 
         static string SafeFileName(string s)

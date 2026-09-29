@@ -56,6 +56,7 @@ namespace SubnauticaMP
             Hook("dropping items", Game.Pickupable, "Drop", postfix: nameof(Dropped));
             Hook("doors", Game.Openable, "PlayOpenAnimation", prefix: nameof(DoorMoved));
             Hook("deaths", Game.Player, "OnKill", prefix: nameof(PlayerKilled));
+            Hook("story", Game.StoryGoal, "Execute", prefix: nameof(StoryGoalRan));
             Hook("lobby start", Game.GameInput, "get_AnyKeyDown", postfix: nameof(AnyKeyDown));
             Hook("intro sync", Game.EscapePod, "TriggerIntroCinematic", postfix: nameof(IntroCinematicStarted));
 
@@ -152,6 +153,15 @@ namespace SubnauticaMP
         {
             if (ApplyingRemote || S == null || __instance == null || __args.Length < 2) return;
             if (__args[0] is bool open && __args[1] is float duration) S.Items.OnLocalDoor(__instance, open, duration);
+        }
+
+        static void StoryGoalRan(object[] __args)
+        {
+            if (ApplyingRemote || S == null || __args.Length < 2 || !(__args[0] is string key) || __args[1] == null) return;
+            int type = Convert.ToInt32(__args[1]);
+            // "Story"-type goals that already happened do nothing in the game; don't announce those
+            if (__args[1].ToString() == "Story" && Game.GoalDone(key)) return;
+            S.Story.OnLocalGoal(key, type);
         }
 
         static void PlayerKilled(Component __instance)

@@ -369,6 +369,28 @@ namespace SubnauticaMP.Shared
                     Broadcast(cyc, except: conn);
                     break;
 
+                case StoryGoalPacket goal:
+                    if (string.IsNullOrEmpty(goal.Key)) return;
+                    lock (_lock)
+                    {
+                        if (_world.StoryGoals.Exists(g => g.Key == goal.Key)) return; // already happened
+                        _world.StoryGoals.Add(goal);
+                    }
+                    _dirty = true;
+                    Log?.Invoke($"Story: {goal.Key}");
+                    Broadcast(goal, except: conn);
+                    break;
+
+                case AuroraPacket aurora:
+                    lock (_lock)
+                    {
+                        if (_world.Aurora != null) return; // first one wins, like the clock
+                        _world.Aurora = aurora;
+                    }
+                    _dirty = true;
+                    Broadcast(aurora, except: conn);
+                    break;
+
                 case PlayerDiedPacket died:
                     died.Id = client.Id;
                     Log?.Invoke($"{client.Name} died");

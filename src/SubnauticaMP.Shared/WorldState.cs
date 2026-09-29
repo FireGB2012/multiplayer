@@ -11,7 +11,7 @@ namespace SubnauticaMP.Shared
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 5;
+        const int FileVersion = 6;
         const int MaxEntries = 1_000_000;
 
         public HashSet<string> Blueprints = new HashSet<string>();
@@ -31,6 +31,8 @@ namespace SubnauticaMP.Shared
         public Dictionary<string, byte[]> DroppedItems = new Dictionary<string, byte[]>();
         public Dictionary<string, bool> Doors = new Dictionary<string, bool>();
         public Dictionary<string, CyclopsStatePacket> Cyclopses = new Dictionary<string, CyclopsStatePacket>();
+        public List<StoryGoalPacket> StoryGoals = new List<StoryGoalPacket>(); // in the order they happened
+        public AuroraPacket Aurora; // null until the first player shares it
 
         public HashSet<string> SetFor(UnlockKind kind)
         {
@@ -75,6 +77,10 @@ namespace SubnauticaMP.Shared
             foreach (var kv in Doors) { w.Write(kv.Key); w.Write(kv.Value); }
             w.Write(Cyclopses.Count);
             foreach (var c in Cyclopses.Values) c.Write(w);
+            w.Write(StoryGoals.Count);
+            foreach (var g in StoryGoals) g.Write(w);
+            w.Write(Aurora != null);
+            Aurora?.Write(w);
         }
 
         public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
@@ -140,6 +146,21 @@ namespace SubnauticaMP.Shared
                     s.Cyclopses[c.Id] = c;
                 }
             }
+            if (version >= 6)
+            {
+                int n = ReadCount(r);
+                for (int i = 0; i < n; i++)
+                {
+                    var g = new StoryGoalPacket();
+                    g.Read(r);
+                    s.StoryGoals.Add(g);
+                }
+                if (r.ReadBoolean())
+                {
+                    s.Aurora = new AuroraPacket();
+                    s.Aurora.Read(r);
+                }
+            }
             return s;
         }
 
@@ -164,6 +185,8 @@ namespace SubnauticaMP.Shared
                 DroppedItems = new Dictionary<string, byte[]>(DroppedItems),
                 Doors = new Dictionary<string, bool>(Doors),
                 Cyclopses = new Dictionary<string, CyclopsStatePacket>(Cyclopses),
+                StoryGoals = new List<StoryGoalPacket>(StoryGoals),
+                Aurora = Aurora,
             };
         }
 

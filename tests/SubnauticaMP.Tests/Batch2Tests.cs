@@ -90,3 +90,62 @@ public class Batch2Tests
         finally { File.Delete(path); }
     }
 }
+
+public class Batch3Tests
+{
+    static T WaitFor<T>(NetClient client, Func<T, bool> match = null, int timeoutMs = 3000) where T : Packet
+    {
+        var sw = Stopwatch.StartNew();
+        while (sw.ElapsedMilliseconds < timeoutMs)
+        {
+            while (client.TryDequeue(out var p))
+                if (p is T t && (match == null || match(t))) return t;
+            Thread.Sleep(5);
+        }
+        throw new TimeoutException("No " + typeof(T).Name);
+    }
+
+    static (NetClient, WelcomePacket) Join(NetServer server, string name)
+    {
+        var c = new NetClient();
+        c.Connect("127.0.0.1", server.Port, name);
+        return (c, WaitFor<WelcomePacket>(c));
+    }
+
+    [Fact]
+    public void StoryGoalsHappenOnceForEveryoneAndAuroraTimingIsShared()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "snmp-b3-" + Guid.NewGuid() + ".dat");
+        try
+        {
+            var server = new NetServer(path);
+            server.Start(0);
+            var (a, _) = Join(server, "A");
+            var (b, _) = Join(server, "B");
+
+            a.Send(new StoryGoalPacket { Key = "RadioShallows22NoSignalAlt", GoalType = 2 });
+            Assert.Equal("RadioShallows22NoSignalAlt", WaitFor<StoryGoalPacket>(b).Key);
+            b.Send(new StoryGoalPacket { Key = "RadioShallows22NoSignalAlt", GoalType = 2 }); // already happened
+            a.Send(new StoryGoalPacket { Key = "SunbeamCheckPlayerRange", GoalType = 0 });
+            Assert.Equal("SunbeamCheckPlayerRange", WaitFor<StoryGoalPacket>(b).Key);
+
+            a.Send(new AuroraPacket { TimeToStartCountdown = 3000, TimeToStartWarning = 2500 });
+            Assert.Equal(3000, WaitFor<AuroraPacket>(b).TimeToStartCountdown);
+            b.Send(new AuroraPacket { TimeToStartCountdown = 9999 }); // second one ignored
+            SpinWait.SpinUntil(() => server.SnapshotWorld().StoryGoals.Count == 2, 2000);
+            server.Stop();
+
+            var again = new NetServer(path);
+            again.Start(0);
+            try
+            {
+                var (_, w) = Join(again, "C");
+                Assert.Equal(2, w.World.StoryGoals.Count);
+                Assert.Equal("RadioShallows22NoSignalAlt", w.World.StoryGoals[0].Key);
+                Assert.Equal(3000, w.World.Aurora.TimeToStartCountdown);
+            }
+            finally { again.Stop(); }
+        }
+        finally { File.Delete(path); }
+    }
+}
