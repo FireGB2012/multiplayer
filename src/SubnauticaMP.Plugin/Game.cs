@@ -623,45 +623,56 @@ namespace SubnauticaMP
 
         public static byte[] Serialize(GameObject go)
         {
+#pragma warning disable 618
             var serializer = Activator.CreateInstance(ProtobufSerializer, true);
-            var m = FindMethod(ProtobufSerializer, "SerializeObjectTree", typeof(System.IO.Stream), typeof(GameObject))
-                    ?? throw new MissingMethodException("ProtobufSerializer", "SerializeObjectTree");
+#pragma warning restore 618
+            // the game only has an async saver; it never waits on anything, so run it to the end right now
+            var m = FindMethod(ProtobufSerializer, "SerializeObjectTreeAsync", typeof(System.IO.Stream), typeof(GameObject))
+                    ?? throw new MissingMethodException("ProtobufSerializer", "SerializeObjectTreeAsync");
             using (var ms = new System.IO.MemoryStream())
             {
-                m.Invoke(serializer, new object[] { ms, go });
+                var args = new object[m.GetParameters().Length];
+                args[0] = ms;
+                args[1] = go;
+                for (int i = 2; i < args.Length; i++) args[i] = false; // beforeDestroy
+                RunToEnd((IEnumerator)m.Invoke(serializer, args));
                 return ms.ToArray();
+            }
+        }
+
+        // Steps a coroutine (and anything it yields) to completion without waiting for frames.
+        static void RunToEnd(IEnumerator routine)
+        {
+            var stack = new Stack<IEnumerator>();
+            stack.Push(routine);
+            int guard = 0;
+            while (stack.Count > 0)
+            {
+                if (++guard > 5_000_000) throw new InvalidOperationException("serializer never finished");
+                var top = stack.Peek();
+                if (!top.MoveNext()) { stack.Pop(); continue; }
+                if (top.Current is IEnumerator nested) stack.Push(nested);
             }
         }
 
         public static IEnumerator Deserialize(byte[] data, Action<GameObject> done)
         {
+#pragma warning disable 618
             var serializer = Activator.CreateInstance(ProtobufSerializer, true);
+#pragma warning restore 618
             var stream = new System.IO.MemoryStream(data);
-            var async = FindMethod(ProtobufSerializer, "DeserializeObjectTreeAsync", typeof(System.IO.Stream));
-            if (async != null)
+            // public CoroutineTask<GameObject> DeserializeObjectTreeAsync(Stream, bool forceInactiveRoot, bool allowSpawnRestrictions, int verbose)
+            MethodInfo load = null;
+            foreach (var mi in AccessTools.GetDeclaredMethods(ProtobufSerializer))
             {
-                object result = TaskResultOfT != null ? Activator.CreateInstance(TaskResultOfT.MakeGenericType(typeof(GameObject))) : null;
-                var ps = async.GetParameters();
-                var args = new object[ps.Length];
-                args[0] = stream;
-                for (int i = 1; i < ps.Length; i++)
-                {
-                    var t = ps[i].ParameterType;
-                    if (result != null && t.IsInstanceOfType(result)) args[i] = result;
-                    else args[i] = t.IsValueType ? Activator.CreateInstance(t) : null; // false / 0
-                }
-                if (async.Invoke(serializer, args) is IEnumerator e) yield return e;
-                done(result == null ? null : Get(result.GetType(), result, "Get") as GameObject);
-                yield break;
+                if (mi.Name != "DeserializeObjectTreeAsync" || !mi.IsPublic) continue;
+                var ps = mi.GetParameters();
+                if (ps.Length == 4 && ps[0].ParameterType == typeof(System.IO.Stream)) { load = mi; break; }
             }
-
-            var sync = FindMethod(ProtobufSerializer, "DeserializeObjectTree", typeof(System.IO.Stream));
-            if (sync == null) throw new MissingMethodException("ProtobufSerializer", "DeserializeObjectTree");
-            var sp = sync.GetParameters();
-            var sargs = new object[sp.Length];
-            sargs[0] = stream;
-            for (int i = 1; i < sp.Length; i++) sargs[i] = sp[i].ParameterType.IsValueType ? Activator.CreateInstance(sp[i].ParameterType) : null;
-            done(sync.Invoke(serializer, sargs) as GameObject);
+            if (load == null) throw new MissingMethodException("ProtobufSerializer", "DeserializeObjectTreeAsync");
+            var task = load.Invoke(serializer, new object[] { stream, false, false, 0 });
+            if (task is IEnumerator e) yield return e;
+            done(task == null ? null : TryGet(task.GetType(), task, "GetResult") as GameObject);
         }
 
         public static void Register(GameObject go) => TryDo("register", () => Call(LargeWorldEntity, null, "Register", go));
@@ -984,9 +995,6 @@ namespace SubnauticaMP
                 Set(Vehicle, v, "constructionFallOverride", false);
             }
             yield return new WaitForEndOfFrame();
-            if (VFXConstructing != null)
-                foreach (var vfx in go.GetComponentsInChildren(VFXConstructing))
-                    TryDo("vfx", () => Call(VFXConstructing, vfx, "EndGracefully"));
             SetId(go, id);
             done(go);
         }
