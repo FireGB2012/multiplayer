@@ -19,6 +19,9 @@ namespace SubnauticaMP
 
         public ItemSync(Session s) { _s = s; }
 
+        public int Waiting => _pending.Count + (_spawning ? 1 : 0);
+        public int Total => _dropped.Count;
+
         public void Reset()
         {
             _dropped.Clear();

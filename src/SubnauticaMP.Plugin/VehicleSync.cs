@@ -72,6 +72,9 @@ namespace SubnauticaMP
         // who's driving / last drove it (0 = nobody)
         public int OwnerOf(string id) => !string.IsNullOrEmpty(id) && _vehicles.TryGetValue(id, out var t) ? t.Info.OwnerId : 0;
 
+        // still putting other players' vehicles into the world after loading
+        public bool Settling => _vehicles.Count > 0 && (_worldTime < SpawnDelay + 1f || _vehicles.Values.Any(v => v.Spawning));
+
         public bool IsTracked(string id) => !string.IsNullOrEmpty(id) && _vehicles.ContainsKey(id);
 
         Tracked NewTracked(VehicleInfo info) => new Tracked

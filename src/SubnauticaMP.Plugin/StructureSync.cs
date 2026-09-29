@@ -61,6 +61,8 @@ namespace SubnauticaMP
 
         public bool Idle => _applying.Count == 0 && _pending.Count == 0;
         public bool Busy => _applying.Count > 0;
+        public int Waiting => _pending.Count + _applying.Count;
+        public int Total => _known.Count;
 
         public bool WasJustApplied(Transform t)
         {

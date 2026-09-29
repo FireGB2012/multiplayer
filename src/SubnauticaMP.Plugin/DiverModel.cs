@@ -88,6 +88,9 @@ namespace SubnauticaMP
             return _prototype;
         }
 
+        // Builds the copy now (during the loading screen) instead of when someone first shows up.
+        public static bool Prepare() => Prototype() != null || _failed;
+
         // Scripts can depend on each other, so keep removing until nothing more goes.
         public static Transform Holder
         {

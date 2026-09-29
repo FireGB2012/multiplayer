@@ -173,10 +173,21 @@ namespace SubnauticaMP
             return tex;
         }
 
+        static readonly System.Collections.Generic.Dictionary<GUIStyle, GUIStyle> _shadows = new System.Collections.Generic.Dictionary<GUIStyle, GUIStyle>();
+        static readonly System.Collections.Generic.Dictionary<GUIStyle, GUIStyle> _centered = new System.Collections.Generic.Dictionary<GUIStyle, GUIStyle>();
+
+        // Same style, centered (made once, not every frame).
+        public static GUIStyle Centered(GUIStyle style)
+        {
+            if (!_centered.TryGetValue(style, out var c)) _centered[style] = c = new GUIStyle(style) { alignment = TextAnchor.MiddleCenter };
+            return c;
+        }
+
         // Text with a soft dark outline, readable over the game.
         public static void OutlinedLabel(Rect r, string text, GUIStyle style)
         {
-            var shadow = new GUIStyle(style) { normal = { textColor = new Color(0, 0, 0, 0.85f) } };
+            if (!_shadows.TryGetValue(style, out var shadow))
+                _shadows[style] = shadow = new GUIStyle(style) { normal = { textColor = new Color(0, 0, 0, 0.85f) } };
             GUI.Label(new Rect(r.x + 1, r.y + 1, r.width, r.height), text, shadow);
             GUI.Label(new Rect(r.x - 1, r.y + 1, r.width, r.height), text, shadow);
             GUI.Label(r, text, style);

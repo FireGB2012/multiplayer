@@ -15,7 +15,7 @@ namespace SubnauticaMP
         readonly Session _s;
         readonly Dictionary<int, Component> _remoteCrafts = new Dictionary<int, Component>(); // CrafterLogic instance id -> logic
         readonly Dictionary<string, string> _lastFires = new Dictionary<string, string>();
-        float _fireTimer;
+        float _fireTimer = 0.25f;
 
         public BaseLifeSync(Session s) { _s = s; }
 
@@ -130,9 +130,8 @@ namespace SubnauticaMP
         void ReportFires()
         {
             if (Game.SubFire == null) return;
-            foreach (var o in UnityEngine.Object.FindObjectsOfType(Game.SubFire))
+            foreach (var subFire in SceneIndex.All(Game.SubFire))
             {
-                var subFire = (Component)o;
                 if (!RunsFires(subFire)) continue;
                 var subId = SubIdOf(subFire);
                 if (subId == null) continue;
@@ -248,9 +247,8 @@ namespace SubnauticaMP
             if (Game.WaterPark == null || Game.Pickupable == null || item == null) return;
             var pickupable = item.GetComponent(Game.Pickupable);
             if (pickupable == null) return;
-            foreach (var o in UnityEngine.Object.FindObjectsOfType(Game.WaterPark))
+            foreach (var park in SceneIndex.All(Game.WaterPark))
             {
-                var park = (Component)o;
                 if (!(Game.Call(Game.WaterPark, park, "IsPointInside", item.transform.position) is bool inside) || !inside) continue;
                 Patches.ApplyingRemote = true;
                 try { Game.Call(Game.WaterPark, park, "AddItem", pickupable); }

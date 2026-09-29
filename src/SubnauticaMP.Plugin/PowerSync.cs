@@ -16,7 +16,7 @@ namespace SubnauticaMP
         readonly Dictionary<string, (int id, float seen)> _writers = new Dictionary<string, (int, float)>();
         readonly Dictionary<string, float> _applied = new Dictionary<string, float>(); // what we last set / reported
         readonly Dictionary<string, float> _saved = new Dictionary<string, float>();   // from the world file
-        float _timer;
+        float _timer = 1.3f; // offset so the periodic jobs don't all land on the same frame
 
         public PowerSync(Session s) { _s = s; }
 
@@ -51,9 +51,8 @@ namespace SubnauticaMP
             if (_timer < ReportSeconds) return;
             _timer = 0f;
 
-            foreach (var o in Object.FindObjectsOfType(Game.PowerSource))
+            foreach (var ps in SceneIndex.All(Game.PowerSource))
             {
-                var ps = (Component)o;
                 var key = Anchor.KeyOf(ps.gameObject);
                 if (key == null || !(Game.Get(Game.PowerSource, ps, "power") is float power)) continue;
 

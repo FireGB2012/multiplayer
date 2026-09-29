@@ -1,12 +1,13 @@
 using System;
 using System.IO;
+using System.IO.Compression;
 using System.Text;
 
 namespace SubnauticaMP.Shared
 {
     public static class Protocol
     {
-        public const int Version = 9;
+        public const int Version = 10;
         public const int DefaultPort = 11000;
         public const int MaxPlayers = 16;
         public const int MaxPacketSize = 64 * 1024 * 1024; // server -> client: welcome snapshot (bases + spawn book) can get big
@@ -15,22 +16,46 @@ namespace SubnauticaMP.Shared
         public const int MaxNameLength = 24;
         public const int MaxChatLength = 200;
 
+        const byte CompressedFlag = 0x80;
+        const int CompressAbove = 32 * 1024;
+
+        // Live updates nothing else depends on: allowed to jump ahead of big queued snapshots.
+        public static bool IsUrgent(PacketType type) =>
+            type == PacketType.PlayerState || type == PacketType.CreatureStates ||
+            type == PacketType.BuildGhost || type == PacketType.TimeSync || type == PacketType.Chat;
+
         // Frame layout: [int32 length][byte type][payload]. length covers type + payload.
+        // Big payloads (world snapshots, bases) are deflated; the top bit of the type byte says so.
         public static byte[] Serialize(Packet packet)
         {
-            using (var ms = new MemoryStream())
-            using (var w = new BinaryWriter(ms, Encoding.UTF8))
+            byte[] payload;
+            using (var body = new MemoryStream())
             {
-                w.Write(0); // placeholder for length
-                w.Write((byte)packet.Type);
-                packet.Write(w);
-                w.Flush();
-                int length = (int)ms.Length - 4;
-                if (length > MaxPacketSize) throw new InvalidOperationException("Packet too large");
-                ms.Position = 0;
-                w.Write(length);
-                return ms.ToArray();
+                using (var w = new BinaryWriter(body, Encoding.UTF8, true)) packet.Write(w);
+                payload = body.ToArray();
             }
+
+            byte type = (byte)packet.Type;
+            if (payload.Length > CompressAbove)
+            {
+                using (var packed = new MemoryStream())
+                {
+                    using (var z = new DeflateStream(packed, CompressionLevel.Fastest, true)) z.Write(payload, 0, payload.Length);
+                    if (packed.Length < payload.Length * 0.9)
+                    {
+                        payload = packed.ToArray();
+                        type |= CompressedFlag;
+                    }
+                }
+            }
+
+            int length = payload.Length + 1;
+            if (length > MaxPacketSize) throw new InvalidOperationException("Packet too large");
+            var frame = new byte[4 + length];
+            BitConverter.GetBytes(length).CopyTo(frame, 0);
+            frame[4] = type;
+            Buffer.BlockCopy(payload, 0, frame, 5, payload.Length);
+            return frame;
         }
 
         // Blocks until a full packet arrives. Returns null on clean disconnect.
@@ -44,10 +69,28 @@ namespace SubnauticaMP.Shared
             var body = new byte[length];
             if (!ReadExactly(stream, body, length)) return null;
 
-            using (var ms = new MemoryStream(body))
-            using (var r = new BinaryReader(ms, Encoding.UTF8))
+            byte type = body[0];
+            Stream payload = new MemoryStream(body, 1, body.Length - 1);
+            if ((type & CompressedFlag) != 0)
             {
-                var packet = Packet.Create((PacketType)r.ReadByte());
+                var unpacked = new MemoryStream();
+                using (var z = new DeflateStream(payload, CompressionMode.Decompress))
+                {
+                    var buf = new byte[81920];
+                    int n;
+                    while ((n = z.Read(buf, 0, buf.Length)) > 0)
+                    {
+                        unpacked.Write(buf, 0, n);
+                        if (unpacked.Length > MaxPacketSize * 4L) throw new InvalidDataException("Packet unpacks too big");
+                    }
+                }
+                unpacked.Position = 0;
+                payload = unpacked;
+            }
+            using (payload)
+            using (var r = new BinaryReader(payload, Encoding.UTF8))
+            {
+                var packet = Packet.Create((PacketType)(type & ~CompressedFlag));
                 packet.Read(r);
                 return packet;
             }

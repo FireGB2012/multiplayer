@@ -114,8 +114,10 @@ namespace SubnauticaMP
                 Connect(a.Host, a.Port, a.Password);
             }
 
-            PumpPackets();
+            PumpPacketsWithBudget();
             WatchConnection();
+            SceneIndex.Tick();
+            UpdateLoading();
             Lobby.Update();
             if (!Joined) return;
 
@@ -269,15 +271,6 @@ namespace SubnauticaMP
         }
 
         // ---------- receiving ----------
-
-        void PumpPackets()
-        {
-            while (_client.TryDequeue(out var packet))
-            {
-                try { Handle(packet); }
-                catch (Exception e) { Plugin.Log.LogError($"Handling {packet.Type} failed: {e}"); }
-            }
-        }
 
         void Handle(Packet packet)
         {

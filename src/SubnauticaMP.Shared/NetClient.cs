@@ -86,6 +86,7 @@ namespace SubnauticaMP.Shared
         }
 
         public bool TryDequeue(out Packet packet) => _incoming.TryDequeue(out packet);
+        public int QueuedCount => _incoming.Count;
 
         public void Send(Packet packet)
         {

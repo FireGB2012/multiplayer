@@ -27,7 +27,9 @@ namespace SubnauticaMP
             PickPrefab, WaterPark, WaterParkCreature, Builder;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
-        static readonly Dictionary<string, Func<object, object>> Getters = new Dictionary<string, Func<object, object>>();
+        // keyed by (type, name) so looking one up doesn't build a string every call (these run every frame)
+        static readonly Dictionary<(Type, string), Func<object, object>> Getters = new Dictionary<(Type, string), Func<object, object>>();
+        static readonly Dictionary<(Type, string), MemberInfo> Setters = new Dictionary<(Type, string), MemberInfo>();
 
         static Assembly _gameAssembly;
 
@@ -235,9 +237,8 @@ namespace SubnauticaMP
             if (VehicleDockingBay == null) return null;
             Component best = null;
             float bestDist = maxDistance;
-            foreach (var o in UnityEngine.Object.FindObjectsOfType(VehicleDockingBay))
+            foreach (var bay in SceneIndex.All(VehicleDockingBay))
             {
-                var bay = (Component)o;
                 float d = Vector3.Distance(bay.transform.position, pos);
                 if (d < bestDist) { bestDist = d; best = bay; }
             }
@@ -249,9 +250,8 @@ namespace SubnauticaMP
         {
             if (VehicleDockingBay == null) return null;
             var v = vehicle.GetComponent(Vehicle);
-            foreach (var o in UnityEngine.Object.FindObjectsOfType(VehicleDockingBay))
+            foreach (var bay in SceneIndex.All(VehicleDockingBay))
             {
-                var bay = (Component)o;
                 if (ReferenceEquals(TryGet(VehicleDockingBay, bay, "dockedVehicle"), v)) return bay.transform.position;
             }
             var near = NearestBay(vehicle.transform.position, 15f);
@@ -283,9 +283,8 @@ namespace SubnauticaMP
             var v = Vehicle != null ? vehicle.GetComponent(Vehicle) : null;
             if (v == null) return;
             if (VehicleDockingBay != null)
-                foreach (var o in UnityEngine.Object.FindObjectsOfType(VehicleDockingBay))
+                foreach (var bay in SceneIndex.All(VehicleDockingBay))
                 {
-                    var bay = (Component)o;
                     if (!ReferenceEquals(TryGet(VehicleDockingBay, bay, "dockedVehicle"), v)) continue;
                     var sub = Call(VehicleDockingBay, bay, "GetSubRoot") as Component;
                     if (IsCyclops(sub)) TryDo("undockcyc", () => Call(VehicleDockingBay, bay, "SetVehicleUndocked"));
@@ -408,12 +407,12 @@ namespace SubnauticaMP
         internal static object Get(Type type, object target, string name)
         {
             if (type == null) return null;
-            var key = type.FullName + "." + name;
+            var key = (type, name);
             if (!Getters.TryGetValue(key, out var getter))
             {
                 getter = MakeGetter(type, name);
                 Getters[key] = getter;
-                if (getter == null) WarnOnce("get:" + key, "Game member not found: " + key);
+                if (getter == null) WarnOnce("get:" + type.FullName + "." + name, "Game member not found: " + type.FullName + "." + name);
             }
             return getter?.Invoke(target);
         }
@@ -434,7 +433,7 @@ namespace SubnauticaMP
         internal static object TryGet(Type type, object target, string name)
         {
             if (type == null) return null;
-            var key = type.FullName + "." + name;
+            var key = (type, name);
             if (!Getters.TryGetValue(key, out var getter)) Getters[key] = getter = MakeGetter(type, name);
             return getter?.Invoke(target);
         }
@@ -442,10 +441,14 @@ namespace SubnauticaMP
         internal static bool Set(Type type, object target, string name, object value)
         {
             if (type == null) return false;
-            var f = AccessTools.Field(type, name);
-            if (f != null) { f.SetValue(target, Coerce(value, f.FieldType)); return true; }
-            var p = AccessTools.Property(type, name);
-            if (p != null && p.GetSetMethod(true) != null) { p.SetValue(target, Coerce(value, p.PropertyType), null); return true; }
+            if (!Setters.TryGetValue((type, name), out var member))
+            {
+                member = (MemberInfo)AccessTools.Field(type, name);
+                if (member == null && AccessTools.Property(type, name) is PropertyInfo prop && prop.GetSetMethod(true) != null) member = prop;
+                Setters[(type, name)] = member;
+            }
+            if (member is FieldInfo f) { f.SetValue(target, Coerce(value, f.FieldType)); return true; }
+            if (member is PropertyInfo p) { p.SetValue(target, Coerce(value, p.PropertyType), null); return true; }
             return false;
         }
 
@@ -715,7 +718,7 @@ namespace SubnauticaMP
         {
             var list = new List<GameObject>();
             if (Base != null)
-                foreach (var o in UnityEngine.Object.FindObjectsOfType(Base)) list.Add(((Component)o).gameObject);
+                foreach (var c in SceneIndex.All(Base)) list.Add(c.gameObject);
             return list;
         }
 
@@ -943,11 +946,11 @@ namespace SubnauticaMP
         {
             var list = new List<GameObject>();
             if (Vehicle != null)
-                foreach (var o in UnityEngine.Object.FindObjectsOfType(Vehicle))
-                    list.Add(((Component)o).gameObject);
+                foreach (var c in SceneIndex.All(Vehicle))
+                    list.Add(c.gameObject);
             if (SubRoot != null)
-                foreach (var o in UnityEngine.Object.FindObjectsOfType(SubRoot))
-                    if (IsCyclops((Component)o)) list.Add(((Component)o).gameObject);
+                foreach (var c in SceneIndex.All(SubRoot))
+                    if (IsCyclops(c)) list.Add(c.gameObject);
             return list;
         }
 

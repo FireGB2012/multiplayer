@@ -22,6 +22,9 @@ namespace SubnauticaMP
 
         public ContainerSync(Session s) { _s = s; }
 
+        public int Waiting => _pending.Count + (_applying ? 1 : 0);
+        public int Total => _known.Count;
+
         public void Reset()
         {
             _known.Clear();

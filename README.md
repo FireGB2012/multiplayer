@@ -50,6 +50,8 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Build hologram while placing something | ✔ teammates see your green/red ghost |
 | Server password, kick, ban | ✔ in the launcher, the in-game F8 window (host) and the dedicated server |
 | In-game menus | ✔ styled like Subnautica's own UI (its font, blue panels, cyan highlights) |
+| Loading screen when joining | ✔ other players' bases, lockers, items, vehicles and diver models load behind it; your oxygen/food don't drain meanwhile |
+| Lag fixes | ✔ network sends never freeze the game, big data is compressed, no more whole-world searches every second |
 
 ## In-game Multiplayer menu
 Like Nitrox: the main menu gets a **Multiplayer** button next to Play. It lists **your worlds** and **servers you've played on**

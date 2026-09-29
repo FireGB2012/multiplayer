@@ -36,7 +36,7 @@ namespace SubnauticaMP
         readonly HashSet<int> _puppets = new HashSet<int>(); // GameObject instance ids, checked from hooks
         readonly HashSet<string> _pending = new HashSet<string>(); // asked the server, no answer yet
         readonly HashSet<string> _dead = new HashSet<string>();
-        float _scanTimer, _streamTimer, _slotTimer, _pendingTimer;
+        float _scanTimer = 0.5f, _streamTimer, _slotTimer = 0.2f, _pendingTimer;
         object _ecoType; // the local player's EcoTarget type, copied onto remote divers
 
         public CreatureSync(Session s) { _s = s; }
@@ -181,9 +181,8 @@ namespace SubnauticaMP
             int myId = _s.LocalId;
 
             var seen = new HashSet<string>();
-            foreach (var o in UnityEngine.Object.FindObjectsOfType(Game.Creature))
+            foreach (var c in SceneIndex.All(Game.Creature))
             {
-                var c = (Component)o;
                 var id = Game.GetId(c.gameObject);
                 if (id == null || !id.StartsWith(IdPrefix) || _dead.Contains(id)) continue;
                 seen.Add(id);

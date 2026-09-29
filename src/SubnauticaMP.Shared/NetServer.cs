@@ -724,7 +724,7 @@ namespace SubnauticaMP.Shared
         static void Reject(Connection conn, string reason)
         {
             conn.Send(new RejectedPacket { Reason = reason });
-            conn.Close("Rejected: " + reason);
+            conn.CloseAfterSend("Rejected: " + reason);
         }
 
         void OnClosed(Connection conn, string reason)
@@ -762,7 +762,10 @@ namespace SubnauticaMP.Shared
         {
             Connection[] targets;
             lock (_lock) targets = _connections.Where(c => c != except && ((Client)c.Tag).Joined).ToArray();
-            foreach (var c in targets) c.Send(packet);
+            if (targets.Length == 0) return;
+            var data = Protocol.Serialize(packet); // once, not once per player
+            bool urgent = Protocol.IsUrgent(packet.Type);
+            foreach (var c in targets) c.SendRaw(data, urgent);
         }
     }
 }

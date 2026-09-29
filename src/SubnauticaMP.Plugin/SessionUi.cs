@@ -45,6 +45,7 @@ namespace SubnauticaMP
             {
                 DrawMainMenuUi();
                 if (Lobby.Holding) DrawLobby();
+                else if (Loading) DrawLoading();
                 else DrawNameTags();
                 DrawChatOverlay();
                 if (_menuOpen) _window = GUILayout.Window(0x5B4D50, _window, DrawWindow, "");
@@ -101,7 +102,7 @@ namespace SubnauticaMP
             y += 36;
             GUI.Label(new Rect(x, y, w, 60), string.Join("     ", names.ToArray()), SnSkin.MidText);
             y += 64;
-            GUI.Label(new Rect(x, y, w, 30), $"{_gameMode.ToUpperInvariant()} MODE", SnSkin.Header.WithCenter());
+            GUI.Label(new Rect(x, y, w, 30), $"{_gameMode.ToUpperInvariant()} MODE", SnSkin.Centered(SnSkin.Header));
             y += 50;
 
             if (IsHost)
@@ -229,10 +230,5 @@ namespace SubnauticaMP
             field();
             GUILayout.EndHorizontal();
         }
-    }
-
-    internal static class GuiStyleExtensions
-    {
-        public static GUIStyle WithCenter(this GUIStyle s) => new GUIStyle(s) { alignment = TextAnchor.MiddleCenter };
     }
 }

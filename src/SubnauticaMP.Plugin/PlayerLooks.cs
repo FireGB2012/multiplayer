@@ -21,6 +21,10 @@ namespace SubnauticaMP
         }
 
         static List<Slot> _slots;
+        static Animator _animFor;
+        static (string name, int hash)[] _animParams = new (string, int)[0];
+        static readonly List<string> _animOn = new List<string>(), _lastOn = new List<string>();
+        static string _animKey = "";
 
         public static bool IsToolAnim(string param) => AnimPrefixes.Any(param.StartsWith);
 
@@ -50,11 +54,22 @@ namespace SubnauticaMP
             var player = Game.LocalPlayer;
             var animator = player != null ? Game.TryGet(Game.Player, player, "playerAnimator") as Animator : null;
             if (animator == null || !animator.isActiveAndEnabled) return "";
-            var on = new List<string>();
-            foreach (var p in animator.parameters)
-                if (p.type == AnimatorControllerParameterType.Bool && IsToolAnim(p.name) && animator.GetBool(p.nameHash))
-                    on.Add(p.name);
-            return string.Join(",", on.ToArray());
+            if (animator != _animFor)
+            {
+                // animator.parameters makes a new array every call: read the list once
+                _animFor = animator;
+                _animParams = animator.parameters
+                    .Where(p => p.type == AnimatorControllerParameterType.Bool && IsToolAnim(p.name))
+                    .Select(p => (p.name, p.nameHash)).ToArray();
+            }
+            _animOn.Clear();
+            foreach (var (name, hash) in _animParams)
+                if (animator.GetBool(hash)) _animOn.Add(name);
+            if (_animOn.Count == 0) return "";
+            _animKey = _animOn.Count == _lastOn.Count && _animOn.SequenceEqual(_lastOn) ? _animKey : string.Join(",", _animOn.ToArray());
+            _lastOn.Clear();
+            _lastOn.AddRange(_animOn);
+            return _animKey;
         }
 
         // Where each suit model lives inside the player's "body", read once from the local player.

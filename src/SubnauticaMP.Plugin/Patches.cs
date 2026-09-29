@@ -85,6 +85,22 @@ namespace SubnauticaMP
             Hook("creature damage", Game.LiveMixin, "TakeDamage", prefix: nameof(Damaged));
             Hook("creature deaths", Game.LiveMixin, "Kill", prefix: nameof(Killed));
 
+            // object lists (no more searching the whole world every second)
+            void Index(Type type, string added, string removed)
+            {
+                if (type == null) return;
+                Hook("index " + type.Name, type, added, postfix: nameof(IndexAdd));
+                if (removed != null) Hook("index " + type.Name + " (gone)", type, removed, prefix: nameof(IndexRemove));
+                SceneIndex.Track(type, true);
+            }
+            Index(Game.Creature, "OnEnable", "OnDisable");
+            Index(Game.PowerSource, "Start", "OnDestroy");
+            Index(Game.SubFire, "Start", "OnDestroy");
+            Index(Game.Vehicle, "Start", null);
+            Index(Game.SubRoot, "Start", "OnDestroy");
+            Index(Game.Base, "Start", null);
+            Index(Game.VehicleDockingBay, "Start", "OnDestroy");
+
             // batch 5: beds, power, fabricators, fires, leaks, fruit, containment
             Hook("beds", Game.DayNightCycle, "SkipTime", prefix: nameof(SkipTimeAsked));
             Hook("solar power", Game.SolarPanel, "Update", prefix: nameof(Generate));
@@ -362,5 +378,8 @@ namespace SubnauticaMP
             if (ApplyingRemote || S == null || __args.Length == 0 || !(__args[0] is Component p) || p == null) return;
             S.Items.OnLocalDrop(p.gameObject);
         }
+
+        static void IndexAdd(Component __instance) => SceneIndex.Add(__instance);
+        static void IndexRemove(Component __instance) => SceneIndex.Remove(__instance);
     }
 }
