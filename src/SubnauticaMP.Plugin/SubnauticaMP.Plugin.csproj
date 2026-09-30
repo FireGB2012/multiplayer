@@ -13,7 +13,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>SubnauticaMP</AssemblyName>
     <RootNamespace>SubnauticaMP</RootNamespace>
-    <Version>0.14.0</Version>
+    <Version>0.15.0</Version>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Subnautica</GameDir>
     <ManagedDir>$(GameDir)\Subnautica_Data\Managed</ManagedDir>
@@ -43,6 +43,11 @@
     <Reference Include="UnityEngine.AnimationModule" HintPath="$(ManagedDir)\UnityEngine.AnimationModule.dll" Private="false" />
     <Reference Include="UnityEngine.AudioModule" HintPath="$(ManagedDir)\UnityEngine.AudioModule.dll" Private="false" />
     <Reference Include="UnityEngine.UIModule" HintPath="$(ManagedDir)\UnityEngine.UIModule.dll" Private="false" />
+  </ItemGroup>
+
+  <!-- Nautilus (optional at runtime): always compiled against our small stand-in, never shipped. -->
+  <ItemGroup>
+    <ProjectReference Include="..\..\lib\Nautilus.Ref\Nautilus.Ref.csproj" Private="false" />
   </ItemGroup>
 
   <!-- No game here: compile against reference copies (never shipped, the game's own DLLs are used at runtime). -->

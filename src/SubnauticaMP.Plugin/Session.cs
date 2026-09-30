@@ -95,7 +95,7 @@ namespace SubnauticaMP
         void Update()
         {
             if (Input.GetKeyDown(Plugin.MenuKey.Value)) ToggleMultiplayerWindow();
-            if (Joined && Game.InWorld && !Lobby.Holding && !Loading && !_menuOpen && !PausePageShowing &&
+            if (Plugin.EnterForChat.Value && Joined && Game.InWorld && !Lobby.Holding && !Loading && !_menuOpen && !PausePageShowing &&
                 Cursor.lockState == CursorLockMode.Locked && !UiKit.Typing() &&
                 (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) &&
                 !(_pauseMenu != null && _pauseMenu.gameObject.activeInHierarchy))
@@ -130,6 +130,8 @@ namespace SubnauticaMP
             PumpPacketsWithBudget();
             WatchConnection();
             SafeRun("object lists", SceneIndex.Tick);
+            RunDue();
+            if (Time.unscaledTime >= _optionsSyncAt) { _optionsSyncAt = Time.unscaledTime + 1f; NautilusCompat.SyncOptions(); }
             UpdateLoading();
             WatchFrameTime();
             Lobby.Update();
@@ -405,6 +407,10 @@ namespace SubnauticaMP
                 case HullHealthPacket hull: BaseLife.OnHull(hull); break;
                 case PickedPacket picked: BaseLife.OnPicked(picked); break;
                 case PlayerProfilePacket profile: OnProfile(profile); break;
+                case ModFixPacket fix:
+                    if (NautilusCompat.ApplyFix(fix.TechTypes))
+                        AddChat("Your Nautilus item numbers were fixed to match this world. Quit and restart Subnautica (don't save first), then join again.");
+                    break;
                 case BuildGhostPacket ghost: Ghosts.OnGhost(ghost); break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
@@ -481,6 +487,23 @@ namespace SubnauticaMP
         }
 
         bool _menuLobby; // waiting in the party lobby on the main menu
+        float _optionsSyncAt;
+
+        static readonly List<(float at, Action action)> _later = new List<(float, Action)>();
+
+        // Runs something a bit later on the main thread (works before the session exists too).
+        public static void RunLater(float seconds, Action action) => _later.Add((Time.realtimeSinceStartup + seconds, action));
+
+        void RunDue()
+        {
+            for (int i = _later.Count - 1; i >= 0; i--)
+            {
+                if (Time.realtimeSinceStartup < _later[i].at) continue;
+                var a = _later[i].action;
+                _later.RemoveAt(i);
+                SafeRun("later", a);
+            }
+        }
 
         public bool InMenuLobby => _menuLobby && Joined && !Game.InWorld;
         internal string JoinCodeText => _joinCode;
@@ -545,7 +568,8 @@ namespace SubnauticaMP
         {
             _lastPassword = string.IsNullOrEmpty(password) ? null : password;
             AddChat($"Joining {host}:{port}...");
-            _client.Connect(host, port, Plugin.PlayerName.Value, password: password ?? "", color: Plugin.DiverColor.Value);
+            _client.Connect(host, port, Plugin.PlayerName.Value, password: password ?? "", color: Plugin.DiverColor.Value,
+                mods: NautilusCompat.ContentMods(), techTypes: NautilusCompat.ModdedTechTypes());
         }
 
         void JoinFromUi()

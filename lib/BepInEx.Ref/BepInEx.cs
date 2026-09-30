@@ -9,6 +9,14 @@ namespace BepInEx
         public BepInPlugin(string GUID, string Name, string Version) => throw new NotImplementedException();
     }
 
+    [AttributeUsage(AttributeTargets.Class, AllowMultiple = true)]
+    public class BepInDependency : Attribute
+    {
+        [Flags]
+        public enum DependencyFlags { HardDependency = 1, SoftDependency = 2 }
+        public BepInDependency(string DependencyGUID, DependencyFlags Flags = DependencyFlags.HardDependency) => throw new NotImplementedException();
+    }
+
     public abstract class BaseUnityPlugin : MonoBehaviour
     {
         protected Logging.ManualLogSource Logger => throw new NotImplementedException();

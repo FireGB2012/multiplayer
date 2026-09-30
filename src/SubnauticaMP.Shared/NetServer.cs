@@ -611,6 +611,14 @@ namespace SubnauticaMP.Shared
                 else Reply("Wrong admin password.");
                 return;
             }
+            if (cmd == "mods")
+            {
+                lock (_lock)
+                    Reply(!_world.ModsDefined ? "Mods: not set yet (the first player to join sets them)."
+                        : _world.Mods.Count == 0 ? "Mods: none, this is a vanilla world."
+                        : "Mods everyone needs: " + string.Join(", ", _world.Mods.Select(m => m.ToString()).ToArray()));
+                return;
+            }
             if (cmd == "players")
             {
                 Reply("Online: " + string.Join(", ", Players.Select(p => p.Name).ToArray()));
@@ -618,8 +626,8 @@ namespace SubnauticaMP.Shared
             }
             if (cmd == "help" || cmd == "?")
             {
-                Reply(admin ? "Commands: /players, /kick <name>, /ban <name>, /unban <name>, /bans, /save, /backup"
-                            : "Commands: /players, /login <admin password>");
+                Reply(admin ? "Commands: /players, /mods, /kick <name>, /ban <name>, /unban <name>, /bans, /save, /backup, /resetmods"
+                            : "Commands: /players, /mods, /login <admin password>");
                 return;
             }
             if (!admin) { Reply("That needs admin. Type /login <admin password> (the host's server window shows it)."); return; }
@@ -639,6 +647,11 @@ namespace SubnauticaMP.Shared
                 case "bans":
                     var bans = Bans;
                     Reply(bans.Count == 0 ? "Nobody is banned." : "Banned: " + string.Join(", ", bans.Select(b => b.Name).ToArray()));
+                    break;
+                case "resetmods":
+                    lock (_lock) { _world.ModsDefined = false; _world.Mods.Clear(); _world.TechTypes.Clear(); }
+                    _dirty = true;
+                    Reply("Mod list cleared: the next player to join sets it.");
                     break;
                 case "save":
                     SaveWorld();
@@ -810,6 +823,7 @@ namespace SubnauticaMP.Shared
             var welcome = new WelcomePacket();
             bool hostChanged;
             List<CreatureOwnerPacket> owners;
+            string modNote = null, modLog = null;
             lock (_lock)
             {
                 var name = Protocol.CleanName(hello.Name);
@@ -828,6 +842,7 @@ namespace SubnauticaMP.Shared
                     Reject(conn, "Server is full");
                     return;
                 }
+                if (!CheckMods(conn, client, hello, out modNote, out modLog)) return;
 
                 client.Id = _nextId++;
                 client.Name = UniqueName(Protocol.CleanName(hello.Name), client);
@@ -854,6 +869,8 @@ namespace SubnauticaMP.Shared
             Broadcast(new PlayerJoinedPacket { Id = client.Id, Name = client.Name, Color = client.Color }, except: conn);
             if (hostChanged) Broadcast(new HostPacket { HostId = HostId }, except: conn);
             Log?.Invoke($"{client.Name} joined (id {client.Id})");
+            if (modLog != null) Log?.Invoke(modLog);
+            if (modNote != null) conn.Send(new ChatPacket { SenderId = 0, Text = modNote });
             PlayersChanged?.Invoke();
         }
 
@@ -870,6 +887,59 @@ namespace SubnauticaMP.Shared
                 if (!taken.Contains(candidate)) return candidate;
             }
         }
+
+        // Content mods (Nautilus / SMLHelper based): the host's mods define the world; everyone else needs the
+        // same ones, and the same numbers for the modded items (Nautilus picks them per PC). Call inside _lock.
+        bool CheckMods(Connection conn, Client client, HelloPacket hello, out string note, out string log)
+        {
+            note = log = null;
+            bool definer = !_world.ModsDefined || (client.IsLocal && TrustLocalPlayers);
+            if (definer)
+            {
+                bool changed = !_world.ModsDefined || !SameMods(_world.Mods, hello.Mods) || ModInfo.Mismatches(_world.TechTypes, hello.TechTypes).Count > 0 ||
+                               hello.TechTypes.Keys.Any(k => !_world.TechTypes.ContainsKey(k));
+                _world.ModsDefined = true;
+                _world.Mods = hello.Mods.ToList();
+                foreach (var kv in hello.TechTypes) _world.TechTypes[kv.Key] = kv.Value;
+                if (changed)
+                {
+                    _dirty = true;
+                    log = _world.Mods.Count == 0 ? "World mods: none (vanilla)"
+                        : $"World mods ({_world.Mods.Count}): " + string.Join(", ", _world.Mods.Select(m => m.ToString()).ToArray()) + $"; {_world.TechTypes.Count} modded items";
+                }
+                return true;
+            }
+
+            var have = new HashSet<string>(hello.Mods.Select(m => m.Guid), StringComparer.OrdinalIgnoreCase);
+            var missing = _world.Mods.Where(m => !have.Contains(m.Guid)).ToList();
+            if (missing.Count > 0)
+            {
+                Reject(conn, "This world uses mods you don't have: " + string.Join(", ", missing.Select(m => m.ToString()).ToArray()) +
+                             ". Install them and join again.");
+                return false;
+            }
+            var wrong = ModInfo.Mismatches(_world.TechTypes, hello.TechTypes);
+            if (wrong.Count > 0)
+            {
+                conn.Send(new ModFixPacket { TechTypes = new Dictionary<string, int>(_world.TechTypes) });
+                Reject(conn, $"Your modded items are numbered differently from this world ({wrong.Count}, like {wrong[0]}). " +
+                             "It's fixed now: restart Subnautica and join again.");
+                return false;
+            }
+
+            var worldGuids = new HashSet<string>(_world.Mods.Select(m => m.Guid), StringComparer.OrdinalIgnoreCase);
+            var extra = hello.Mods.Where(m => !worldGuids.Contains(m.Guid)).ToList();
+            var older = _world.Mods.Where(m => hello.Mods.Any(h => string.Equals(h.Guid, m.Guid, StringComparison.OrdinalIgnoreCase) && h.Version != m.Version)).ToList();
+            if (extra.Count > 0)
+                note = "Heads up: you have mods this world doesn't use (" + string.Join(", ", extra.Select(m => m.ToString()).ToArray()) +
+                       "). Things from them won't show up for other players.";
+            else if (older.Count > 0)
+                note = "Heads up: your version differs from the host's for " + string.Join(", ", older.Select(m => m.ToString()).ToArray()) + ".";
+            return true;
+        }
+
+        static bool SameMods(List<ModInfo> a, List<ModInfo> b) =>
+            a.Count == b.Count && a.All(m => b.Any(x => string.Equals(x.Guid, m.Guid, StringComparison.OrdinalIgnoreCase) && x.Version == m.Version));
 
         // Host = whoever plays on the server's own PC, otherwise whoever has been here longest. Call inside _lock.
         bool PickHost()

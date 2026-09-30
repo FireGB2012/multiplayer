@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using BepInEx;
 using BepInEx.Configuration;
 using BepInEx.Logging;
@@ -9,10 +10,11 @@ using UnityEngine;
 namespace SubnauticaMP
 {
     [BepInPlugin(Guid, "Subnautica Multiplayer", Version)]
+    [BepInDependency(NautilusCompat.NautilusGuid, BepInDependency.DependencyFlags.SoftDependency)] // load after Nautilus when it's there
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.firegb2012.subnauticamp";
-        public const string Version = "0.14.0";
+        public const string Version = "0.15.0";
 
         internal static ManualLogSource Log;
         internal static string Folder;
@@ -22,6 +24,7 @@ namespace SubnauticaMP
         internal static ConfigEntry<KeyCode> MenuKey;
         internal static ConfigEntry<string> HostPassword;
         internal static ConfigEntry<int> DiverColor;
+        internal static ConfigEntry<bool> EnterForChat;
 
         // Our own GameObject so we survive scene loads (menu -> game).
         static void EnsureSession()
@@ -43,10 +46,15 @@ namespace SubnauticaMP
             Port = Config.Bind("General", "Port", Protocol.DefaultPort, "Port to host on / join.");
             MenuKey = Config.Bind("General", "MenuKey", KeyCode.F8, "Opens the multiplayer window.");
             DiverColor = Config.Bind("General", "DiverColor", Shared.DiverColors.Default, "Your suit color other players see (0xRRGGBB).");
+            EnterForChat = Config.Bind("General", "EnterForChat", true, "Press Enter in game to open the chat box.");
             HostPassword = Config.Bind("General", "HostPassword", "", "Password friends need to join worlds you host (empty = no password).");
 
             Game.Init();
             Patches.Apply(new Harmony(Guid));
+            NautilusCompat.OnStartup();
+            NautilusCompat.RegisterOptions();
+            var mods = NautilusCompat.ContentMods();
+            if (mods.Count > 0) Log.LogInfo("Content mods (must match the host's): " + string.Join(", ", mods.Select(m => m.ToString()).ToArray()));
 
             EnsureSession();
             // If a scene load ever wipes our object out, bring it straight back.

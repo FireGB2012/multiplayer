@@ -17,7 +17,7 @@ namespace SubnauticaMP.Shared
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 9;
+        const int FileVersion = 10;
         public static int CurrentFileVersion => FileVersion;
         const int MaxEntries = 1_000_000;
 
@@ -44,6 +44,9 @@ namespace SubnauticaMP.Shared
         public Dictionary<string, float> Power = new Dictionary<string, float>();
         public List<BanEntry> Bans = new List<BanEntry>(); // never sent to players
         public string AdminPassword = "";                 // never sent to players
+        public bool ModsDefined;                          // set by the host / first player
+        public List<ModInfo> Mods = new List<ModInfo>();  // content mods everyone needs
+        public Dictionary<string, int> TechTypes = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase); // modded item numbers
 
         public HashSet<string> SetFor(UnlockKind kind)
         {
@@ -99,6 +102,9 @@ namespace SubnauticaMP.Shared
             w.Write(Bans.Count);
             foreach (var b in Bans) { w.Write(b.Name ?? ""); w.Write(b.Ip ?? ""); }
             w.Write(AdminPassword ?? "");
+            w.Write(ModsDefined);
+            ModInfo.WriteList(w, Mods);
+            ModInfo.WriteMap(w, TechTypes);
         }
 
         public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
@@ -196,6 +202,12 @@ namespace SubnauticaMP.Shared
                 for (int i = 0; i < n; i++) s.Bans.Add(new BanEntry { Name = r.ReadString(), Ip = r.ReadString() });
             }
             if (version >= 9) s.AdminPassword = r.ReadString();
+            if (version >= 10)
+            {
+                s.ModsDefined = r.ReadBoolean();
+                s.Mods = ModInfo.ReadList(r);
+                s.TechTypes = ModInfo.ReadMap(r);
+            }
             return s;
         }
 
@@ -226,6 +238,9 @@ namespace SubnauticaMP.Shared
                 Power = new Dictionary<string, float>(Power),
                 Bans = new List<BanEntry>(Bans),
                 AdminPassword = AdminPassword,
+                ModsDefined = ModsDefined,
+                Mods = Mods.ToList(),
+                TechTypes = new Dictionary<string, int>(TechTypes, StringComparer.OrdinalIgnoreCase),
             };
         }
 

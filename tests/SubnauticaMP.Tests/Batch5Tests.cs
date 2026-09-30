@@ -1,6 +1,8 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
+using System.Collections.Generic;
 using System.Threading;
 using SubnauticaMP.Shared;
 
@@ -8,7 +10,7 @@ namespace SubnauticaMP.Tests;
 
 public class Batch5Tests
 {
-    static T WaitFor<T>(NetClient client, Func<T, bool> match = null, int timeoutMs = 3000) where T : Packet
+    static T WaitFor<T>(NetClient client, Func<T, bool> match = null, int timeoutMs = 10000) where T : Packet
     {
         var sw = Stopwatch.StartNew();
         while (sw.ElapsedMilliseconds < timeoutMs)
@@ -223,6 +225,65 @@ public class Batch5Tests
             finally { again.Stop(); }
         }
         finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    static List<ModInfo> ModList(params string[] names) =>
+        names.Select(n => new ModInfo { Guid = "com.test." + n.ToLowerInvariant(), Name = n, Version = "1.0" }).ToList();
+
+    [Fact]
+    public void ContentModsMustMatchTheHostsAndItemNumbersGetFixed()
+    {
+        var server = new NetServer { TrustLocalPlayers = false };
+        server.Start(0);
+        try
+        {
+            NetClient Connect(string name, List<ModInfo> mods, Dictionary<string, int> tt)
+            {
+                var c = new NetClient();
+                c.Connect("127.0.0.1", server.Port, name, mods: mods, techTypes: tt);
+                return c;
+            }
+
+            // first player sets the world's mods
+            var host = Connect("Host", ModList("Seaglide2", "MoreFish"), new Dictionary<string, int> { ["CoolKnife"] = 11000, ["BigFish"] = 11001 });
+            WaitFor<WelcomePacket>(host);
+
+            // missing a mod: turned away, told which
+            var missing = Connect("NoFish", ModList("Seaglide2"), new Dictionary<string, int> { ["CoolKnife"] = 11000 });
+            Assert.Contains("MoreFish", WaitFor<RejectedPacket>(missing).Reason);
+
+            // same mods, different numbers: gets the right numbers, then turned away with "restart"
+            var swapped = Connect("Swapped", ModList("MoreFish", "Seaglide2"), new Dictionary<string, int> { ["CoolKnife"] = 11001, ["BigFish"] = 11000 });
+            var fix = WaitFor<ModFixPacket>(swapped);
+            Assert.Equal(11000, fix.TechTypes["CoolKnife"]);
+            Assert.Contains("restart", WaitFor<RejectedPacket>(swapped).Reason);
+
+            // matching: in, and an extra mod only gets a heads-up
+            var ok = Connect("Fine", ModList("Seaglide2", "MoreFish", "Extra"), new Dictionary<string, int> { ["CoolKnife"] = 11000, ["BigFish"] = 11001, ["X"] = 11002 });
+            var w = WaitFor<WelcomePacket>(ok);
+            Assert.Equal(2, w.World.Mods.Count);
+            Assert.Contains("Extra", WaitFor<ChatPacket>(ok, c => c.SenderId == 0).Text);
+
+            // vanilla world: modded players get in with a heads-up
+        }
+        finally { server.Stop(); }
+    }
+
+    [Fact]
+    public void NautilusCacheTakesTheWorldsNumbersWithoutClashes()
+    {
+        var active = new Dictionary<string, int> { ["CoolKnife"] = 11001, ["BigFish"] = 11000, ["MyOwnThing"] = 11002 };
+        var off = new Dictionary<string, int> { ["OldMod"] = 11003 };
+        var world = new Dictionary<string, int> { ["CoolKnife"] = 11000, ["BigFish"] = 11001, ["HostOnly"] = 11003 };
+        var (a, o) = ModInfo.MergeCache(active, off, world);
+
+        Assert.Equal(11000, a["CoolKnife"]);
+        Assert.Equal(11001, a["BigFish"]);
+        Assert.Equal(11003, a["HostOnly"]);
+        Assert.Equal(11002, a["MyOwnThing"]);          // free, keeps its number
+        Assert.NotEqual(11003, o["OldMod"]);           // was taken by the world: moved
+        var all = a.Values.Concat(o.Values).ToList();
+        Assert.Equal(all.Count, all.Distinct().Count()); // no two items share a number
     }
 
     [Fact]

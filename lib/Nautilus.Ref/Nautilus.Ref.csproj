@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Compile-only stand-in for the Nautilus modding API (https://github.com/SubnauticaModding/Nautilus),
+    just the few members the mod uses for its Mods options page, with the same names and signatures.
+    It is never shipped: at runtime the player's real Nautilus.dll is used, and only if they have it.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <AssemblyName>Nautilus</AssemblyName>
+    <RootNamespace>Nautilus</RootNamespace>
+    <Nullable>disable</Nullable>
+    <LangVersion>9.0</LangVersion>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

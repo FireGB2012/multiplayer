@@ -75,6 +75,16 @@ Multiplayer saves are kept out of the normal single-player Load list. The launch
 The host is whoever plays on the server's PC (otherwise whoever joined first).
 Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.
 
+## Other mods (Nautilus)
+Works alongside mods built on [Nautilus](https://github.com/SubnauticaModding/Nautilus) (custom items, creatures, blueprints...):
+- When you join, the server checks everyone has the **same content mods as the host** (the host's mods define the world).
+  Missing one? You're told which to install. Extra mods are allowed with a heads-up (their stuff won't show for others).
+- Nautilus numbers modded items differently on each PC depending on install order. If yours don't match the world,
+  the mod **fixes Nautilus's cache for you** (`BepInEx\config\Nautilus\TechTypeCache`, old one kept as `.bak`):
+  restart Subnautica without saving and join again.
+- With Nautilus installed, the mod's settings (menu key, suit color, Enter for chat) also show up in **Options > Mods**.
+- Chat: `/mods` shows the world's mod list; admins can `/resetmods` so the next player to join sets it.
+
 ## Friends on a different wifi
 The host's launcher asks the router to open the port automatically (UPnP). The Server tab tells you if it worked.
 If it didn't:

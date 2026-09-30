@@ -18,18 +18,20 @@ namespace SubnauticaMP.Shared
         public string LastError { get; private set; }
 
         // Non-blocking: kicks off the connect on a worker thread.
-        public void Connect(string host, int port, string name, int timeoutMs = 5000, string password = null, int color = DiverColors.Default)
+        public void Connect(string host, int port, string name, int timeoutMs = 5000, string password = null, int color = DiverColors.Default,
+            System.Collections.Generic.List<ModInfo> mods = null, System.Collections.Generic.Dictionary<string, int> techTypes = null)
         {
             if (State != ClientState.Disconnected) return;
             State = ClientState.Connecting;
             LastError = null;
             LocalId = 0;
 
-            var thread = new Thread(() => DoConnect(host, port, name, timeoutMs, password, color)) { IsBackground = true, Name = "SubnauticaMP connect" };
+            var thread = new Thread(() => DoConnect(host, port, name, timeoutMs, password, color, mods, techTypes)) { IsBackground = true, Name = "SubnauticaMP connect" };
             thread.Start();
         }
 
-        void DoConnect(string host, int port, string name, int timeoutMs, string password, int color)
+        void DoConnect(string host, int port, string name, int timeoutMs, string password, int color,
+            System.Collections.Generic.List<ModInfo> mods, System.Collections.Generic.Dictionary<string, int> techTypes)
         {
             try
             {
@@ -48,7 +50,9 @@ namespace SubnauticaMP.Shared
                 conn.Closed += OnClosed;
                 _conn = conn;
                 conn.Start();
-                conn.Send(new HelloPacket { ProtocolVersion = Protocol.Version, Name = Protocol.CleanName(name), Password = password ?? "", Color = color });
+                conn.Send(new HelloPacket { ProtocolVersion = Protocol.Version, Name = Protocol.CleanName(name), Password = password ?? "", Color = color,
+                    Mods = mods ?? new System.Collections.Generic.List<ModInfo>(),
+                    TechTypes = techTypes ?? new System.Collections.Generic.Dictionary<string, int>() });
             }
             catch (Exception e)
             {

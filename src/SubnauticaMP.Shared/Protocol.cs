@@ -7,11 +7,11 @@ namespace SubnauticaMP.Shared
 {
     public static class Protocol
     {
-        public const int Version = 12;
+        public const int Version = 13;
         public const int DefaultPort = 11000;
         public const int MaxPlayers = 16;
         public const int MaxPacketSize = 64 * 1024 * 1024; // server -> client: welcome snapshot (bases + spawn book) can get big
-        public const int MaxHelloPacketSize = 64 * 1024;          // before a client has said hello
+        public const int MaxHelloPacketSize = 256 * 1024;          // before a client has said hello
         public const int MaxClientPacketSize = 8 * 1024 * 1024;   // joined clients: a big base snapshot can be a few MB
         public const int MaxNameLength = 24;
         public const int MaxChatLength = 200;
@@ -22,7 +22,7 @@ namespace SubnauticaMP.Shared
         // Live updates nothing else depends on: allowed to jump ahead of big queued snapshots.
         public static bool IsUrgent(PacketType type) =>
             type == PacketType.PlayerState || type == PacketType.CreatureStates ||
-            type == PacketType.BuildGhost || type == PacketType.TimeSync || type == PacketType.Chat;
+            type == PacketType.BuildGhost || type == PacketType.TimeSync;
 
         // Frame layout: [int32 length][byte type][payload]. length covers type + payload.
         // Big payloads (world snapshots, bases) are deflated; the top bit of the type byte says so.

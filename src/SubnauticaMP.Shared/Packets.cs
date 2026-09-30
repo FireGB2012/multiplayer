@@ -48,6 +48,7 @@ namespace SubnauticaMP.Shared
         HullHealth = 40,      // base / Cyclops damaged or welded (leaks)
         Picked = 41,          // fruit picked off a plant
         PlayerProfile = 42,   // name / diver color changed (in the party lobby)
+        ModFix = 43,          // your modded item numbers don't match the world's: here are the right ones
     }
 
     public struct Vec3
@@ -136,6 +137,7 @@ namespace SubnauticaMP.Shared
                 case PacketType.HullHealth: return new HullHealthPacket();
                 case PacketType.Picked: return new PickedPacket();
                 case PacketType.PlayerProfile: return new PlayerProfilePacket();
+                case PacketType.ModFix: return new ModFixPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
@@ -147,8 +149,15 @@ namespace SubnauticaMP.Shared
         public string Name;
         public string Password = "";
         public int Color = DiverColors.Default;
+        public List<ModInfo> Mods = new List<ModInfo>();                 // content mods (Nautilus-based)
+        public Dictionary<string, int> TechTypes = new Dictionary<string, int>(); // their modded items' numbers
         public override PacketType Type => PacketType.Hello;
-        public override void Write(BinaryWriter w) { w.Write(ProtocolVersion); w.Write(Name ?? ""); w.Write(Password ?? ""); w.Write(Color); }
+        public override void Write(BinaryWriter w)
+        {
+            w.Write(ProtocolVersion); w.Write(Name ?? ""); w.Write(Password ?? ""); w.Write(Color);
+            ModInfo.WriteList(w, Mods);
+            ModInfo.WriteMap(w, TechTypes);
+        }
         public override void Read(BinaryReader r)
         {
             ProtocolVersion = r.ReadInt32();
@@ -156,6 +165,8 @@ namespace SubnauticaMP.Shared
             // older mods stop after the name; let them get the "version mismatch" message instead of an error
             Password = r.BaseStream.Position < r.BaseStream.Length ? r.ReadString() : "";
             Color = r.BaseStream.Position < r.BaseStream.Length ? r.ReadInt32() : DiverColors.Default;
+            if (r.BaseStream.Position < r.BaseStream.Length) Mods = ModInfo.ReadList(r);
+            if (r.BaseStream.Position < r.BaseStream.Length) TechTypes = ModInfo.ReadMap(r);
         }
     }
 

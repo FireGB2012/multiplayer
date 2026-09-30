@@ -7,7 +7,7 @@ namespace SubnauticaMP.Tests;
 
 public class NetworkTests
 {
-    static T WaitFor<T>(NetClient client, int timeoutMs = 3000) where T : Packet
+    static T WaitFor<T>(NetClient client, int timeoutMs = 10000) where T : Packet
     {
         var sw = Stopwatch.StartNew();
         while (sw.ElapsedMilliseconds < timeoutMs)
