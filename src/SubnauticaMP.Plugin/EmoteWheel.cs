@@ -269,7 +269,7 @@ namespace SubnauticaMP
             _scroll = GUILayout.BeginScrollView(_scroll);
             _pickerHover = Emote.None;
             var q = (_search ?? "").Trim().ToLowerInvariant();
-            foreach (var info in Emotes.All)
+            foreach (var info in Emotes.All.Where(Emotes.Pickable))
             {
                 if (_category != "All" && info.Category != _category) continue;
                 if (q.Length > 0 && !info.Label.ToLowerInvariant().Contains(q) && !info.Name.Contains(q) && !info.Aliases.Any(a => a.Contains(q))) continue;

@@ -17,6 +17,8 @@ namespace SubnauticaMP
         bool _pauseEmotes; // showing the emote picker instead of the multiplayer page
         int _emotePage;
         const int EmotesPerPage = 7;
+        static Emotes.Info[] _pickList;
+        static Emotes.Info[] PickList => _pickList ?? (_pickList = Emotes.All.Where(Emotes.Pickable).ToArray());
         Transform _pauseList;
         bool _pauseFailed, _pauseDumped, _banArmed;
         int _pauseSelected;
@@ -199,7 +201,7 @@ namespace SubnauticaMP
                 if (Input.GetKeyDown(KeyCode.Alpha1 + i) || Input.GetKeyDown(KeyCode.Keypad1 + i))
                 {
                     int index = _emotePage * EmotesPerPage + i;
-                    if (index < Emotes.All.Length) PickEmote(Emotes.All[index].Emote);
+                    if (index < PickList.Length) PickEmote(PickList[index].Emote);
                     return;
                 }
         }
@@ -219,13 +221,13 @@ namespace SubnauticaMP
         {
             if (_pauseEmotes && Joined)
             {
-                int pages = (Emotes.All.Length + EmotesPerPage - 1) / EmotesPerPage;
+                int pages = (PickList.Length + EmotesPerPage - 1) / EmotesPerPage;
                 _emotePage = Mathf.Clamp(_emotePage, 0, pages - 1);
                 for (int i = 0; i < EmotesPerPage; i++)
                 {
                     int index = _emotePage * EmotesPerPage + i;
-                    if (index >= Emotes.All.Length) break;
-                    var info = Emotes.All[index];
+                    if (index >= PickList.Length) break;
+                    var info = PickList[index];
                     PauseButton($"{i + 1}.  {info.Label}", () => PickEmote(info.Emote));
                 }
                 if (pages > 1) PauseButton(_emotePage + 1 < pages ? "More emotes  >" : "<  First emotes", () =>

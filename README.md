@@ -12,6 +12,7 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Chat | ✔ |
 | Emotes: 40+ incl. Floss, Robot, Breakdance, Helicopter, Worm, Moonwalk, Macarena, Chicken Dance, cartwheels... | ✔ Fortnite-style emote wheel on **G**, everyone sees your diver do it |
 | Dance parties | ✔ everyone who joins dances the same dance at the same moment, with disco lights |
+| Pushing | ✔ empty hand + left click on a teammate up close: they get shoved, ragdoll, and stand back up after 4 s |
 | Blueprints (unlocks, fragment scans) | ✔ everyone shares one tech tree |
 | Databank / PDA entries | ✔ |
 | Picked-up items + broken outcrops | ✔ gone for everyone |

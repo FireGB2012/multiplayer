@@ -59,6 +59,15 @@ namespace SubnauticaMP
             _s.AddChat($"* {Plugin.PlayerName.Value} {info.Did}" + (info.Seconds <= 0f ? " (move to stop)" : ""));
         }
 
+        // Just on your own screen (a push knocked you over: everyone else already knows from the push).
+        public void PlayLocalOnly(Emote emote, Vector3 knockDirection)
+        {
+            _local = emote;
+            _started = Time.unscaledTime;
+            StartSelfView(emote);
+            _self?.SetKnockDirection(knockDirection);
+        }
+
         public void Stop()
         {
             if (_local == Emote.None) return;

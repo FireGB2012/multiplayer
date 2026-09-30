@@ -202,6 +202,17 @@ namespace SubnauticaMP
 
         public void Stop() => _active = false;
 
+        // Which way a push sent them (world space); they fall that way.
+        public void SetKnockDirection(Vector3 world)
+        {
+            var parent = _body.parent;
+            var local = parent != null ? parent.InverseTransformDirection(world) : world;
+            local.y = 0f;
+            _knockDir = local.sqrMagnitude > 1e-4f ? local.normalized : Vector3.back;
+        }
+
+        Vector3 _knockDir = Vector3.back;
+
         public bool Showing => _showing != Emote.None;
 
         public Vector3 Middle => _chest != null ? _chest.position : _body.position + _body.up * 0.9f;
@@ -373,6 +384,36 @@ namespace SubnauticaMP
                     break;
                 }
 
+                case Emote.Shove:
+                {
+                    // both hands thrust forward, quick
+                    float k = t < 0.15f ? t / 0.15f : Mathf.Clamp01(1f - (t - 0.15f) / 0.4f);
+                    k = Smooth(k);
+                    Chest(14f * k, 0f, 0f, w);
+                    Arm(true, V(0.22f, 0.05f, 1f), V(0.1f, 0.1f, 1f), w * k);
+                    Arm(false, V(0.22f, 0.05f, 1f), V(0.1f, 0.1f, 1f), w * k);
+                    break;
+                }
+
+                case Emote.Knocked:
+                {
+                    // fall over the way the push went, lie there limp, then get back up
+                    const float fallEnd = 0.6f, upStart = Emotes.KnockedSeconds - 0.9f;
+                    float down = t < fallEnd ? Smooth(t / fallEnd) : t > upStart ? 1f - Smooth(Mathf.Clamp01((t - upStart) / 0.9f)) : 1f;
+                    float wobble = t > fallEnd && t < upStart ? 4f * Mathf.Sin(t * 3f) * Mathf.Exp(-(t - fallEnd)) : 0f;
+                    var axis = Vector3.Cross(Vector3.up, _knockDir);
+                    if (axis.sqrMagnitude < 1e-4f) axis = Vector3.right;
+                    Turn(Quaternion.AngleAxis(88f * down + wobble, axis), V(0f, -0.45f * down, 0f) + _knockDir * (0.3f * down), 1f);
+                    float flail = t < fallEnd ? Mathf.Sin(t * 22f) * 0.4f : 0f;
+                    float limp = down * w;
+                    Arm(true, V(0.9f, 0.35f + flail, 0.15f), V(0.8f, 0.1f - flail, 0.4f), limp);
+                    Arm(false, V(0.9f, 0.35f - flail, 0.15f), V(0.8f, 0.1f + flail, 0.4f), limp);
+                    Leg(true, V(0.3f, -1f, 0.2f + flail), V(0.15f, -1f, -0.25f), limp);
+                    Leg(false, V(0.22f, -1f, 0.35f - flail), V(0.1f, -1f, -0.1f), limp);
+                    Head(-18f * down, 10f * Mathf.Sin(t * 1.3f) * down, 0f, w);
+                    break;
+                }
+
                 case Emote.Chill:
                 {
                     // floating on your back, hands behind your head
@@ -422,6 +463,14 @@ namespace SubnauticaMP
             var c = right ? _handR : _handL;
             Aim(a, b, World(new Vector3(upper.x * s, upper.y, upper.z)), w);
             Aim(b, c, World(new Vector3(lower.x * s, lower.y, lower.z)), w);
+        }
+
+        // Points the thigh and shin (given for the right leg; mirrored for the left), in the body's own space.
+        void Leg(bool right, Vector3 upper, Vector3 lower, float w)
+        {
+            var s = right ? 1f : -1f;
+            Aim(right ? _thighR : _thighL, right ? _kneeR : _kneeL, World(new Vector3(upper.x * s, upper.y, upper.z)), w);
+            Aim(right ? _kneeR : _kneeL, right ? _footR : _footL, World(new Vector3(lower.x * s, lower.y, lower.z)), w);
         }
 
         // Turns `bone` so the line from it to `child` points along `dir`.

@@ -38,6 +38,7 @@ namespace SubnauticaMP
         EmoteAnimator _emoteAnim;
         Emote _emote = Emote.None;
         float _emoteStarted;
+        Vector3 _knockDir = Vector3.back;
         Vector3 _velocity, _lastTargetPos;
         float _lastTargetTime;
         bool _underwater = true, _visible = true;
@@ -152,15 +153,18 @@ namespace SubnauticaMP
         }
 
         public Emote CurrentEmote => _emote;
+        public bool Visible => _visible;
+        public Vector3 Chest => transform.position; // what a push aims at
 
         // Returns false when it's just a looping emote (dance...) being sent again to keep it going.
-        public bool PlayEmote(Emote emote)
+        public bool PlayEmote(Emote emote, Vector3? knockDirection = null)
         {
+            if (knockDirection.HasValue) _knockDir = knockDirection.Value;
             if (emote == Emote.None) { StopEmote(); return false; }
             bool repeat = emote == _emote && Emotes.Loops(emote) && EmoteRunning();
             if (!repeat) _emoteStarted = Time.unscaledTime;
             _emote = emote;
-            try { _emoteAnim?.Play(emote); }
+            try { _emoteAnim?.Play(emote); _emoteAnim?.SetKnockDirection(_knockDir); }
             catch (Exception e) { Game.WarnOnce("emote", "Couldn't play emote: " + e.GetBaseException().Message); }
             return !repeat;
         }

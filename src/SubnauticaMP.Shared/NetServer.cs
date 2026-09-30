@@ -24,6 +24,7 @@ namespace SubnauticaMP.Shared
             public string Ip = "";
             public bool Admin; // host, or typed /login with the admin password
             public DateTime NextEmote; // spam guard
+            public DateTime NextPush;
         }
 
         const double TimeSyncSeconds = 5;
@@ -572,6 +573,24 @@ namespace SubnauticaMP.Shared
                 case PartyPacket party:
                     HandleParty(client, party);
                     break;
+
+                case PushPacket push:
+                {
+                    bool ok;
+                    var now = DateTime.UtcNow;
+                    lock (_lock)
+                    {
+                        ok = push.TargetId != client.Id && now >= client.NextPush &&
+                             _connections.Any(c => c.Tag is Client t && t.Joined && t.Id == push.TargetId);
+                        if (ok) client.NextPush = now.AddMilliseconds(700);
+                    }
+                    if (!ok) break;
+                    var d = push.Direction;
+                    float len = (float)Math.Sqrt(d.X * d.X + d.Y * d.Y + d.Z * d.Z);
+                    if (len < 1e-3f || float.IsNaN(len)) break;
+                    Broadcast(new PushPacket { PusherId = client.Id, TargetId = push.TargetId, Direction = new Vec3(d.X / len, d.Y / len, d.Z / len) }, except: null);
+                    break;
+                }
 
                 case IntroPacket _:
                     bool open;

@@ -11,6 +11,8 @@ namespace SubnauticaMP.Shared
         None = 0, // stop whatever emote is playing
         Wave, Point, Cheer, Dance, Laugh, Nod, No, Salute, Facepalm, Shrug, Clap, Flip, Spin, Chill,
         Party = 15, // dancing along at a party: the dance comes from the party's shared clock
+        Shove = 16,   // the push (empty hand + click on someone)
+        Knocked = 17, // got pushed: ragdoll, then stand up
         // 40 and up: the motion-captured / hand-made clips in EmoteCatalog.g.cs, in order
     }
 
@@ -46,6 +48,8 @@ namespace SubnauticaMP.Shared
             new Info { Emote = Emote.Flip, Name = "flip", Label = "Backflip", Did = "does a backflip", Seconds = 1.3f, Aliases = new[] { "backflip" }, Category = "Fun" },
             new Info { Emote = Emote.Spin, Name = "spin", Label = "Spin", Did = "spins", Seconds = 1.3f, Aliases = new string[0], Category = "Fun" },
             new Info { Emote = Emote.Chill, Name = "chill", Label = "Chill", Did = "is chilling", Seconds = 0f, Aliases = new[] { "relax", "float" }, Category = "Poses" },
+            new Info { Emote = Emote.Shove, Name = "shove", Label = "Shove", Did = "shoves", Seconds = 0.6f, Aliases = new string[0], Category = SystemCategory },
+            new Info { Emote = Emote.Knocked, Name = "knocked", Label = "Knocked over", Did = "got knocked over", Seconds = KnockedSeconds, Aliases = new string[0], Category = SystemCategory },
             new Info { Emote = Emote.Party, Name = "party", Label = "Party!", Did = "joined the party", Seconds = 0f, Aliases = new[] { "rave", "disco" }, Category = "Party" },
         };
 
@@ -100,16 +104,21 @@ namespace SubnauticaMP.Shared
         public static Info Named(string name) => All.FirstOrDefault(i => i.Name == name);
 
         // "wave", "Wave", "hi" -> Wave
+        public const string SystemCategory = "System"; // pushes: not in the wheel or chat, only happen by pushing
+        public const float KnockedSeconds = 4f;
+
+        public static bool Pickable(Info i) => i.Category != SystemCategory;
+
         public static Emote Find(string name)
         {
             name = (name ?? "").Trim().ToLowerInvariant();
             if (name.Length == 0) return Emote.None;
-            foreach (var i in All)
+            foreach (var i in All.Where(Pickable))
                 if (i.Name == name || i.Aliases.Contains(name)) return i.Emote;
             return Emote.None;
         }
 
-        public static string List() => string.Join(", ", All.Select(i => i.Name).ToArray());
+        public static string List() => string.Join(", ", All.Where(Pickable).Select(i => i.Name).ToArray());
 
         // Chat text that means "do an emote": "/e wave", "/emote wave", "/wave".
         // Returns false for normal chat / other commands. listOnly = "/e" or "/emotes" on its own.
@@ -160,5 +169,17 @@ namespace SubnauticaMP.Shared
         public override PacketType Type => PacketType.Party;
         public override void Write(BinaryWriter w) { w.Write(LeaderId); w.Write(Active); Center.Write(w); w.Write(StartTime); w.Write(Seed); }
         public override void Read(BinaryReader r) { LeaderId = r.ReadInt32(); Active = r.ReadBoolean(); Center = Vec3.Read(r); StartTime = r.ReadDouble(); Seed = r.ReadInt32(); }
+    }
+
+    // Empty hand + click on a teammate: they get shoved. client -> server: Target + Direction.
+    // server -> everyone: PusherId pushed TargetId that way (the target's own game moves them).
+    public sealed class PushPacket : Packet
+    {
+        public int PusherId;
+        public int TargetId;
+        public Vec3 Direction;
+        public override PacketType Type => PacketType.Push;
+        public override void Write(BinaryWriter w) { w.Write(PusherId); w.Write(TargetId); Direction.Write(w); }
+        public override void Read(BinaryReader r) { PusherId = r.ReadInt32(); TargetId = r.ReadInt32(); Direction = Vec3.Read(r); }
     }
 }

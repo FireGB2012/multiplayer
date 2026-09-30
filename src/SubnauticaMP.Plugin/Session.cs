@@ -34,6 +34,7 @@ namespace SubnauticaMP
         internal GhostSync Ghosts;
         internal EmoteSync Emoting;
         internal EmoteWheel Wheel;
+        internal PushSync Pushing;
         internal IEnumerable<RemotePlayer> Remotes => _remotes.Values;
 
         NetServer _hostedServer;
@@ -82,6 +83,7 @@ namespace SubnauticaMP
             Ghosts = new GhostSync(this);
             Emoting = new EmoteSync(this);
             Wheel = new EmoteWheel(this);
+            Pushing = new PushSync(this);
 
             if (!_launchRead)
             {
@@ -178,6 +180,7 @@ namespace SubnauticaMP
             SafeRun("base life", BaseLife.Update);
             SafeRun("build holograms", Ghosts.Update);
             SafeRun("emotes", Emoting.Update);
+            SafeRun("push", Pushing.Update);
 
             _sendTimer += Time.unscaledDeltaTime;
             if (_sendTimer >= SendInterval)
@@ -429,6 +432,7 @@ namespace SubnauticaMP
                 case BuildGhostPacket ghost: Ghosts.OnGhost(ghost); break;
                 case EmotePacket emote: Emoting.OnEmote(emote); break;
                 case PartyPacket party: Emoting.OnParty(party); break;
+                case PushPacket push: Pushing.OnPush(push); break;
                 case IntroPacket intro: if (intro.Go) Lobby.IntroGo = true; break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
@@ -468,6 +472,7 @@ namespace SubnauticaMP
                 BaseLife.Reset();
                 Ghosts.Reset();
                 Emoting.Reset();
+                Pushing.Reset();
             }
             _lastState = state;
         }
@@ -682,6 +687,7 @@ namespace SubnauticaMP
             BaseLife.Reset();
             Ghosts.Reset();
             Emoting.Reset();
+            Pushing.Reset();
         }
 
         static string SafeFileName(string s)

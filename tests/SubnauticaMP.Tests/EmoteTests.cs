@@ -80,7 +80,7 @@ public class EmoteTests
         {
             Assert.True(names.Add(e.Name), e.Name);
             foreach (var a in e.Aliases) Assert.True(names.Add(a), a);
-            Assert.Equal(e.Emote, Emotes.Find(e.Name));
+            if (Emotes.Pickable(e)) Assert.Equal(e.Emote, Emotes.Find(e.Name)); else Assert.Equal(Emote.None, Emotes.Find(e.Name)); // pushes can't be typed
         }
         Assert.True(Emotes.Loops(Emote.Dance));
         Assert.True(Emotes.Loops(Emote.Chill));
@@ -282,6 +282,32 @@ public class EmoteTests
             host.Send(new IntroPacket());
             b.Disconnect();
             Assert.True(WaitFor<IntroPacket>(host).Go);
+        }
+        finally { server.Stop(); }
+    }
+
+    [Fact]
+    public void PushesReachEveryoneButNotSelfPushesOrSpam()
+    {
+        var server = new NetServer();
+        server.Start(0);
+        try
+        {
+            var (a, _) = Join(server, "A");
+            var (b, _) = Join(server, "B");
+            var (c, _) = Join(server, "C");
+            WaitFor<PlayerJoinedPacket>(a, p => p.Name == "C");
+
+            a.Send(new PushPacket { TargetId = b.LocalId, Direction = new Vec3(0, 0, 5) });
+            var got = WaitFor<PushPacket>(b);
+            Assert.Equal(a.LocalId, got.PusherId);
+            Assert.Equal(1.0, (double)got.Direction.Z, 3); // normalized
+            Assert.Equal(b.LocalId, WaitFor<PushPacket>(c).TargetId);
+
+            a.Send(new PushPacket { TargetId = c.LocalId, Direction = new Vec3(1, 0, 0) }); // too soon
+            a.Send(new PushPacket { TargetId = a.LocalId, Direction = new Vec3(1, 0, 0) }); // yourself
+            b.Send(new PushPacket { TargetId = 9999, Direction = new Vec3(1, 0, 0) });      // nobody
+            Assert.DoesNotContain(Drain(c, 400), p => p is PushPacket);
         }
         finally { server.Stop(); }
     }

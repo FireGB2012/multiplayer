@@ -7,7 +7,7 @@ namespace SubnauticaMP.Shared
 {
     public static class Protocol
     {
-        public const int Version = 16;
+        public const int Version = 17;
         public const int DefaultPort = 11000;
         public const int MaxPlayers = 16;
         public const int MaxPacketSize = 64 * 1024 * 1024; // server -> client: welcome snapshot (bases + spawn book) can get big
