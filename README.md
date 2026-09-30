@@ -107,6 +107,10 @@ Send `Subnautica\BepInEx\LogOutput.log`. The mod logs which features hooked in
 That's the Steam version quitting because Steam wasn't running. Open Steam first (the launcher's PLAY
 now does that for you).
 
+**Game opens, closes, then opens again without the mod?** Steam took over and started *its* copy of the game.
+Update the launcher and use its PLAY button: it now keeps the game in the folder the mod is in (writes
+`steam_appid.txt`, opens Steam first), and tells you if Steam's own copy is somewhere else.
+
 ## Dedicated server
 ```
 dotnet run --project src/SubnauticaMP.Server -- 11000 world.dat --password secret

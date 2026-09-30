@@ -37,6 +37,26 @@ namespace SubnauticaMP.Launcher
             catch { return null; }
         }
 
+        // The Steam version (has Steam's DLL next to the game).
+        public static bool IsSteamCopy(string dir)
+        {
+            try
+            {
+                var plugins = Path.Combine(dir, "Subnautica_Data", "Plugins");
+                return Directory.Exists(plugins) && Directory.GetFiles(plugins, "steam_api*.dll", SearchOption.AllDirectories).Length > 0;
+            }
+            catch { return false; }
+        }
+
+        // Without this file the Steam version closes itself when started directly and Steam opens its own copy
+        // instead: if that isn't the folder the mod is in, the game comes back without the mod.
+        public static void WriteSteamAppId(string dir)
+        {
+            var path = Path.Combine(dir, "steam_appid.txt");
+            try { if (!File.Exists(path) || File.ReadAllText(path).Trim() != "264710") File.WriteAllText(path, "264710"); }
+            catch { }
+        }
+
         // Copies the mod DLLs packed inside this exe into BepInEx\plugins.
         public static void InstallMod(string dir)
         {

@@ -114,9 +114,7 @@ namespace SubnauticaMP.Launcher
         // ---------- play ----------
 
         // Opens the game on its main menu (multiplayer is started from the game's own Multiplayer button).
-        const string SteamAppId = "264710"; // Subnautica on Steam
-
-        void PlayGame()
+        async Task PlayGame()
         {
             var dir = GameDir;
             if (!GameFolder.IsGameDir(dir))
@@ -137,17 +135,34 @@ namespace SubnauticaMP.Launcher
                 Status("Subnautica is already running: use the Multiplayer button in its main menu.");
                 return;
             }
-            // The Steam copy closes itself right away if Steam isn't running ("Couldn't initialize Steamworks"),
-            // so go through Steam then: it opens Steam first and starts the game (the mod still loads).
-            bool steamCopy = dir.Replace('\\', '/').IndexOf("/steamapps/", StringComparison.OrdinalIgnoreCase) >= 0;
-            if (steamCopy && !Process.GetProcessesByName("steam").Any())
+
+            string note = "";
+            bool steamCopy = GameFolder.IsSteamCopy(dir) || dir.Replace('\\', '/').IndexOf("/steamapps/", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (steamCopy)
             {
-                Process.Start(new ProcessStartInfo("steam://rungameid/" + SteamAppId) { UseShellExecute = true });
-                Status("Steam wasn't open: starting Subnautica through Steam (can take a bit)... then click Multiplayer in its main menu.");
-                return;
+                // stops the game from handing itself over to Steam (which would start Steam's own copy, maybe without the mod)
+                GameFolder.WriteSteamAppId(dir);
+                var steamDir = GameFinder.SteamInstallDir();
+                if (steamDir != null && !string.Equals(Path.GetFullPath(steamDir).TrimEnd('\\', '/'), Path.GetFullPath(dir).TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase))
+                    note = $"  Heads up: Steam's own Subnautica is in {steamDir}. Starting it from Steam won't have the mod; use PLAY here (or point Setup at that folder).";
+
+                // the Steam version needs Steam running, or it closes right away
+                if (!Process.GetProcessesByName("steam").Any())
+                {
+                    Status("Opening Steam first (Subnautica needs it)...");
+                    var steamExe = GameFinder.SteamExe();
+                    if (steamExe != null) Process.Start(new ProcessStartInfo(steamExe, "-silent") { UseShellExecute = true });
+                    else Process.Start(new ProcessStartInfo("steam://open/main") { UseShellExecute = true });
+                    for (int i = 0; i < 60 && !Process.GetProcessesByName("steam").Any(); i++) await Task.Delay(500);
+                    if (!Process.GetProcessesByName("steam").Any())
+                        throw new Exception("Steam didn't start. Open Steam and log in, then hit PLAY again.");
+                    Status("Waiting for Steam to finish logging in...");
+                    await Task.Delay(8000);
+                }
             }
+
             Process.Start(new ProcessStartInfo(Path.Combine(dir, "Subnautica.exe")) { WorkingDirectory = dir, UseShellExecute = true });
-            Status("Starting Subnautica... click Multiplayer in its main menu to host or join.");
+            Status("Starting Subnautica... click Multiplayer in its main menu to host or join." + note);
         }
 
         // ---------- server ----------

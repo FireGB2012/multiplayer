@@ -195,6 +195,41 @@ namespace SubnauticaMP.Launcher
             return found;
         }
 
+        // Where Steam itself installed Subnautica (the copy Steam starts), or null.
+        public static string SteamInstallDir()
+        {
+            foreach (var steam in SteamRoots())
+            {
+                var libs = new List<string> { steam };
+                foreach (var vdf in new[] { Path.Combine(steam, "steamapps", "libraryfolders.vdf"), Path.Combine(steam, "config", "libraryfolders.vdf") })
+                {
+                    try
+                    {
+                        if (File.Exists(vdf))
+                            foreach (Match m in Regex.Matches(File.ReadAllText(vdf), "\"path\"\\s*\"([^\"]+)\""))
+                                libs.Add(m.Groups[1].Value.Replace("\\\\", "\\"));
+                    }
+                    catch { }
+                }
+                foreach (var lib in libs)
+                {
+                    try
+                    {
+                        var acf = Path.Combine(lib, "steamapps", "appmanifest_" + SteamAppId + ".acf");
+                        if (!File.Exists(acf)) continue;
+                        var m = Regex.Match(File.ReadAllText(acf), "\"installdir\"\\s*\"([^\"]+)\"");
+                        var dir = Path.Combine(lib, "steamapps", "common", m.Success ? m.Groups[1].Value : "Subnautica");
+                        if (IsGameDir(dir)) return Path.GetFullPath(dir);
+                    }
+                    catch { }
+                }
+            }
+            return null;
+        }
+
+        public static string SteamExe() =>
+            SteamRoots().Select(r => Path.Combine(r, "steam.exe")).FirstOrDefault(File.Exists);
+
         static IEnumerable<string> SteamRoots()
         {
             var roots = new List<string>();
