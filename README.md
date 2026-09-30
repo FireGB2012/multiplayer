@@ -90,7 +90,12 @@ Send `Subnautica\BepInEx\LogOutput.log`. The mod logs which features hooked in
 ```
 dotnet run --project src/SubnauticaMP.Server -- 11000 world.dat --password secret
 ```
+Options: `--autosave <minutes>` (default 2), `--backups <count>` (default 10, kept in `backups\<world>\`).
 Commands: `players`, `kick <name>`, `ban <name>`, `unban <name>`, `bans`, `save`, `quit`.
+
+On start the server prints the world, port, password, **admin password**, autosave and backup settings (like Nitrox).
+In game, anyone can type `/login <admin password>` in chat to become an admin, then `/help`:
+`/players`, `/kick`, `/ban`, `/unban`, `/bans`, `/save`, `/backup`. The host is always an admin.
 
 ## Building
 Needs the .NET 8 SDK.

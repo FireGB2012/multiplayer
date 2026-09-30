@@ -22,10 +22,11 @@ namespace SubnauticaMP.Shared
             public bool Joined;
             public bool IsLocal; // playing on the same PC as the server: that's the host
             public string Ip = "";
+            public bool Admin; // host, or typed /login with the admin password
         }
 
         const double TimeSyncSeconds = 5;
-        const double SaveSeconds = 30;
+        const double BackupSeconds = 10 * 60;
 
         readonly object _lock = new object();
         readonly List<Connection> _connections = new List<Connection>();
@@ -50,6 +51,9 @@ namespace SubnauticaMP.Shared
         public bool Running => _listener != null;
         public int HostId { get { lock (_lock) return _hostId; } }
         public string Password { get; set; } = ""; // empty = anyone can join
+        public double AutosaveMinutes { get; set; } = 2;
+        public int MaxBackups { get; set; } = 10;
+        public string AdminPassword { get { lock (_lock) return _world.AdminPassword; } }
         public bool TrustLocalPlayers { get; set; } = true; // the host's own PC skips the password and can't be banned
 
         // savePath = null keeps the world in memory only. gameMode/started only apply when the world is brand new;
@@ -89,7 +93,19 @@ namespace SubnauticaMP.Shared
         public void Start(int port)
         {
             if (Running) throw new InvalidOperationException("Already running");
-            LoadWorld();
+            var name = _savePath != null ? Path.GetFileNameWithoutExtension(_savePath) : "(not saved)";
+            Log?.Invoke($"Loading world '{name}'");
+            bool existed = LoadWorld();
+            lock (_lock)
+            {
+                if (string.IsNullOrEmpty(_world.AdminPassword)) { _world.AdminPassword = MakeAdminPassword(); _dirty = true; }
+            }
+            if (_savePath != null)
+            {
+                if (existed && Backup()) Log?.Invoke("World backed up");
+                SaveWorld();
+                Log?.Invoke("World state saved");
+            }
 
             _listener = new TcpListener(IPAddress.Any, port);
             _listener.Start();
@@ -99,7 +115,14 @@ namespace SubnauticaMP.Shared
 
             var thread = new Thread(AcceptLoop) { IsBackground = true, Name = "SubnauticaMP accept" };
             thread.Start();
-            Log?.Invoke("Server listening on port " + Port);
+            Log?.Invoke($"Server is listening on port {Port} TCP");
+            Log?.Invoke($"World id {_world.WorldId}, {_world.GameMode} mode, " + (_world.Started ? "in progress" : "waiting in the lobby"));
+            Log?.Invoke("Save format: SubnauticaMP world file v" + WorldState.CurrentFileVersion + (_savePath != null ? " (" + _savePath + ")" : ""));
+            Log?.Invoke("Server password: " + (string.IsNullOrEmpty(Password) ? "\"None. Public server.\"" : "\"" + Password + "\""));
+            Log?.Invoke($"Admin password: \"{AdminPassword}\"  (in game chat: /login {AdminPassword}, then /help)");
+            Log?.Invoke(_savePath == null ? "Autosave: DISABLED (no world file)" : $"Autosave: ENABLED ({AutosaveMinutes:0.#} min)");
+            Log?.Invoke(_savePath == null || MaxBackups <= 0 ? "Autobackup: DISABLED" : $"Autobackup: ENABLED (every {BackupSeconds / 60:0} min, max backups: {MaxBackups})");
+            Log?.Invoke(existed ? "Loaded save" : "New world created");
         }
 
         public void Stop()
@@ -130,7 +153,7 @@ namespace SubnauticaMP.Shared
         }
 
         readonly Stopwatch _uptime = Stopwatch.StartNew();
-        double _lastTimeSync, _lastSave;
+        double _lastTimeSync, _lastSave, _lastBackup;
 
         void Tick()
         {
@@ -145,16 +168,54 @@ namespace SubnauticaMP.Shared
                 Broadcast(new TimeSyncPacket { TimePassed = worldTime }, except: null);
             }
 
-            if (up - _lastSave >= SaveSeconds)
+            if (up - _lastSave >= AutosaveMinutes * 60)
             {
                 _lastSave = up;
-                if (_dirty) SaveWorld();
+                if (_dirty) { SaveWorld(); Log?.Invoke("World state saved"); }
+            }
+            if (up - _lastBackup >= BackupSeconds)
+            {
+                _lastBackup = up;
+                if (up > 1 && Backup()) Log?.Invoke("World backed up");
             }
         }
 
-        void LoadWorld()
+        static string MakeAdminPassword()
         {
-            if (_savePath == null || !File.Exists(_savePath)) return;
+            const string letters = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+            var rnd = new Random();
+            var chars = new char[12];
+            for (int i = 0; i < chars.Length; i++) chars[i] = letters[rnd.Next(letters.Length)];
+            return new string(chars);
+        }
+
+        public string BackupFolder => _savePath == null ? null
+            : Path.Combine(Path.GetDirectoryName(Path.GetFullPath(_savePath)) ?? ".", "backups", Path.GetFileNameWithoutExtension(_savePath));
+
+        // Copies the world file into backups\<world>\ and keeps only the newest MaxBackups.
+        public bool Backup()
+        {
+            if (_savePath == null || MaxBackups <= 0 || !File.Exists(_savePath)) return false;
+            try
+            {
+                var dir = BackupFolder;
+                Directory.CreateDirectory(dir);
+                var name = Path.GetFileNameWithoutExtension(_savePath) + "-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".dat";
+                File.Copy(_savePath, Path.Combine(dir, name), true);
+                foreach (var old in Directory.GetFiles(dir, "*.dat").OrderByDescending(File.GetLastWriteTimeUtc).Skip(MaxBackups))
+                    File.Delete(old);
+                return true;
+            }
+            catch (Exception e)
+            {
+                Log?.Invoke("Couldn't back up the world: " + e.Message);
+                return false;
+            }
+        }
+
+        bool LoadWorld()
+        {
+            if (_savePath == null || !File.Exists(_savePath)) return false;
             try
             {
                 var world = WorldState.LoadFromFile(_savePath);
@@ -164,11 +225,14 @@ namespace SubnauticaMP.Shared
                     foreach (var v in _world.Vehicles.Values) v.OwnerId = 0;
                     _timeAtClockStart = world.TimePassed;
                 }
-                Log?.Invoke($"Loaded world: {world.Blueprints.Count} blueprints, {world.Vehicles.Count} vehicles, {world.RemovedEntities.Count} items taken");
+                Log?.Invoke($"World contents: {world.Blueprints.Count} blueprints, {world.Structures.Count} bases/buildings, {world.Vehicles.Count} vehicles, " +
+                            $"{world.Containers.Count} lockers, {world.StoryGoals.Count} story events, {world.RemovedEntities.Count} things picked up");
+                return true;
             }
             catch (Exception e)
             {
                 Log?.Invoke("Couldn't load world file, starting fresh: " + e.Message);
+                return false;
             }
         }
 
@@ -235,6 +299,7 @@ namespace SubnauticaMP.Shared
                     var text = (chat.Text ?? "").Trim();
                     if (text.Length == 0) return;
                     if (text.Length > Protocol.MaxChatLength) text = text.Substring(0, Protocol.MaxChatLength);
+                    if (text.StartsWith("/")) { HandleCommand(conn, client, text); return; }
                     Log?.Invoke($"[chat] {client.Name}: {text}");
                     Broadcast(new ChatPacket { SenderId = client.Id, Text = text }, except: null);
                     break;
@@ -527,6 +592,67 @@ namespace SubnauticaMP.Shared
             }
         }
 
+        // ---------- admin commands (typed in chat) ----------
+
+        void HandleCommand(Connection conn, Client client, string text)
+        {
+            void Reply(string msg) => conn.Send(new ChatPacket { SenderId = 0, Text = msg });
+            var parts = text.Substring(1).Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+            var cmd = parts.Length > 0 ? parts[0].ToLowerInvariant() : "";
+            var arg = parts.Length > 1 ? parts[1].Trim() : "";
+            bool admin;
+            lock (_lock) admin = client.Admin || client.Id == _hostId;
+
+            if (cmd == "login")
+            {
+                bool ok;
+                lock (_lock) ok = arg.Length > 0 && arg == _world.AdminPassword;
+                if (ok) { client.Admin = true; Reply("You're an admin now. /help for commands."); Log?.Invoke($"{client.Name} logged in as admin"); }
+                else Reply("Wrong admin password.");
+                return;
+            }
+            if (cmd == "players")
+            {
+                Reply("Online: " + string.Join(", ", Players.Select(p => p.Name).ToArray()));
+                return;
+            }
+            if (cmd == "help" || cmd == "?")
+            {
+                Reply(admin ? "Commands: /players, /kick <name>, /ban <name>, /unban <name>, /bans, /save, /backup"
+                            : "Commands: /players, /login <admin password>");
+                return;
+            }
+            if (!admin) { Reply("That needs admin. Type /login <admin password> (the host's server window shows it)."); return; }
+
+            switch (cmd)
+            {
+                case "kick":
+                case "ban":
+                    var target = Players.FirstOrDefault(p => string.Equals(p.Name, arg, StringComparison.OrdinalIgnoreCase));
+                    if (target == null) Reply($"No player called '{arg}' is online.");
+                    else if (target.Id == client.Id) Reply("You can't " + cmd + " yourself.");
+                    else Kick(target.Id, cmd == "ban");
+                    break;
+                case "unban":
+                    Reply(Unban(arg) ? $"Unbanned {arg}." : $"'{arg}' wasn't banned.");
+                    break;
+                case "bans":
+                    var bans = Bans;
+                    Reply(bans.Count == 0 ? "Nobody is banned." : "Banned: " + string.Join(", ", bans.Select(b => b.Name).ToArray()));
+                    break;
+                case "save":
+                    SaveWorld();
+                    Reply("World saved.");
+                    break;
+                case "backup":
+                    Reply(Backup() ? "World backed up." : "Couldn't back up (no world file yet?).");
+                    break;
+                default:
+                    Reply("Unknown command. /help lists them.");
+                    break;
+            }
+        }
+
         // ---------- kick / ban ----------
 
         public List<BanEntry> Bans { get { lock (_lock) return _world.Bans.Select(b => new BanEntry { Name = b.Name, Ip = b.Ip }).ToList(); } }
@@ -714,6 +840,7 @@ namespace SubnauticaMP.Shared
                 welcome.YourId = client.Id;
                 welcome.World = _world.Clone();
                 welcome.World.Bans.Clear(); // IPs stay on the server
+                welcome.World.AdminPassword = "";
                 welcome.World.TimePassed = CurrentTime();
                 client.Joined = true;
                 hostChanged = PickHost();

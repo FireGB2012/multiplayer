@@ -17,7 +17,8 @@ namespace SubnauticaMP.Shared
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 8;
+        const int FileVersion = 9;
+        public static int CurrentFileVersion => FileVersion;
         const int MaxEntries = 1_000_000;
 
         public HashSet<string> Blueprints = new HashSet<string>();
@@ -42,6 +43,7 @@ namespace SubnauticaMP.Shared
         public Dictionary<string, SpawnSlot> SpawnBook = new Dictionary<string, SpawnSlot>();
         public Dictionary<string, float> Power = new Dictionary<string, float>();
         public List<BanEntry> Bans = new List<BanEntry>(); // never sent to players
+        public string AdminPassword = "";                 // never sent to players
 
         public HashSet<string> SetFor(UnlockKind kind)
         {
@@ -96,6 +98,7 @@ namespace SubnauticaMP.Shared
             foreach (var kv in Power) { w.Write(kv.Key); w.Write(kv.Value); }
             w.Write(Bans.Count);
             foreach (var b in Bans) { w.Write(b.Name ?? ""); w.Write(b.Ip ?? ""); }
+            w.Write(AdminPassword ?? "");
         }
 
         public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
@@ -192,6 +195,7 @@ namespace SubnauticaMP.Shared
                 n = ReadCount(r);
                 for (int i = 0; i < n; i++) s.Bans.Add(new BanEntry { Name = r.ReadString(), Ip = r.ReadString() });
             }
+            if (version >= 9) s.AdminPassword = r.ReadString();
             return s;
         }
 
@@ -221,6 +225,7 @@ namespace SubnauticaMP.Shared
                 SpawnBook = new Dictionary<string, SpawnSlot>(SpawnBook),
                 Power = new Dictionary<string, float>(Power),
                 Bans = new List<BanEntry>(Bans),
+                AdminPassword = AdminPassword,
             };
         }
 

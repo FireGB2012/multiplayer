@@ -185,6 +185,47 @@ public class Batch5Tests
     }
 
     [Fact]
+    public void AdminPasswordBackupsAndChatCommands()
+    {
+        var dir = Path.Combine(Path.GetTempPath(), "snmp-admin-" + Guid.NewGuid().ToString("N"));
+        var path = Path.Combine(dir, "Reef.dat");
+        try
+        {
+            var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
+            var server = new NetServer(path) { TrustLocalPlayers = false };
+            server.Log += log.Enqueue;
+            server.Start(0);
+            Assert.Contains(log, l => l.StartsWith("Admin password:"));
+            Assert.Contains(log, l => l.StartsWith("Autosave: ENABLED"));
+            Assert.Equal(12, server.AdminPassword.Length);
+
+            var (host, wh) = Join(server, "Host");
+            var (a, wa) = Join(server, "Alice");
+            var (b, _) = Join(server, "Bob");
+            Assert.Equal("", wa.World.AdminPassword); // players never get it
+
+            a.Send(new ChatPacket { Text = "/kick Bob" });
+            Assert.Contains("needs admin", WaitFor<ChatPacket>(a, c => c.SenderId == 0).Text);
+            a.Send(new ChatPacket { Text = "/login " + server.AdminPassword });
+            Assert.Contains("admin now", WaitFor<ChatPacket>(a, c => c.SenderId == 0).Text);
+            a.Send(new ChatPacket { Text = "/kick bob" });
+            Assert.Contains("kicked", WaitFor<RejectedPacket>(b).Reason);
+
+            a.Send(new ChatPacket { Text = "/backup" });
+            Assert.Contains("backed up", WaitFor<ChatPacket>(a, c => c.SenderId == 0 && c.Text.Contains("back")).Text);
+            Assert.NotEmpty(Directory.GetFiles(server.BackupFolder, "*.dat"));
+            var pw = server.AdminPassword;
+            server.Stop();
+
+            var again = new NetServer(path);
+            again.Start(0);
+            try { Assert.Equal(pw, again.AdminPassword); } // stays the same for that world
+            finally { again.Stop(); }
+        }
+        finally { try { Directory.Delete(dir, true); } catch { } }
+    }
+
+    [Fact]
     public void LauncherPassesThePassword()
     {
         var path = Path.Combine(Path.GetTempPath(), "snmp-launch-" + Guid.NewGuid() + ".txt");

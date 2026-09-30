@@ -162,6 +162,7 @@ namespace SubnauticaMP.Launcher
             if (!int.TryParse(PortBox.Text, out var port) || port < 1 || port > 65535)
                 throw new Exception("Port has to be a number between 1 and 65535.");
             LogBox.Text = "";
+            AppendLog(GameFolder.IsGameDir(GameDir) ? $"Using game files from: '{GameDir}'" : "Subnautica folder not set (Setup tab); the server runs anyway");
             try
             {
                 _host.Start(WorldName, port, Mode, HostPasswordBox.Text ?? "");

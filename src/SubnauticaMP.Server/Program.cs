@@ -4,13 +4,17 @@ using System.Net;
 using System.Threading;
 using SubnauticaMP.Shared;
 
-// Dedicated server: `SubnauticaMP.Server [port] [world file] [--password secret]`
+// Dedicated server: `SubnauticaMP.Server [port] [world file] [--password secret] [--autosave minutes] [--backups count]`
 // Commands: players, kick <name>, ban <name>, unban <name>, bans, save, quit
 var plain = new System.Collections.Generic.List<string>();
 string password = "";
+double autosave = 2;
+int backups = 10;
 for (int i = 0; i < args.Length; i++)
 {
     if (args[i] == "--password" && i + 1 < args.Length) password = args[++i];
+    else if (args[i] == "--autosave" && i + 1 < args.Length && double.TryParse(args[++i], out var mins)) autosave = mins;
+    else if (args[i] == "--backups" && i + 1 < args.Length && int.TryParse(args[++i], out var keep)) backups = keep;
     else plain.Add(args[i]);
 }
 int port = plain.Count > 0 && int.TryParse(plain[0], out var p) ? p : Protocol.DefaultPort;
@@ -18,11 +22,9 @@ string worldFile = plain.Count > 1 ? plain[1] : Path.Combine(AppContext.BaseDire
 
 void Log(string msg) => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {msg}");
 
-var server = new NetServer(worldFile) { Password = password, TrustLocalPlayers = false };
+var server = new NetServer(worldFile) { Password = password, TrustLocalPlayers = false, AutosaveMinutes = autosave, MaxBackups = backups };
 server.Log += Log;
 server.Start(port);
-Log("World file: " + worldFile);
-Log(password.Length > 0 ? "Password protected." : "No password (add --password something to set one).");
 
 int? FindPlayer(string name)
 {
