@@ -71,7 +71,9 @@ namespace SubnauticaMP
 
             if (!_s.Joined || !Game.InWorld) { Close(); return; }
             if (Game.LockCursor) Game.SetLockCursor(false); // something grabbed the mouse again
-            Game.TryDo("clear input", () => Game.Call(Game.GameInput, null, "ClearInput", 1)); // no looking around / swimming while it's up
+            // the game ignores its own controls (looking around, swimming, tools) while this is up. Only its flag:
+            // GameInput.ClearInput() also wipes Unity's key presses, and then the wheel never saw a click or Esc.
+            Game.TryDo("block game input", () => Game.Set(Game.GameInput, null, "clearInputFrame", Time.frameCount + 1));
 
             if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1))
             {
@@ -411,14 +413,8 @@ namespace SubnauticaMP
             {
                 _diver.transform.localRotation = Quaternion.identity; // facing the camera (+z)
                 foreach (var t in _diver.GetComponentsInChildren<Transform>(true)) t.gameObject.layer = Layer;
-                var color = Plugin.DiverColor.Value;
-                var c = new Color(((color >> 16) & 0xFF) / 255f, ((color >> 8) & 0xFF) / 255f, (color & 0xFF) / 255f, 1f);
-                var block = new MaterialPropertyBlock();
-                foreach (var r in _diver.GetComponentsInChildren<SkinnedMeshRenderer>(true))
-                {
-                    r.updateWhenOffscreen = true;
-                    r.GetPropertyBlock(block); block.SetColor("_Color", c); r.SetPropertyBlock(block);
-                }
+                foreach (var r in _diver.GetComponentsInChildren<SkinnedMeshRenderer>(true)) r.updateWhenOffscreen = true;
+                Game.TryDo("preview color", () => SuitPaint.Apply(_diver, Plugin.DiverColor.Value));
                 var animator = _diver.GetComponentInChildren<Animator>(true);
                 if (animator != null) { animator.cullingMode = AnimatorCullingMode.AlwaysAnimate; animator.updateMode = AnimatorUpdateMode.UnscaledTime; }
                 _anim = new EmoteAnimator(_diver);

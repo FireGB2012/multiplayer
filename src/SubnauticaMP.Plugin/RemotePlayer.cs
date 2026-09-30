@@ -61,18 +61,12 @@ namespace SubnauticaMP
             }
         }
 
-        // Colors their suit (the game's shaders multiply textures by _Color).
+        // Colors the orange / yellow parts of their suit.
         void Tint()
         {
             if (_diver == null) return;
-            var c = new Color(((SuitColor >> 16) & 0xFF) / 255f, ((SuitColor >> 8) & 0xFF) / 255f, (SuitColor & 0xFF) / 255f, 1f);
-            var block = new MaterialPropertyBlock();
-            foreach (var r in _diver.GetComponentsInChildren<SkinnedMeshRenderer>(true))
-            {
-                r.GetPropertyBlock(block);
-                block.SetColor("_Color", c);
-                r.SetPropertyBlock(block);
-            }
+            try { SuitPaint.Apply(_diver, SuitColor); }
+            catch (Exception e) { Game.WarnOnce("tint", "Couldn't color a suit: " + e.GetBaseException().Message); }
         }
 
         public static RemotePlayer Create(int id, string name, int color = DiverColors.Default)
