@@ -12,7 +12,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>SubnauticaMP-Launcher</AssemblyName>
     <RootNamespace>SubnauticaMP.Launcher</RootNamespace>
-    <Version>0.17.2</Version>
+    <Version>0.17.3</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
   </PropertyGroup>
@@ -20,11 +20,12 @@
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
     <SelfContained>true</SelfContained>
     <PublishSingleFile>true</PublishSingleFile>
-    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
-    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <!-- partial = only trim assemblies marked safe to trim; keeps the exe small enough to share -->
-    <PublishTrimmed>true</PublishTrimmed>
-    <TrimMode>partial</TrimMode>
+    <!-- No compression, no trimming, no unpacking native DLLs to %TEMP% at startup: packed exes that drop files
+         look like malware to antivirus guesswork (Wacatac false positives). Bigger download, fewer false alarms.
+         The few native DLLs (Skia, HarfBuzz) ship next to the exe instead. -->
+    <IncludeNativeLibrariesForSelfExtract>false</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>false</EnableCompressionInSingleFile>
+    <PublishTrimmed>false</PublishTrimmed>
     <DebugType>none</DebugType>
     <AllowedReferenceRelatedFileExtensions>.none</AllowedReferenceRelatedFileExtensions>
   </PropertyGroup>

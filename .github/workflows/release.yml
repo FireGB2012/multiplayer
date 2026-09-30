@@ -39,7 +39,7 @@ jobs:
           v=${{ steps.version.outputs.version }}
           d="SubnauticaMP-v$v"
           mkdir -p "$d/manual-install/BepInEx/plugins/SubnauticaMP"
-          cp publish/SubnauticaMP-Launcher.exe "$d/"
+          cp publish/SubnauticaMP-Launcher.exe publish/*.dll "$d/"  # the launcher + the graphics DLLs it needs next to it
           cp src/SubnauticaMP.Plugin/bin/Release/SubnauticaMP.dll src/SubnauticaMP.Plugin/bin/Release/Mono.Nat.dll "$d/manual-install/BepInEx/plugins/SubnauticaMP/"
           cp docs/READ_ME.txt "$d/READ ME.txt"
           sed -i "s/{VERSION}/$v/" "$d/READ ME.txt"

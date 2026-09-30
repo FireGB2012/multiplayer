@@ -2,6 +2,8 @@ SUBNAUTICA MULTIPLAYER v{VERSION}
 
 SETUP (once)
 1. Run SubnauticaMP-Launcher.exe ("Windows protected your PC"? More info > Run anyway)
+   Keep the .dll files next to it (it needs them). An antivirus warning like "Wacatac" is a false alarm:
+   the launcher isn't code-signed and is brand new, so some scanners guess. The source is public on GitHub.
 2. Top of the Play tab should say "Subnautica: <folder>". If not: Search my PC.
 3. Setup tab: no BepInEx? "Install BepInEx for me". Then "Install / update mod".
 
