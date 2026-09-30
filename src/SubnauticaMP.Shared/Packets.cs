@@ -440,9 +440,15 @@ namespace SubnauticaMP.Shared
     {
         public string Id;
         public byte[] Data; // empty = deconstructed / gone
+        public bool HasPosition; // where the base is, so far-away ones can load later
+        public Vec3 Position;
         public override PacketType Type => PacketType.Structure;
-        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); Bytes.Write(w, Data); }
-        public override void Read(BinaryReader r) { Id = r.ReadString(); Data = Bytes.Read(r); }
+        public override void Write(BinaryWriter w) { w.Write(Id ?? ""); Bytes.Write(w, Data); w.Write(HasPosition); Position.Write(w); }
+        public override void Read(BinaryReader r)
+        {
+            Id = r.ReadString(); Data = Bytes.Read(r);
+            if (r.BaseStream.Position < r.BaseStream.Length) { HasPosition = r.ReadBoolean(); Position = Vec3.Read(r); }
+        }
     }
 
     public sealed class ContainerPacket : Packet

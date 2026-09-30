@@ -31,6 +31,12 @@ namespace SubnauticaMP
         float _lastBuildActivity = -100f;
         bool _applied;
 
+        // Streaming: bases far from you aren't built during the loading screen, only once you get near them.
+        const float LoadRadius = 350f;
+        readonly Dictionary<string, Vector3> _positions = new Dictionary<string, Vector3>();
+        readonly HashSet<string> _far = new HashSet<string>();
+        float _nextFarCheck;
+
         public StructureSync(Session s) { _s = s; }
 
         public void Reset()
@@ -38,6 +44,8 @@ namespace SubnauticaMP
             _known.Clear();
             _dirty.Clear();
             _pending.Clear();
+            _positions.Clear();
+            _far.Clear();
             _applied = false;
         }
 
@@ -45,6 +53,27 @@ namespace SubnauticaMP
         {
             Reset();
             foreach (var kv in w.Structures) _known[kv.Key] = kv.Value;
+            foreach (var kv in w.StructurePositions) _positions[kv.Key] = new Vector3(kv.Value.X, kv.Value.Y, kv.Value.Z);
+        }
+
+        bool IsFar(string id)
+        {
+            var player = Game.LocalPlayer;
+            if (player == null || !_positions.TryGetValue(id, out var pos)) return false; // don't know where: load it
+            return (pos - player.transform.position).sqrMagnitude > LoadRadius * LoadRadius;
+        }
+
+        // Far bases that you've now come close to go into the build queue.
+        void StreamIn()
+        {
+            if (_far.Count == 0 || Time.unscaledTime < _nextFarCheck) return;
+            _nextFarCheck = Time.unscaledTime + 2f;
+            foreach (var id in _far.ToList())
+            {
+                if (IsFar(id)) continue;
+                _far.Remove(id);
+                if (_known.TryGetValue(id, out var data)) _pending.Enqueue((id, data));
+            }
         }
 
         // Harmony hooks call this while the local player builds / deconstructs.
@@ -79,13 +108,20 @@ namespace SubnauticaMP
             if (!_applied)
             {
                 _applied = true;
-                foreach (var kv in _known) _pending.Enqueue((kv.Key, kv.Value));
+                foreach (var kv in _known)
+                {
+                    if (IsFar(kv.Key)) _far.Add(kv.Key); // later, when you swim over there
+                    else _pending.Enqueue((kv.Key, kv.Value));
+                }
+                if (_far.Count > 0) Plugin.Log.LogInfo($"Bases: building {_pending.Count} near you now, {_far.Count} far away when you get close");
                 _nearbyBaseSizes = MeasureNearbyBases();
 
                 // first one into a new world from an existing save: share the bases you already have
                 if (_s.World.SeedsWorld && _known.Count == 0)
                     foreach (var b in Game.FindBases()) Send(b);
             }
+
+            StreamIn();
 
             // apply one incoming snapshot at a time
             if (_pending.Count > 0 && _applying.Count == 0)
@@ -131,7 +167,9 @@ namespace SubnauticaMP
             }
             if (data.Length == 0 || data.Length > 7 * 1024 * 1024) return;
             _known[id] = data;
-            _s.Send(new StructurePacket { Id = id, Data = data });
+            var pos = root.transform.position;
+            _positions[id] = pos;
+            _s.Send(new StructurePacket { Id = id, Data = data, HasPosition = true, Position = new Vec3(pos.x, pos.y, pos.z) });
             Plugin.Log.LogInfo($"Sent base/structure {id} ({data.Length / 1024} KB)");
         }
 
@@ -175,9 +213,13 @@ namespace SubnauticaMP
         public void OnStructure(StructurePacket p)
         {
             if (string.IsNullOrEmpty(p.Id)) return;
-            if (p.Data == null || p.Data.Length == 0) _known.Remove(p.Id);
+            if (p.Data == null || p.Data.Length == 0) { _known.Remove(p.Id); _positions.Remove(p.Id); }
             else _known[p.Id] = p.Data;
-            if (_applied) _pending.Enqueue((p.Id, p.Data));
+            if (p.HasPosition) _positions[p.Id] = new Vector3(p.Position.X, p.Position.Y, p.Position.Z);
+            if (!_applied) return;
+            if (p.Data != null && p.Data.Length > 0 && IsFar(p.Id) && Game.FindById(p.Id) == null) { _far.Add(p.Id); return; }
+            _far.Remove(p.Id);
+            _pending.Enqueue((p.Id, p.Data));
         }
 
         void Apply(string id, byte[] data)

@@ -387,8 +387,16 @@ namespace SubnauticaMP.Shared
                     if (string.IsNullOrEmpty(structure.Id)) return;
                     lock (_lock)
                     {
-                        if (structure.Data == null || structure.Data.Length == 0) _world.Structures.Remove(structure.Id);
-                        else _world.Structures[structure.Id] = structure.Data;
+                        if (structure.Data == null || structure.Data.Length == 0)
+                        {
+                            _world.Structures.Remove(structure.Id);
+                            _world.StructurePositions.Remove(structure.Id);
+                        }
+                        else
+                        {
+                            _world.Structures[structure.Id] = structure.Data;
+                            if (structure.HasPosition) _world.StructurePositions[structure.Id] = structure.Position;
+                        }
                     }
                     _dirty = true;
                     Broadcast(structure, except: conn);

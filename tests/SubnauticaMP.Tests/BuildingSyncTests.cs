@@ -97,4 +97,33 @@ public class BuildingSyncTests
         }
         finally { server.Stop(); }
     }
+
+    // Bases carry where they are, so players far away can build them later; it survives a restart.
+    [Fact]
+    public void BasePositionsAreKeptForStreaming()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "snmp-pos-" + Guid.NewGuid() + ".dat");
+        try
+        {
+            var server = new NetServer(path);
+            server.Start(0);
+            var (a, _) = Join(server, "A");
+            var (b, _) = Join(server, "B");
+            a.Send(new StructurePacket { Id = "far-base", Data = Blob(100, 1), HasPosition = true, Position = new Vec3(900, -60, -1200) });
+            var got = WaitFor<StructurePacket>(b);
+            Assert.True(got.HasPosition);
+            Assert.Equal(900, got.Position.X);
+            server.Stop();
+
+            var again = new NetServer(path);
+            again.Start(0);
+            try
+            {
+                var (_, w) = Join(again, "C");
+                Assert.Equal(-1200, w.World.StructurePositions["far-base"].Z);
+            }
+            finally { again.Stop(); }
+        }
+        finally { File.Delete(path); }
+    }
 }

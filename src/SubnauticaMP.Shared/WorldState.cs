@@ -17,7 +17,7 @@ namespace SubnauticaMP.Shared
     public sealed class WorldState
     {
         const int FileMagic = 0x534E4D50; // "SNMP"
-        const int FileVersion = 10;
+        const int FileVersion = 11;
         public static int CurrentFileVersion => FileVersion;
         const int MaxEntries = 1_000_000;
 
@@ -34,6 +34,7 @@ namespace SubnauticaMP.Shared
         public HashSet<string> PdaLog = new HashSet<string>();
         public Dictionary<string, int> Fragments = new Dictionary<string, int>();
         public Dictionary<string, byte[]> Structures = new Dictionary<string, byte[]>();
+        public Dictionary<string, Vec3> StructurePositions = new Dictionary<string, Vec3>(); // where each base is (v11+)
         public Dictionary<string, List<byte[]>> Containers = new Dictionary<string, List<byte[]>>();
         public Dictionary<string, byte[]> DroppedItems = new Dictionary<string, byte[]>();
         public Dictionary<string, bool> Doors = new Dictionary<string, bool>();
@@ -105,6 +106,8 @@ namespace SubnauticaMP.Shared
             w.Write(ModsDefined);
             ModInfo.WriteList(w, Mods);
             ModInfo.WriteMap(w, TechTypes);
+            w.Write(StructurePositions.Count);
+            foreach (var kv in StructurePositions) { w.Write(kv.Key); kv.Value.Write(w); }
         }
 
         public static WorldState Read(BinaryReader r) => Read(r, FileVersion);
@@ -208,6 +211,11 @@ namespace SubnauticaMP.Shared
                 s.Mods = ModInfo.ReadList(r);
                 s.TechTypes = ModInfo.ReadMap(r);
             }
+            if (version >= 11)
+            {
+                int n = ReadCount(r);
+                for (int i = 0; i < n; i++) s.StructurePositions[r.ReadString()] = Vec3.Read(r);
+            }
             return s;
         }
 
@@ -241,6 +249,7 @@ namespace SubnauticaMP.Shared
                 ModsDefined = ModsDefined,
                 Mods = Mods.ToList(),
                 TechTypes = new Dictionary<string, int>(TechTypes, StringComparer.OrdinalIgnoreCase),
+                StructurePositions = new Dictionary<string, Vec3>(StructurePositions),
             };
         }
 

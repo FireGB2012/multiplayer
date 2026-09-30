@@ -19,6 +19,9 @@ namespace SubnauticaMP
         readonly Quaternion _baseRot;
         readonly Transform _chest, _head, _upperR, _lowerR, _handR, _upperL, _lowerL, _handL;
         readonly Transform _thighL, _kneeL, _footL, _thighR, _kneeR, _footR;
+        readonly Transform _headCounter; // upside-down rigs: turning the head turns everything under it, this turns it back
+        readonly Vector3 _counterPos;    // its normal local position (we nudge it while nodding)
+        bool _counterMoved;
         readonly Vector3 _hipPivot;   // between the hips, in the body's parent space
         readonly float _legLength;
         EmoteClips.Clip _clip;
@@ -66,6 +69,15 @@ namespace SubnauticaMP
             _head = all.FirstOrDefault(b => string.Equals(b.name, "head", System.StringComparison.OrdinalIgnoreCase) && !Carries(b))
                     ?? all.FirstOrDefault(b => b.name.ToLowerInvariant().Contains("head") && !b.name.ToLowerInvariant().Contains("rig") && !Carries(b) && b.GetComponent<Renderer>() == null);
 
+            // The diver's rig is upside down: "head_rig" is the top bone and the neck, chest, arms and legs hang
+            // under it. Nod by turning head_rig, then turn "neck" back the other way so the body stays put.
+            if (_head == null)
+            {
+                var rig = Bone("head_rig", "head_jnt", "Head");
+                var neck = rig != null ? rig.Cast<Transform>().FirstOrDefault(c => c.name.ToLowerInvariant().Contains("neck")) : null;
+                if (rig != null && neck != null) { _head = rig; _headCounter = neck; _counterPos = neck.localPosition; }
+            }
+
             // if the rig's "_R" bones are on the model's left, swap so "right" means right
             if (_upperR != null && _upperL != null &&
                 _body.InverseTransformPoint(_upperR.position).x < _body.InverseTransformPoint(_upperL.position).x)
@@ -102,7 +114,7 @@ namespace SubnauticaMP
             }
             if (_legLength < 0.3f || _legLength > 2f) _legLength = 0.9f;
 
-            _bones = new[] { _chest, _head, _upperR, _lowerR, _upperL, _lowerL, _thighL, _kneeL, _thighR, _kneeR }.Where(b => b != null).Distinct().ToArray();
+            _bones = new[] { _chest, _head, _headCounter, _upperR, _lowerR, _upperL, _lowerL, _thighL, _kneeL, _thighR, _kneeR }.Where(b => b != null).Distinct().ToArray();
             _before = new Quaternion[_bones.Length];
             _after = new Quaternion[_bones.Length];
 
@@ -240,6 +252,7 @@ namespace SubnauticaMP
         // frame (diver off screen) the bones still hold last frame's emote pose: put them back first.
         void RestoreIfAnimatorSkipped()
         {
+            if (_counterMoved && _headCounter != null) { _headCounter.localPosition = _counterPos; _counterMoved = false; }
             if (!_tracking) return;
             for (int i = 0; i < _bones.Length; i++)
                 if (_bones[i].localRotation == _after[i]) _bones[i].localRotation = _before[i];
@@ -445,7 +458,19 @@ namespace SubnauticaMP
         }
 
         // Head turn in degrees: pitch (+ = look down), yaw (+ = right), roll (+ = tilt right).
-        void Head(float pitch, float yaw, float roll, float w) => TurnBone(_head, pitch, yaw, roll, w);
+        void Head(float pitch, float yaw, float roll, float w)
+        {
+            if (_head == null) return;
+            var turn = Quaternion.AngleAxis(yaw * w, _body.up) * Quaternion.AngleAxis(pitch * w, _body.right) * Quaternion.AngleAxis(-roll * w, _body.forward);
+            _head.rotation = turn * _head.rotation;
+            if (_headCounter != null)
+            {
+                var pos = _headCounter.position;
+                _headCounter.rotation = Quaternion.Inverse(turn) * _headCounter.rotation;
+                _headCounter.position = pos; // the body doesn't swing around the head
+                _counterMoved = true;
+            }
+        }
         void Chest(float pitch, float yaw, float roll, float w) => TurnBone(_chest, pitch, yaw, roll, w);
 
         void TurnBone(Transform bone, float pitch, float yaw, float roll, float w)

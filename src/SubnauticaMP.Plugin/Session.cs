@@ -142,6 +142,7 @@ namespace SubnauticaMP
             RunDue();
             if (Time.unscaledTime >= _optionsSyncAt) { _optionsSyncAt = Time.unscaledTime + 1f; NautilusCompat.SyncOptions(); }
             UpdateLoading();
+            SafeRun("performance", () => { SubnauticaMP.Performance.Apply(); SubnauticaMP.Performance.Update(Loading || Lobby.Holding || (!Game.InWorld && Game.MainMenu == null)); });
             WatchFrameTime();
             Lobby.Update();
             if (!Joined) return;
