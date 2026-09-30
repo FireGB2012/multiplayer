@@ -20,7 +20,11 @@ namespace SubnauticaMP
         float _started, _nextSend, _cooldownUntil;
         Vector3 _startPos;
 
-        public EmoteSync(Session s) { _s = s; }
+        public EmoteSync(Session s)
+        {
+            _s = s;
+            EmoteAnimator.PartyNow = PartyClip;
+        }
 
         public Emote Local => _local;
 
@@ -28,12 +32,15 @@ namespace SubnauticaMP
         {
             _local = Emote.None;
             EndSelfView();
+            _party = null;
+            PartyLights(false);
         }
 
         public void Play(Emote emote)
         {
             if (!_s.Joined) return;
             if (emote == Emote.None) { Stop(); return; }
+            if (emote == Emote.Party && _party == null) { StartParty(); return; }
             var info = Emotes.Get(emote);
             if (info == null || Time.unscaledTime < _cooldownUntil) return;
             var player = Game.LocalPlayer;
@@ -61,6 +68,7 @@ namespace SubnauticaMP
 
         public void Update()
         {
+            if (_local == Emote.Party && _party == null) Stop();
             if (_local == Emote.None) return;
             var info = Emotes.Get(_local);
             float now = Time.unscaledTime;
@@ -93,6 +101,112 @@ namespace SubnauticaMP
             var info = Emotes.Get(packet.Emote);
             if (info == null) return;
             if (remote.PlayEmote(packet.Emote)) _s.AddChat($"* {remote.PlayerName} {info.Did}");
+        }
+
+        // ---------- dance party ----------
+
+        PartyPacket _party;
+        GameObject _lights;
+        readonly System.Random _rng = new System.Random();
+
+        public bool PartyActive => _party != null;
+        public bool LeadingParty => _party != null && _party.LeaderId == _s.LocalId;
+
+        // Start one (you're the DJ), or end yours.
+        public void StartParty()
+        {
+            if (!_s.Joined) return;
+            var pos = PlayerPosition();
+            if (pos == null) return;
+            _s.Send(new PartyPacket
+            {
+                Active = true,
+                Center = new Vec3(pos.Value.x, pos.Value.y, pos.Value.z),
+                StartTime = Game.GetTime() ?? Time.unscaledTime,
+                Seed = _rng.Next(1, int.MaxValue),
+            });
+        }
+
+        public void EndParty()
+        {
+            if (_party != null) _s.Send(new PartyPacket { Active = false });
+        }
+
+        public void OnParty(PartyPacket p)
+        {
+            if (p.Active)
+            {
+                bool isNew = _party == null;
+                _party = p;
+                PartyLights(true);
+                if (p.LeaderId == _s.LocalId)
+                {
+                    _local = Emote.None; // start dancing along
+                    _cooldownUntil = 0f;
+                    Play(Emote.Party);
+                }
+                else if (isNew) _s.AddChat($"{_s.NameOf(p.LeaderId)} started a dance party! Press {Plugin.EmoteKey.Value} and click the middle of the wheel to join.");
+            }
+            else
+            {
+                if (_party == null) return;
+                _party = null;
+                PartyLights(false);
+                if (_local == Emote.Party) Stop();
+                foreach (var r in _s.RemotePlayers)
+                    if (r != null && r.CurrentEmote == Emote.Party) r.StopEmote();
+                _s.AddChat("The dance party is over.");
+            }
+        }
+
+        // Which dance the party is on right now and how far into it: the same on every PC.
+        (EmoteClips.Clip clip, float time)? PartyClip()
+        {
+            var p = _party;
+            if (p == null) return null;
+            double t = (Game.GetTime() ?? Time.unscaledTime) - p.StartTime;
+            if (t < 0) t = 0;
+            var dance = Emotes.PartyDance(t, p.Seed);
+            var clip = EmoteClips.Get(dance.Clip);
+            if (clip == null) return null;
+            return (clip, (float)(t % Emotes.PartySongSeconds));
+        }
+
+        public string PartyDanceName()
+        {
+            var p = _party;
+            if (p == null) return null;
+            double t = (Game.GetTime() ?? Time.unscaledTime) - p.StartTime;
+            return Emotes.PartyDance(System.Math.Max(0, t), p.Seed).Label;
+        }
+
+        // Disco: colored lights swirling over the party spot.
+        void PartyLights(bool on)
+        {
+            if (!on)
+            {
+                if (_lights != null) Object.Destroy(_lights);
+                _lights = null;
+                return;
+            }
+            if (_lights == null)
+            {
+                _lights = new GameObject("SubnauticaMP_PartyLights");
+                Game.KeepAlive(_lights);
+                var colors = new[] { new Color(1f, 0.2f, 0.6f), new Color(0.2f, 0.9f, 1f), new Color(1f, 0.85f, 0.2f), new Color(0.5f, 0.3f, 1f) };
+                for (int i = 0; i < colors.Length; i++)
+                {
+                    var go = new GameObject("Disco" + i);
+                    go.transform.SetParent(_lights.transform, false);
+                    var light = go.AddComponent<Light>();
+                    light.type = LightType.Point;
+                    light.color = colors[i];
+                    light.range = 14f;
+                    light.intensity = 2.2f;
+                }
+                _lights.AddComponent<DiscoSpin>();
+            }
+            _lights.transform.position = new Vector3(_party.Center.X, _party.Center.Y + 3f, _party.Center.Z);
         }
 
         // ---------- seeing yourself ----------
@@ -209,6 +323,24 @@ namespace SubnauticaMP
         {
             var player = Game.LocalPlayer;
             return player != null ? player.transform.position : (Vector3?)null;
+        }
+    }
+
+    // Swirls the party lights around and pulses them to a beat.
+    internal sealed class DiscoSpin : MonoBehaviour
+    {
+        void Update()
+        {
+            float t = Time.unscaledTime;
+            int i = 0;
+            foreach (Transform child in transform)
+            {
+                float a = t * (1.2f + i * 0.35f) + i * Mathf.PI * 0.5f;
+                child.localPosition = new Vector3(Mathf.Cos(a) * 3.5f, Mathf.Sin(t * 0.9f + i) * 1.2f, Mathf.Sin(a) * 3.5f);
+                var light = child.GetComponent<Light>();
+                if (light != null) light.intensity = 1.4f + 1.2f * Mathf.Abs(Mathf.Sin(t * 4.2f + i));
+                i++;
+            }
         }
     }
 }

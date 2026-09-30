@@ -50,6 +50,7 @@ namespace SubnauticaMP.Shared
         PlayerProfile = 42,   // name / diver color changed (in the party lobby)
         ModFix = 43,          // your modded item numbers don't match the world's: here are the right ones
         Emote = 44,           // wave, dance, ...
+        Party = 45,           // dance party started / ended
     }
 
     public struct Vec3
@@ -140,6 +141,7 @@ namespace SubnauticaMP.Shared
                 case PacketType.PlayerProfile: return new PlayerProfilePacket();
                 case PacketType.ModFix: return new ModFixPacket();
                 case PacketType.Emote: return new EmotePacket();
+                case PacketType.Party: return new PartyPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }

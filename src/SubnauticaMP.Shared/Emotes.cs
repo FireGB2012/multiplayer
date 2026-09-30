@@ -10,10 +10,14 @@ namespace SubnauticaMP.Shared
     {
         None = 0, // stop whatever emote is playing
         Wave, Point, Cheer, Dance, Laugh, Nod, No, Salute, Facepalm, Shrug, Clap, Flip, Spin, Chill,
+        Party = 15, // dancing along at a party: the dance comes from the party's shared clock
+        // 40 and up: the motion-captured / hand-made clips in EmoteCatalog.g.cs, in order
     }
 
-    public static class Emotes
+    public static partial class Emotes
     {
+        public const int ClipBase = 40;
+
         public sealed class Info
         {
             public Emote Emote;
@@ -22,14 +26,16 @@ namespace SubnauticaMP.Shared
             public string Did;       // "Alex waves"
             public float Seconds;    // how long it plays; 0 = keeps going until you move
             public string[] Aliases;
+            public string Category = "Gestures";
+            public string Clip;      // animation clip name, or null for the posed-by-code ones
         }
 
-        public static readonly Info[] All =
+        static readonly Info[] Posed =
         {
             new Info { Emote = Emote.Wave, Name = "wave", Label = "Wave", Did = "waves", Seconds = 2.6f, Aliases = new[] { "hi", "hello", "bye" } },
             new Info { Emote = Emote.Point, Name = "point", Label = "Point", Did = "points", Seconds = 2.5f, Aliases = new[] { "look" } },
             new Info { Emote = Emote.Cheer, Name = "cheer", Label = "Cheer", Did = "cheers", Seconds = 2.5f, Aliases = new[] { "yay", "gg" } },
-            new Info { Emote = Emote.Dance, Name = "dance", Label = "Dance", Did = "is dancing", Seconds = 0f, Aliases = new[] { "dance1", "dance2", "dance3" } },
+            new Info { Emote = Emote.Dance, Name = "dance", Label = "Bounce", Did = "is dancing", Seconds = 0f, Aliases = new[] { "dance1", "bounce" }, Category = "Dances" },
             new Info { Emote = Emote.Laugh, Name = "laugh", Label = "Laugh", Did = "laughs", Seconds = 2.4f, Aliases = new[] { "lol", "haha" } },
             new Info { Emote = Emote.Nod, Name = "nod", Label = "Nod (yes)", Did = "nods", Seconds = 1.6f, Aliases = new[] { "yes", "ok" } },
             new Info { Emote = Emote.No, Name = "no", Label = "Shake head (no)", Did = "shakes their head", Seconds = 1.6f, Aliases = new[] { "nope", "shake" } },
@@ -37,16 +43,61 @@ namespace SubnauticaMP.Shared
             new Info { Emote = Emote.Facepalm, Name = "facepalm", Label = "Facepalm", Did = "facepalms", Seconds = 2.4f, Aliases = new[] { "bruh" } },
             new Info { Emote = Emote.Shrug, Name = "shrug", Label = "Shrug", Did = "shrugs", Seconds = 1.8f, Aliases = new[] { "idk" } },
             new Info { Emote = Emote.Clap, Name = "clap", Label = "Clap", Did = "claps", Seconds = 2.6f, Aliases = new[] { "applaud" } },
-            new Info { Emote = Emote.Flip, Name = "flip", Label = "Backflip", Did = "does a backflip", Seconds = 1.3f, Aliases = new[] { "backflip" } },
-            new Info { Emote = Emote.Spin, Name = "spin", Label = "Spin", Did = "spins", Seconds = 1.3f, Aliases = new string[0] },
-            new Info { Emote = Emote.Chill, Name = "chill", Label = "Chill", Did = "is chilling", Seconds = 0f, Aliases = new[] { "relax", "float" } },
+            new Info { Emote = Emote.Flip, Name = "flip", Label = "Backflip", Did = "does a backflip", Seconds = 1.3f, Aliases = new[] { "backflip" }, Category = "Fun" },
+            new Info { Emote = Emote.Spin, Name = "spin", Label = "Spin", Did = "spins", Seconds = 1.3f, Aliases = new string[0], Category = "Fun" },
+            new Info { Emote = Emote.Chill, Name = "chill", Label = "Chill", Did = "is chilling", Seconds = 0f, Aliases = new[] { "relax", "float" }, Category = "Poses" },
+            new Info { Emote = Emote.Party, Name = "party", Label = "Party!", Did = "joined the party", Seconds = 0f, Aliases = new[] { "rave", "disco" }, Category = "Party" },
         };
 
-        public static Info Get(Emote e) => All.FirstOrDefault(i => i.Emote == e);
+        static Info[] _all;
+
+        // Every emote: the posed ones, then the clips.
+        public static Info[] All
+        {
+            get
+            {
+                if (_all != null) return _all;
+                var list = new System.Collections.Generic.List<Info>(Posed);
+                for (int i = 0; i < Clips.Length; i++)
+                {
+                    var c = Clips[i];
+                    list.Add(new Info
+                    {
+                        Emote = (Emote)(ClipBase + i), Name = c.name, Label = c.label, Did = c.did,
+                        Seconds = c.loops ? 0f : c.seconds, Aliases = new string[0], Category = c.category, Clip = c.name,
+                    });
+                }
+                return _all = list.ToArray();
+            }
+        }
+
+        // The party dance for a moment in a party: every player's game picks the same one.
+        public static Info PartyDance(double partyTime, int seed)
+        {
+            var dances = All.Where(i => i.Category == "Dances" && i.Clip != null).ToArray();
+            int slot = (int)Math.Floor(Math.Max(0, partyTime) / PartySongSeconds);
+            int pick = (int)((uint)(seed * 31 + slot * 7919) % (uint)dances.Length);
+            return dances[pick];
+        }
+
+        public const double PartySongSeconds = 16;
+
+        // Default emote wheel (8 slots, clockwise from the top).
+        public static readonly string[] DefaultWheel = { "wave", "floss", "robot", "breakdance", "worm", "dance", "flip", "laugh" };
+
+        static System.Collections.Generic.Dictionary<Emote, Info> _byId;
+
+        public static Info Get(Emote e)
+        {
+            if (_byId == null) _byId = All.ToDictionary(i => i.Emote);
+            return _byId.TryGetValue(e, out var info) ? info : null;
+        }
 
         public static bool IsValid(Emote e) => e == Emote.None || Get(e) != null;
 
         public static bool Loops(Emote e) => Get(e) is Info i && i.Seconds <= 0f;
+
+        public static Info Named(string name) => All.FirstOrDefault(i => i.Name == name);
 
         // "wave", "Wave", "hi" -> Wave
         public static Emote Find(string name)
@@ -94,5 +145,20 @@ namespace SubnauticaMP.Shared
         public override PacketType Type => PacketType.Emote;
         public override void Write(BinaryWriter w) { w.Write(Id); w.Write((byte)Emote); }
         public override void Read(BinaryReader r) { Id = r.ReadInt32(); Emote = (Emote)r.ReadByte(); }
+    }
+
+    // A dance party: whoever joins dances, all to the same dance at the same moment (picked from the party's
+    // start time + seed, switching every PartySongSeconds). client -> server: start (Active) / end it.
+    // server -> everyone: the party now (LeaderId = who started it). Only one party at a time.
+    public sealed class PartyPacket : Packet
+    {
+        public int LeaderId;
+        public bool Active;
+        public Vec3 Center;
+        public double StartTime; // game clock (DayNightCycle.timePassed), the same on every PC
+        public int Seed;
+        public override PacketType Type => PacketType.Party;
+        public override void Write(BinaryWriter w) { w.Write(LeaderId); w.Write(Active); Center.Write(w); w.Write(StartTime); w.Write(Seed); }
+        public override void Read(BinaryReader r) { LeaderId = r.ReadInt32(); Active = r.ReadBoolean(); Center = Vec3.Read(r); StartTime = r.ReadDouble(); Seed = r.ReadInt32(); }
     }
 }

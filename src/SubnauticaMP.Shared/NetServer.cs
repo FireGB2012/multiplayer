@@ -40,6 +40,7 @@ namespace SubnauticaMP.Shared
         Timer _tick;
         int _nextId = 1;
         int _hostId;
+        PartyPacket _party; // the dance party going on right now (not saved)
         readonly Dictionary<string, int> _creatureOwners = new Dictionary<string, int>(); // creature id -> player id (not saved)
         readonly HashSet<int> _sleepers = new HashSet<int>();
         readonly Dictionary<string, (int id, double time)> _powerWriters = new Dictionary<string, (int, double)>();
@@ -552,6 +553,10 @@ namespace SubnauticaMP.Shared
                     RelayEmote(conn, client, emote.Emote);
                     break;
 
+                case PartyPacket party:
+                    HandleParty(client, party);
+                    break;
+
                 case CraftPacket _:
                 case FiresPacket _:
                 case FireDousePacket _:
@@ -610,6 +615,25 @@ namespace SubnauticaMP.Shared
                 client.NextEmote = now.AddMilliseconds(250);
             }
             Broadcast(new EmotePacket { Id = client.Id, Emote = emote }, except: conn);
+        }
+
+        // Start (or restart) the dance party, or end it (only whoever started it, or an admin, can end it).
+        void HandleParty(Client client, PartyPacket p)
+        {
+            PartyPacket now;
+            lock (_lock)
+            {
+                if (p.Active)
+                    _party = new PartyPacket { LeaderId = client.Id, Active = true, Center = p.Center, StartTime = p.StartTime, Seed = p.Seed };
+                else
+                {
+                    if (_party == null || (_party.LeaderId != client.Id && !client.Admin && client.Id != _hostId)) return;
+                    _party = null;
+                }
+                now = _party ?? new PartyPacket { LeaderId = client.Id, Active = false };
+            }
+            Log?.Invoke(p.Active ? $"{client.Name} started a dance party" : $"{client.Name} ended the dance party");
+            Broadcast(now, except: null);
         }
 
         void HandleCommand(Connection conn, Client client, string text)
@@ -896,6 +920,9 @@ namespace SubnauticaMP.Shared
             Log?.Invoke($"{client.Name} joined (id {client.Id})");
             if (modLog != null) Log?.Invoke(modLog);
             if (modNote != null) conn.Send(new ChatPacket { SenderId = 0, Text = modNote });
+            PartyPacket party;
+            lock (_lock) party = _party;
+            if (party != null) conn.Send(party); // a party is already going: late joiners see it too
             PlayersChanged?.Invoke();
         }
 
@@ -988,7 +1015,7 @@ namespace SubnauticaMP.Shared
             var client = (Client)conn.Tag;
             var released = new List<string>();
             var freedCreatures = new List<string>();
-            bool hostChanged;
+            bool hostChanged, partyOver = false;
             lock (_lock)
             {
                 _connections.Remove(conn);
@@ -1002,8 +1029,10 @@ namespace SubnauticaMP.Shared
                     freedCreatures.Add(id);
                 }
                 hostChanged = PickHost();
+                if (_party != null && _party.LeaderId == client.Id) { _party = null; partyOver = true; }
             }
 
+            if (partyOver) Broadcast(new PartyPacket { LeaderId = client.Id, Active = false }, except: null);
             for (int i = 0; i < freedCreatures.Count; i += CreatureOwnerPacket.MaxIds)
                 Broadcast(new CreatureOwnerPacket { OwnerId = 0, Ids = freedCreatures.Skip(i).Take(CreatureOwnerPacket.MaxIds).ToList() }, except: null);
 

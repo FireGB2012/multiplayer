@@ -33,6 +33,7 @@ namespace SubnauticaMP
         internal BaseLifeSync BaseLife;
         internal GhostSync Ghosts;
         internal EmoteSync Emoting;
+        internal EmoteWheel Wheel;
         internal IEnumerable<RemotePlayer> Remotes => _remotes.Values;
 
         NetServer _hostedServer;
@@ -78,6 +79,7 @@ namespace SubnauticaMP
             BaseLife = new BaseLifeSync(this);
             Ghosts = new GhostSync(this);
             Emoting = new EmoteSync(this);
+            Wheel = new EmoteWheel(this);
 
             if (!_launchRead)
             {
@@ -102,8 +104,8 @@ namespace SubnauticaMP
                 (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) &&
                 !(_pauseMenu != null && _pauseMenu.gameObject.activeInHierarchy))
                 ShowPausePage(true); // Enter = chat
-            if (Input.GetKeyDown(Plugin.EmoteKey.Value) && Joined && Game.InWorld && !Lobby.Holding && !Loading && !_menuOpen && !UiKit.Typing())
-                ToggleEmotes();
+            if (!Lobby.Holding && !Loading && !_menuOpen && !PausePageShowing) SafeRun("emote wheel", Wheel.Update);
+            else Wheel.Close();
             bool inMenu = Game.MainMenu != null;
             if (inMenu != _wasInMenu)
             {
@@ -186,7 +188,9 @@ namespace SubnauticaMP
         {
             if (Joined) SafeRun("vehicles", Vehicles.LateUpdate);
             SafeRun("emote camera", Emoting.LateUpdate);
-            if (_menuOpen || Lobby.Holding)
+            SafeRun("emote preview", Wheel.LateUpdate);
+            Game.TryDo("avatar input", () => Game.SetAvatarInput(!Wheel.IsOpen)); // clicks on the wheel mustn't re-lock the mouse
+            if (_menuOpen || Lobby.Holding || Wheel.IsOpen)
             {
                 // the game re-locks the cursor every frame; keep it free while our window is up
                 Cursor.lockState = CursorLockMode.None;
@@ -420,6 +424,7 @@ namespace SubnauticaMP
                     break;
                 case BuildGhostPacket ghost: Ghosts.OnGhost(ghost); break;
                 case EmotePacket emote: Emoting.OnEmote(emote); break;
+                case PartyPacket party: Emoting.OnParty(party); break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
                     AddChat($"{NameOf(died.Id)} died!");

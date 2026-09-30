@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using SubnauticaMP.Shared;
 
@@ -46,12 +47,13 @@ public class EmoteTests
     [InlineData("/emote dance", Emote.Dance, false)]
     [InlineData("/wave", Emote.Wave, false)]
     [InlineData("/hi", Emote.Wave, false)]
-    [InlineData("/e dance2", Emote.Dance, false)]
+    [InlineData("/e dance1", Emote.Dance, false)]
     [InlineData("/backflip", Emote.Flip, false)]
+    [InlineData("/party", Emote.Party, false)]
     [InlineData("/e stop", Emote.None, false)]
     [InlineData("/e", Emote.None, true)]
     [InlineData("/emotes", Emote.None, true)]
-    [InlineData("/e moonwalk", Emote.None, true)]
+    [InlineData("/e fortnitecard", Emote.None, true)]
     public void ChatCommandsPickTheRightEmote(string text, Emote expected, bool listOnly)
     {
         Assert.True(Emotes.TryParseCommand(text, out var emote, out var list));
@@ -83,7 +85,9 @@ public class EmoteTests
         Assert.True(Emotes.Loops(Emote.Dance));
         Assert.True(Emotes.Loops(Emote.Chill));
         Assert.False(Emotes.Loops(Emote.Wave));
-        Assert.Equal(Enum.GetValues(typeof(Emote)).Length - 1, Emotes.All.Length); // every emote is in the table
+        foreach (Emote e in Enum.GetValues(typeof(Emote)))
+            if (e != Emote.None) Assert.NotNull(Emotes.Get(e)); // every named emote is in the table
+        Assert.True(Emotes.All.Length > 35);
     }
 
     [Fact]
@@ -139,6 +143,95 @@ public class EmoteTests
             a.Send(new ChatPacket { Text = "/e" });
             Assert.Contains("wave", WaitFor<ChatPacket>(a, p => p.SenderId == 0).Text);
             Assert.DoesNotContain(Drain(b, 200), p => p is ChatPacket);
+        }
+        finally { server.Stop(); }
+    }
+
+    [Theory]
+    [InlineData("/floss", "floss")]
+    [InlineData("/e robot", "robot")]
+    [InlineData("/e worm", "worm")]
+    [InlineData("/e breakdance", "breakdance")]
+    [InlineData("/e macarena", "macarena")]
+    public void DanceClipsCanBeTyped(string text, string clip)
+    {
+        Assert.True(Emotes.TryParseCommand(text, out var emote, out _));
+        Assert.Equal(clip, Emotes.Get(emote).Clip);
+        Assert.True(Emotes.Loops(emote));
+    }
+
+    [Fact]
+    public void WheelDefaultsAndPartyDancesExist()
+    {
+        Assert.Equal(8, Emotes.DefaultWheel.Length);
+        foreach (var n in Emotes.DefaultWheel) Assert.NotNull(Emotes.Named(n));
+        // every PC picks the same dance for the same moment of the same party
+        Assert.Equal(Emotes.PartyDance(40, 1234).Name, Emotes.PartyDance(40, 1234).Name);
+        Assert.Equal("Dances", Emotes.PartyDance(3, 99).Category);
+        var picks = new HashSet<string>();
+        for (int i = 0; i < 20; i++) picks.Add(Emotes.PartyDance(i * Emotes.PartySongSeconds, 777).Name);
+        Assert.True(picks.Count > 3); // it changes songs
+    }
+
+    // The animation file baked into the plugin has exactly the clips the shared catalog lists.
+    [Fact]
+    public void AnimationFileMatchesTheCatalog()
+    {
+        var dir = AppContext.BaseDirectory;
+        while (dir != null && !System.IO.File.Exists(System.IO.Path.Combine(dir, "SubnauticaMP.sln"))) dir = System.IO.Path.GetDirectoryName(dir);
+        Assert.NotNull(dir);
+        var raw = System.IO.File.ReadAllBytes(System.IO.Path.Combine(dir, "src", "SubnauticaMP.Plugin", "Emotes.bin"));
+        using var ms = new System.IO.MemoryStream(raw, 2, raw.Length - 2); // skip zlib header
+        using var z = new System.IO.Compression.DeflateStream(ms, System.IO.Compression.CompressionMode.Decompress);
+        using var r = new System.IO.BinaryReader(z);
+        Assert.Equal("SNEM", new string(r.ReadChars(4)));
+        r.ReadByte();
+        int count = r.ReadUInt16();
+        var clips = Emotes.All.Where(i => i.Clip != null).ToList();
+        Assert.Equal(clips.Count, count);
+        for (int c = 0; c < count; c++)
+        {
+            var name = new string(r.ReadChars(r.ReadByte()));
+            Assert.Equal(clips[c].Clip, name);
+            r.ReadByte();
+            int frames = r.ReadUInt16();
+            bool loops = r.ReadByte() != 0;
+            Assert.Equal(clips[c].Seconds <= 0, loops);
+            Assert.True(frames > 20, name);
+            r.ReadBytes(frames * (4 + 6 + 27));
+        }
+    }
+
+    [Fact]
+    public void PartiesReachEveryoneIncludingLateJoinersAndEndWithTheirLeader()
+    {
+        var server = new NetServer();
+        server.Start(0);
+        try
+        {
+            var (a, _) = Join(server, "A");
+            var (b, _) = Join(server, "B");
+            a.Send(new PartyPacket { Active = true, Center = new Vec3(1, 2, 3), StartTime = 500, Seed = 42 });
+            var got = WaitFor<PartyPacket>(b);
+            Assert.True(got.Active);
+            Assert.Equal(a.LocalId, got.LeaderId);
+            Assert.Equal(42, got.Seed);
+            Assert.Equal(500, got.StartTime);
+            Assert.True(WaitFor<PartyPacket>(a).Active); // the DJ hears it back too
+
+            // B can't end A's party
+            b.Send(new PartyPacket { Active = false });
+            Assert.DoesNotContain(Drain(a, 300), p => p is PartyPacket);
+
+            // someone joining now finds the party going
+            var (c, _) = Join(server, "C");
+            Assert.Equal(42, WaitFor<PartyPacket>(c).Seed);
+
+            // the DJ leaves: party's over
+            a.Disconnect();
+            Assert.False(WaitFor<PartyPacket>(b).Active);
+            var (d, _) = Join(server, "D");
+            Assert.DoesNotContain(Drain(d, 300), p => p is PartyPacket);
         }
         finally { server.Stop(); }
     }

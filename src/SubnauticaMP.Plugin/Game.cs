@@ -25,7 +25,7 @@ namespace SubnauticaMP
             Creature, EcoTarget, LastTarget, CellManager, EntitySlot, EntitySlotsPlaceholder, VirtualPrefabIdentifier, DeferredSpawner,
             PowerSource, SolarPanel, ThermalPlant, BaseBioReactor, BaseNuclearReactor, Crafter, SubFire, Fire, PrefabSpawnBase,
             PickPrefab, WaterPark, WaterParkCreature, Builder,
-            MainMenuRightSide, MainMenuLoadPanel, MainMenuEmailHandler, MainMenuGroup, IngameMenu, ErrorMessage, CrashHome;
+            MainMenuRightSide, MainMenuLoadPanel, MainMenuEmailHandler, MainMenuGroup, IngameMenu, ErrorMessage, CrashHome, AvatarInputHandler;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         // keyed by (type, name) so looking one up doesn't build a string every call (these run every frame)
@@ -123,6 +123,7 @@ namespace SubnauticaMP
             IngameMenu = Find("IngameMenu");
             ErrorMessage = Find("ErrorMessage");
             CrashHome = Find("CrashHome");
+            AvatarInputHandler = Find("AvatarInputHandler");
         }
 
         // ---------- story ----------
@@ -910,6 +911,16 @@ namespace SubnauticaMP
             var other = FindById(id);
             return other != null && other != go && other.activeInHierarchy &&
                    (other.transform.position - go.transform.position).sqrMagnitude < 4f;
+        }
+
+        // Turns the game's "click to grab the mouse" handler on/off (off while our emote wheel is up).
+        static bool _avatarInputOff;
+        public static void SetAvatarInput(bool on)
+        {
+            if (on != _avatarInputOff) return; // already that way
+            if (AvatarInputHandler == null) return;
+            if (Get(AvatarInputHandler, null, "main") is Behaviour b && b != null) b.enabled = on;
+            _avatarInputOff = !on;
         }
 
         public static GameObject FindById(string id)

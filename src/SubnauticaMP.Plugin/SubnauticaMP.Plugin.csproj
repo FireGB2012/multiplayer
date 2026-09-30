@@ -13,7 +13,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>SubnauticaMP</AssemblyName>
     <RootNamespace>SubnauticaMP</RootNamespace>
-    <Version>0.16.2</Version>
+    <Version>0.17.0</Version>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Subnautica</GameDir>
     <ManagedDir>$(GameDir)\Subnautica_Data\Managed</ManagedDir>
@@ -23,6 +23,11 @@
   <!-- Shared networking code is compiled straight in so the mod is a single DLL. -->
   <ItemGroup>
     <Compile Include="..\SubnauticaMP.Shared\*.cs" Link="Shared\%(Filename)%(Extension)" />
+  </ItemGroup>
+
+  <!-- dance / emote animations (tools/emotes/make_emotes.py) -->
+  <ItemGroup>
+    <EmbeddedResource Include="Emotes.bin" LogicalName="SubnauticaMP.Emotes.bin" />
   </ItemGroup>
 
   <ItemGroup>

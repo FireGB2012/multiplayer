@@ -58,6 +58,7 @@ namespace SubnauticaMP
                 else if (Loading) { if (!OverlayReady) DrawLoading(); }
                 if (!_gameMessagesWork) DrawChatOverlay();
                 if (_menuOpen) _window = GUILayout.Window(0x5B4D50, _window, DrawWindow, "");
+                Wheel?.OnGUI();
             }
             finally { GUI.skin = old; }
         }

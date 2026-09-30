@@ -10,7 +10,8 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Game mode picked in the launcher (Survival / Hardcore / Creative / Freedom) | ✔ |
 | Players (position, facing, name tags) | ✔ |
 | Chat | ✔ |
-| Emotes (wave, point, cheer, dance, laugh, nod, no, salute, facepalm, shrug, clap, backflip, spin, chill) | ✔ press **G** or type `/e wave`, everyone sees your diver do it |
+| Emotes: 40+ incl. Floss, Robot, Breakdance, Helicopter, Worm, Moonwalk, Macarena, Chicken Dance, cartwheels... | ✔ Fortnite-style emote wheel on **G**, everyone sees your diver do it |
+| Dance parties | ✔ everyone who joins dances the same dance at the same moment, with disco lights |
 | Blueprints (unlocks, fragment scans) | ✔ everyone shares one tech tree |
 | Databank / PDA entries | ✔ |
 | Picked-up items + broken outcrops | ✔ gone for everyone |
@@ -72,8 +73,11 @@ Multiplayer saves are kept out of the normal single-player Load list. The launch
    - **New world**: everyone meets in the **party lobby**: type your name, click to change your suit color,
      and the host clicks **Start the game**. **Existing world**: it loads your save for that world.
 5. In game, **Esc > Multiplayer** or **F8** (or the Multiplayer button in the pause menu) opens the multiplayer page: chat, join code, players, kick/ban if you host, leave. **Enter** jumps straight to chat.
-6. **G** opens the emote picker (keys **1-7** pick one, "More emotes" for the rest). Or type `/e wave`, `/e dance`, `/wave`... in chat
-   (`/e` lists them all). Dance and chill keep going until you swim off. The camera swings behind you while you emote so you see it too (`EmoteCamera` in the config turns that off). Change the key in the config (`EmoteKey`) or Options > Mods.
+6. **Emote wheel**: hold **G**, point at an emote, let go (or tap G and click). **Hold the mouse on a slot** to open the list of
+   every emote (with search) and put a different one there. The middle of the wheel shows your diver doing it.
+   Click the **middle** to start a **dance party** (or join one): everyone who joins dances together, the dance changes every 16 s.
+   In chat: `/e floss`, `/robot`, `/party`... (`/e` lists them). Dances keep going until you swim off, and the camera swings
+   behind you so you see it too (`EmoteCamera` in the config turns that off). Key: `EmoteKey` in the config or Options > Mods.
 
 The host is whoever plays on the server's PC (otherwise whoever joined first).
 Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.
@@ -133,3 +137,8 @@ Without `GameDir` it compiles against `lib/BepInEx.Ref` (a compile-only copy of 
 | `src/SubnauticaMP.Server` | Dedicated server console app |
 | `lib/BepInEx.Ref` | Compile-only BepInEx API |
 | `tests/` | Networking/sync tests + launcher UI tests |
+
+## Credits
+Dance and emote motions come from the [CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu)
+(BVH conversion by Bruce Hahne / cgspeed), free for any use. The database was created with funding from NSF EIA-0196217.
+Floss and Worm are hand-made. `tools/emotes/make_emotes.py` rebuilds the animation file.
