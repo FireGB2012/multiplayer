@@ -80,6 +80,17 @@ namespace SubnauticaMP
             }
         }
 
+        float LoadProgress => !InWorldAndSettled ? 0.05f
+            : _loadTotal == 0 ? (Vehicles.Settling ? 0.8f : 0.95f)
+            : Mathf.Lerp(0.1f, 0.95f, 1f - LoadWaiting / (float)_loadTotal);
+
+        string LoadStep => !InWorldAndSettled ? "Waiting for the world to finish loading..."
+            : Structures.Waiting > 0 ? $"Building bases ({Structures.Waiting} left)..."
+            : Containers.Waiting > 0 ? $"Filling lockers ({Containers.Waiting} left)..."
+            : Items.Waiting > 0 ? $"Placing items ({Items.Waiting} left)..."
+            : Vehicles.Settling ? "Bringing in vehicles..."
+            : "Almost there...";
+
         void DrawLoading()
         {
             GUI.DrawTexture(new Rect(0, 0, Screen.width, Screen.height), Texture2D.blackTexture);
@@ -90,10 +101,7 @@ namespace SubnauticaMP
             GUI.Label(new Rect(x, y, w, 50), "LOADING MULTIPLAYER WORLD", SnSkin.Title);
             y += 70;
 
-            int waiting = LoadWaiting;
-            float progress = !InWorldAndSettled ? 0.05f
-                : _loadTotal == 0 ? (Vehicles.Settling ? 0.8f : 0.95f)
-                : Mathf.Lerp(0.1f, 0.95f, 1f - waiting / (float)_loadTotal);
+            float progress = LoadProgress;
             GUI.Box(new Rect(x, y, w, 18), GUIContent.none);
             var old = GUI.color;
             GUI.color = SnSkin.Cyan;
@@ -101,13 +109,7 @@ namespace SubnauticaMP
             GUI.color = old;
             y += 34;
 
-            string what = !InWorldAndSettled ? "Waiting for the world to finish loading..."
-                : Structures.Waiting > 0 ? $"Building bases ({Structures.Waiting} left)..."
-                : Containers.Waiting > 0 ? $"Filling lockers ({Containers.Waiting} left)..."
-                : Items.Waiting > 0 ? $"Placing items ({Items.Waiting} left)..."
-                : Vehicles.Settling ? "Bringing in vehicles..."
-                : "Almost there...";
-            GUI.Label(new Rect(x, y, w, 30), what, SnSkin.MidText);
+            GUI.Label(new Rect(x, y, w, 30), LoadStep, SnSkin.MidText);
             y += 40;
             GUI.Label(new Rect(x, y, w, 30), $"{_remotes.Count + 1} player(s) in this world", SnSkin.Centered(SnSkin.Small));
         }

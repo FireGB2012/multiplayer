@@ -24,7 +24,8 @@ namespace SubnauticaMP
             SubControl, LargeWorldStreamer, StoryGoal, StoryGoalManager, StoryGoalScheduler, GoalType, CrashedShipExploder,
             Creature, EcoTarget, LastTarget, CellManager, EntitySlot, EntitySlotsPlaceholder, VirtualPrefabIdentifier, DeferredSpawner,
             PowerSource, SolarPanel, ThermalPlant, BaseBioReactor, BaseNuclearReactor, Crafter, SubFire, Fire, PrefabSpawnBase,
-            PickPrefab, WaterPark, WaterParkCreature, Builder;
+            PickPrefab, WaterPark, WaterParkCreature, Builder,
+            MainMenuRightSide, MainMenuLoadPanel, MainMenuEmailHandler, MainMenuGroup, IngameMenu, ErrorMessage;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         // keyed by (type, name) so looking one up doesn't build a string every call (these run every frame)
@@ -115,6 +116,12 @@ namespace SubnauticaMP
             WaterPark = Find("WaterPark");
             WaterParkCreature = Find("WaterParkCreature");
             Builder = Find("Builder");
+            MainMenuRightSide = Find("MainMenuRightSide");
+            MainMenuLoadPanel = Find("MainMenuLoadPanel");
+            MainMenuEmailHandler = Find("MainMenuEmailHandler");
+            MainMenuGroup = Find("MainMenuGroup");
+            IngameMenu = Find("IngameMenu");
+            ErrorMessage = Find("ErrorMessage");
         }
 
         // ---------- story ----------

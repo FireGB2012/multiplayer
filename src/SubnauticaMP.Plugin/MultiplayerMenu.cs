@@ -25,17 +25,20 @@ namespace SubnauticaMP
         void AskForPassword(string address, string reason)
         {
             if (string.IsNullOrEmpty(address) || Game.InWorld) return;
+            var known = ServerList.Find(address);
+            _menuUi.SetStatus(reason + " Type the password and click Save & join.");
+            if (_menuUi.OpenAdd(address, known != null && known.Name != known.Address ? known.Name : "")) return;
             OpenMultiplayerMenu();
             _mpTab = MpTab.Add;
             _addAddress = address;
             _addPassword = "";
-            var known = ServerList.Find(address);
             _addName = known != null && known.Name != known.Address ? known.Name : "";
             AddChat(reason + " Type it in and press SAVE & JOIN.");
         }
 
         void OpenMultiplayerMenu()
         {
+            if (_menuUi.Open()) return; // the one made from the game's own menu
             _mpMenuOpen = true;
             _mpTab = MpTab.Servers;
             RefreshMenuLists();
@@ -56,6 +59,15 @@ namespace SubnauticaMP
                     }
             }
             catch { }
+        }
+
+        // F8: the game-style page when we have it, the simple window otherwise.
+        void ToggleMultiplayerWindow()
+        {
+            if (_menuOpen) { _menuOpen = false; return; }
+            if (Game.InWorld && ShowPausePage(false)) return;
+            if (!Game.InWorld && Game.MainMenu != null && _menuUi.Open()) return;
+            _menuOpen = true;
         }
 
         void DrawMainMenuUi()

@@ -49,7 +49,7 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Base / Cyclops leaks and welding | ✔ damage and repairs are shared |
 | Build hologram while placing something | ✔ teammates see your green/red ghost |
 | Server password, kick, ban | ✔ in the launcher, the in-game F8 window (host) and the dedicated server |
-| In-game menus | ✔ styled like Subnautica's own UI (its font, blue panels, cyan highlights) |
+| In-game menus | ✔ made from copies of the game's own menus: the Multiplayer screen is the real Load/New game panels with save-slot rows, in game it's a page in the pause menu (Enter = chat, F8 = open it), chat uses the game's message feed |
 | Loading screen when joining | ✔ other players' bases, lockers, items, vehicles and diver models load behind it; your oxygen/food don't drain meanwhile |
 | Lag fixes | ✔ network sends never freeze the game, big data is compressed, no more whole-world searches every second |
 
@@ -70,7 +70,7 @@ Multiplayer saves are kept out of the normal single-player Load list. The launch
    - **New world**: everyone lands on a black *Waiting for players* screen showing who's in.
      When everyone's there the host presses **ENTER** (or clicks START) and the lifepod intro plays for everyone at once.
    - **Existing world**: it loads your save for that world. First time joining someone's world? You get a fresh game in their mode.
-5. In game, **F8** opens the multiplayer window (chat, join code, players, kick/ban if you host, leave).
+5. In game, **F8** (or the Multiplayer button in the pause menu) opens the multiplayer page: chat, join code, players, kick/ban if you host, leave. **Enter** jumps straight to chat.
 
 The host is whoever plays on the server's PC (otherwise whoever joined first).
 Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.

@@ -22,9 +22,17 @@ namespace SubnauticaMP
         int _confirmBan;
         GUIStyle _tagStyle, _tagSmall, _chatStyle;
 
+        bool _gameMessagesWork;
+
         public void AddChat(string line)
         {
             Plugin.Log.LogInfo(line);
+            if (Game.InWorld && Game.ErrorMessage != null)
+            {
+                try { Game.Call(Game.ErrorMessage, null, "AddMessage", line); _gameMessagesWork = true; }
+                catch { _gameMessagesWork = false; }
+            }
+            else if (!Game.InWorld) _menuUi?.SetStatus(line);
             _chat.Add((line, Time.unscaledTime));
             if (_chat.Count > 50) _chat.RemoveAt(0);
             _chatScroll.y = float.MaxValue;
@@ -44,10 +52,11 @@ namespace SubnauticaMP
             try
             {
                 DrawMainMenuUi();
-                if (Lobby.Holding) DrawLobby();
-                else if (Loading) DrawLoading();
-                else DrawNameTags();
-                DrawChatOverlay();
+                // the lobby/loading screens and chat use the game's own UI when it could be built;
+                // these simple versions are only the backup. Teammates show as HUD markers (game pings).
+                if (Lobby.Holding) { if (!OverlayReady) DrawLobby(); }
+                else if (Loading) { if (!OverlayReady) DrawLoading(); }
+                if (!_gameMessagesWork) DrawChatOverlay();
                 if (_menuOpen) _window = GUILayout.Window(0x5B4D50, _window, DrawWindow, "");
             }
             finally { GUI.skin = old; }
@@ -62,26 +71,6 @@ namespace SubnauticaMP
             _tagSmall.normal.textColor = SnSkin.Text;
             _chatStyle = new GUIStyle(GUI.skin.label) { fontSize = 15, wordWrap = false };
             _chatStyle.normal.textColor = SnSkin.Text;
-        }
-
-        void DrawNameTags()
-        {
-            if (_remotes.Count == 0) return;
-            var cam = Game.Camera;
-            if (cam == null) return;
-            MakeOverlayStyles();
-
-            foreach (var r in _remotes.Values)
-            {
-                if (r == null || !r.gameObject.activeSelf) continue;
-                var screen = cam.WorldToScreenPoint(r.transform.position + Vector3.up * 1.3f);
-                if (screen.z <= 0f) continue; // behind us
-                float dist = Vector3.Distance(cam.transform.position, r.transform.position);
-                float x = screen.x - 150, y = Screen.height - screen.y;
-                SnSkin.OutlinedLabel(new Rect(x, y - 14, 300, 24), $"{r.PlayerName}  ·  {dist:0}m" + (r.Sleeping ? "  zzz" : ""), _tagStyle);
-                if (r.HasVitals)
-                    SnSkin.OutlinedLabel(new Rect(x, y + 8, 300, 22), $"HP {r.Health}    Food {r.Food}    Water {r.Water}", _tagSmall);
-            }
         }
 
         // Black "waiting for players" screen shown instead of the intro until the host starts.

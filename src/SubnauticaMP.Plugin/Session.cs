@@ -28,6 +28,7 @@ namespace SubnauticaMP
         internal StorySync Story;
         internal CreatureSync Creatures;
         internal SleepSync Sleep;
+        MainMenuUi _menuUi;
         internal PowerSync Power;
         internal BaseLifeSync BaseLife;
         internal GhostSync Ghosts;
@@ -63,6 +64,7 @@ namespace SubnauticaMP
         void Awake()
         {
             Instance = this;
+            _menuUi = new MainMenuUi(this);
             World = new WorldSync(this);
             Vehicles = new VehicleSync(this);
             Structures = new StructureSync(this);
@@ -92,15 +94,26 @@ namespace SubnauticaMP
 
         void Update()
         {
-            if (Input.GetKeyDown(Plugin.MenuKey.Value)) _menuOpen = !_menuOpen;
+            if (Input.GetKeyDown(Plugin.MenuKey.Value)) ToggleMultiplayerWindow();
+            if (Joined && Game.InWorld && !Lobby.Holding && !Loading && !_menuOpen && !PausePageShowing &&
+                Cursor.lockState == CursorLockMode.Locked && !UiKit.Typing() &&
+                (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) &&
+                !(_pauseMenu != null && _pauseMenu.gameObject.activeInHierarchy))
+                ShowPausePage(true); // Enter = chat
             bool inMenu = Game.MainMenu != null;
             if (inMenu != _wasInMenu)
             {
                 _wasInMenu = inMenu;
                 Plugin.Log.LogInfo(inMenu ? "Main menu detected" : "Left the main menu");
             }
-            if (inMenu) MainMenuButton.Update(OpenMultiplayerMenu);
+            if (inMenu)
+            {
+                MainMenuButton.Update(OpenMultiplayerMenu);
+                SafeRun("menu", _menuUi.Update);
+            }
             else _mpMenuOpen = false;
+            SafeRun("pause menu", UpdatePauseUi);
+            SafeRun("overlay", UpdateOverlay);
 
             _inWorldTimer = Game.InWorld ? _inWorldTimer + Time.unscaledDeltaTime : 0f;
 
