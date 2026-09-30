@@ -11,6 +11,8 @@ namespace SubnauticaMP
     internal static class Performance
     {
         static bool _applied, _loadingFast;
+        static int _normalSlice = 2;
+        static ThreadPriority _normalPriority = ThreadPriority.BelowNormal;
 
         public static void Apply()
         {
@@ -24,9 +26,12 @@ namespace SubnauticaMP
 
             try
             {
-                // defaults are 4 MB / 2 ms: the world's textures queue up behind that and stream in slowly
+                // bigger buffer = fewer stalls when a lot streams in at once. The time per frame for uploading stays
+                // the game's own while you play (more of it = hitches when turning / moving into new areas);
+                // it only goes up behind loading screens.
+                _normalSlice = QualitySettings.asyncUploadTimeSlice;
+                _normalPriority = Application.backgroundLoadingPriority; // the game's own, put back after loading
                 QualitySettings.asyncUploadBufferSize = Math.Max(QualitySettings.asyncUploadBufferSize, 64);
-                QualitySettings.asyncUploadTimeSlice = Math.Max(QualitySettings.asyncUploadTimeSlice, 4);
                 QualitySettings.asyncUploadPersistentBuffer = true;
             }
             catch (Exception e) { Plugin.Log.LogInfo("Couldn't enlarge the upload buffer: " + e.Message); }
@@ -38,12 +43,12 @@ namespace SubnauticaMP
         // While a loading screen is up nobody sees the frame rate: load as fast as possible.
         public static void Update(bool loadingScreen)
         {
-            if (!Plugin.Performance.Value || loadingScreen == _loadingFast) return;
+            if (!_applied || !Plugin.Performance.Value || loadingScreen == _loadingFast) return;
             _loadingFast = loadingScreen;
             try
             {
-                Application.backgroundLoadingPriority = loadingScreen ? ThreadPriority.High : ThreadPriority.Normal;
-                QualitySettings.asyncUploadTimeSlice = loadingScreen ? 16 : 4;
+                Application.backgroundLoadingPriority = loadingScreen ? ThreadPriority.High : _normalPriority;
+                QualitySettings.asyncUploadTimeSlice = loadingScreen ? 16 : _normalSlice;
             }
             catch { }
         }

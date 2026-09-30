@@ -9,7 +9,7 @@ namespace SubnauticaMP
     // This finds those leftovers now and then and removes them, which fixes saves that already have them.
     internal static class DuplicateCleaner
     {
-        const float Every = 15f;
+        const float Every = 45f; // FindObjectsOfType isn't free: not too often
         static float _next;
         static readonly List<string> _ids = new List<string>();
         static readonly Dictionary<Vector3Int, Component> _homes = new Dictionary<Vector3Int, Component>();

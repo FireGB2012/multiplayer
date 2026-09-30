@@ -43,7 +43,16 @@ namespace SubnauticaMP
             while (_pendingChat.TryDequeue(out var line)) AddChat(line);
         }
 
+        readonly System.Diagnostics.Stopwatch _guiTimer = new System.Diagnostics.Stopwatch();
+
         void OnGUI()
+        {
+            _guiTimer.Restart();
+            try { DrawGui(); }
+            finally { PerfMonitor.Record("menus / overlays", _guiTimer.Elapsed.TotalMilliseconds); }
+        }
+
+        void DrawGui()
         {
             GUI.depth = -1000; // above the game's own UI
             DrainPendingChat();
@@ -59,6 +68,7 @@ namespace SubnauticaMP
                 if (!_gameMessagesWork) DrawChatOverlay();
                 if (_menuOpen) _window = GUILayout.Window(0x5B4D50, _window, DrawWindow, "");
                 Wheel?.OnGUI();
+                PerfMonitor.OnGUI(this);
             }
             finally { GUI.skin = old; }
         }

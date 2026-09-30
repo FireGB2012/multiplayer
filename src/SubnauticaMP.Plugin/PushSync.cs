@@ -88,7 +88,7 @@ namespace SubnauticaMP
             if (rb != null && !rb.isKinematic) rb.velocity = push;
             else player.transform.position += push * 0.15f; // no physics body to shove: at least move them a bit
 
-            _s.Emoting.PlayLocalOnly(Emote.Knocked, dir); // you see yourself flop over (camera swings out)
+            _s.Emoting.PlayLocalOnly(Emote.Knocked, dir, dir * 5f + Vector3.up * 1.5f); // you see yourself flop over (camera swings out)
         }
     }
 }

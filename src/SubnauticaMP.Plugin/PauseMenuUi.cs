@@ -131,6 +131,7 @@ namespace SubnauticaMP
         {
             text = (text ?? "").Trim();
             if (text.Length == 0 || !Joined) return false;
+            if (text.Equals("/perf", StringComparison.OrdinalIgnoreCase)) { PerfMonitor.StartReport(this); return true; }
             if (Emotes.TryParseCommand(text, out var emote, out var listOnly))
             {
                 if (listOnly) { AddChat("Emotes: " + Emotes.List() + ". Type /e <emote> or press " + Plugin.EmoteKey.Value + "."); return false; }
@@ -266,6 +267,7 @@ namespace SubnauticaMP
 
             if (_chatField != null) PauseButton("Send message", SendChatFromBox);
             PauseButton($"Emotes  ({Plugin.EmoteKey.Value})", () => SetEmoteMode(true));
+            PauseButton($"Lag test (10 s report)   ·   {Plugin.PerfKey.Value} = live stats", () => { PerfMonitor.StartReport(this); ClosePauseMenu(); });
             if (_joinCode != null) PauseButton($"Join code: {_joinCode}  (click to copy)", () => { GUIUtility.systemCopyBuffer = _joinCode; AddChat("Join code copied: " + _joinCode); });
 
             PauseButton($"{Plugin.PlayerName.Value} (you)" + (IsHost ? "  ·  host" : ""), null);

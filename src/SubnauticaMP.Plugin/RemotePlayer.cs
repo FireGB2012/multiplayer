@@ -39,6 +39,7 @@ namespace SubnauticaMP
         Emote _emote = Emote.None;
         float _emoteStarted;
         Vector3 _knockDir = Vector3.back;
+        Ragdoll _ragdoll;
         Vector3 _velocity, _lastTargetPos;
         float _lastTargetTime;
         bool _underwater = true, _visible = true;
@@ -160,6 +161,19 @@ namespace SubnauticaMP
         public bool PlayEmote(Emote emote, Vector3? knockDirection = null)
         {
             if (knockDirection.HasValue) _knockDir = knockDirection.Value;
+            // knocked over: a real physics ragdoll when we can, the animated fall if not
+            if (emote == Emote.Knocked && Plugin.RealRagdoll.Value && _diver != null && _diver.activeSelf)
+            {
+                _ragdoll?.Remove();
+                _ragdoll = Ragdoll.Start(_diver, transform, _knockDir * 5f + Vector3.up * 1.5f, _underwater);
+                if (_ragdoll != null)
+                {
+                    _emoteAnim?.ResetNow();
+                    _emote = emote;
+                    _emoteStarted = Time.unscaledTime;
+                    return true;
+                }
+            }
             if (emote == Emote.None) { StopEmote(); return false; }
             bool repeat = emote == _emote && Emotes.Loops(emote) && EmoteRunning();
             if (!repeat) _emoteStarted = Time.unscaledTime;
@@ -183,6 +197,11 @@ namespace SubnauticaMP
 
         void LateUpdate()
         {
+            if (_ragdoll != null)
+            {
+                if (!_ragdoll.LateUpdate(Time.unscaledDeltaTime)) _ragdoll = null;
+                return;
+            }
             if (_emoteAnim == null || _diver == null || !_diver.activeSelf) return;
             try { _emoteAnim.Apply(Time.unscaledDeltaTime); }
             catch (Exception e)
@@ -276,6 +295,7 @@ namespace SubnauticaMP
                 if (Time.unscaledTime - _lastTargetTime > 0.5f) _velocity = Vector3.zero; // stopped sending = standing still
                 _anim.Update(transform, _velocity, _underwater, Time.unscaledDeltaTime);
             }
+            if (_ragdoll != null) return; // lying where physics put them; catches up after getting up
             float t = 1f - Mathf.Exp(-12f * Time.unscaledDeltaTime);
             transform.position = Vector3.Lerp(transform.position, _targetPos, t);
             transform.rotation = Quaternion.Slerp(transform.rotation, _targetRot, t);

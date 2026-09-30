@@ -12,7 +12,7 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Chat | ✔ |
 | Emotes: 40+ incl. Floss, Robot, Breakdance, Helicopter, Worm, Moonwalk, Macarena, Chicken Dance, cartwheels... | ✔ Fortnite-style emote wheel on **G**, everyone sees your diver do it |
 | Dance parties | ✔ everyone who joins dances the same dance at the same moment, with disco lights |
-| Pushing | ✔ empty hand + left click on a teammate up close: they get shoved, ragdoll, and stand back up after 4 s |
+| Pushing | ✔ empty hand + left click on a teammate up close: they get shoved, go limp as a real physics ragdoll, and stand back up after 4 s |
 | Blueprints (unlocks, fragment scans) | ✔ everyone shares one tech tree |
 | Databank / PDA entries | ✔ |
 | Picked-up items + broken outcrops | ✔ gone for everyone |
@@ -103,6 +103,11 @@ If it didn't:
 ## If something breaks
 Send `Subnautica\BepInEx\LogOutput.log`. The mod logs which features hooked in
 (`Synced features: ...`) and anything it couldn't find in the game (`Game member not found: ...`).
+
+**Lag?** Press **F9** in game for live stats (FPS, frame times, how many ms each part of the mod costs), or type
+`/perf` in chat (or Esc > Multiplayer > Lag test) and play normally for 10 s: it writes a report to `LogOutput.log`
+that says whether each stutter came from the mod, from garbage collection, or from the game itself (terrain/world
+streaming while you turn the camera). Send that log. `Performance = false` in the config turns the speed tweaks off.
 
 **Game closes by itself on the loading screen** and the log ends with `Couldn't initialize Steamworks`?
 That's the Steam version quitting because Steam wasn't running. Open Steam first (the launcher's PLAY

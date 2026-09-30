@@ -102,6 +102,8 @@ namespace SubnauticaMP
 
         void Update()
         {
+            PerfMonitor.EndFrame();
+            if (Input.GetKeyDown(Plugin.PerfKey.Value) && !UiKit.Typing()) PerfMonitor.Overlay = !PerfMonitor.Overlay;
             if (Input.GetKeyDown(Plugin.MenuKey.Value)) ToggleMultiplayerWindow();
             if (Plugin.EnterForChat.Value && Joined && Game.InWorld && !Lobby.Holding && !Loading && !_menuOpen && !PausePageShowing &&
                 Cursor.lockState == CursorLockMode.Locked && !UiKit.Typing() &&
@@ -219,6 +221,7 @@ namespace SubnauticaMP
             }
             // lag hunting: anything of ours that takes a noticeable part of a frame goes in the log
             var ms = _runTimer.Elapsed.TotalMilliseconds;
+            PerfMonitor.Record(what, ms);
             if (ms > 15 && (!_slowLogged.TryGetValue(what, out var last) || Time.unscaledTime - last > 10f))
             {
                 _slowLogged[what] = Time.unscaledTime;

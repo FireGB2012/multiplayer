@@ -14,7 +14,7 @@ namespace SubnauticaMP
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.firegb2012.subnauticamp";
-        public const string Version = "0.19.0";
+        public const string Version = "0.20.0";
 
         internal static ManualLogSource Log;
         internal static string Folder;
@@ -26,6 +26,8 @@ namespace SubnauticaMP
         internal static ConfigEntry<bool> EmoteCamera;
         internal static ConfigEntry<string> EmoteWheel;
         internal static ConfigEntry<bool> Performance;
+        internal static ConfigEntry<KeyCode> PerfKey;
+        internal static ConfigEntry<bool> RealRagdoll;
         internal static ConfigEntry<string> HostPassword;
         internal static ConfigEntry<int> DiverColor;
         internal static ConfigEntry<bool> EnterForChat;
@@ -50,6 +52,8 @@ namespace SubnauticaMP
             Port = Config.Bind("General", "Port", Protocol.DefaultPort, "Port to host on / join.");
             MenuKey = Config.Bind("General", "MenuKey", KeyCode.F8, "Opens the multiplayer window.");
             EmoteKey = Config.Bind("General", "EmoteKey", KeyCode.G, "Opens the emote picker (wave, dance...). /e wave in chat works too.");
+            PerfKey = Config.Bind("General", "PerfKey", KeyCode.F9, "Shows the performance overlay (FPS, frame times, what the mod costs). /perf in chat writes a 10 s lag report.");
+            RealRagdoll = Config.Bind("General", "RealRagdoll", true, "Pushed divers go limp with real physics (false = the animated fall).");
             Performance = Config.Bind("General", "Performance", true, "Let the game use more CPU / RAM: higher priority, bigger texture upload buffer, full-speed loading behind loading screens.");
             EmoteWheel = Config.Bind("General", "EmoteWheel", string.Join(",", Shared.Emotes.DefaultWheel), "The 8 emotes on your emote wheel (hold a slot in game to change it).");
             EmoteCamera = Config.Bind("General", "EmoteCamera", true, "Camera swings behind you while you do an emote, so you can see it.");

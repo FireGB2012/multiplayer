@@ -32,6 +32,7 @@ namespace SubnauticaMP
         {
             _local = Emote.None;
             EndSelfView();
+            EndSelfRagdoll();
             _party = null;
             PartyLights(false);
         }
@@ -60,12 +61,70 @@ namespace SubnauticaMP
         }
 
         // Just on your own screen (a push knocked you over: everyone else already knows from the push).
-        public void PlayLocalOnly(Emote emote, Vector3 knockDirection)
+        public void PlayLocalOnly(Emote emote, Vector3 knockDirection, Vector3? ragdollVelocity = null)
         {
             _local = emote;
             _started = Time.unscaledTime;
+            if (ragdollVelocity.HasValue && StartSelfRagdoll(ragdollVelocity.Value)) return;
             StartSelfView(emote);
             _self?.SetKnockDirection(knockDirection);
+        }
+
+        // ---------- your own ragdoll: a copy of you flops over, the camera watches it, your body hides meanwhile ----------
+
+        Ragdoll _selfRagdoll;
+        GameObject _selfRagdollRoot;
+        readonly List<Renderer> _hiddenBody = new List<Renderer>();
+
+        bool StartSelfRagdoll(Vector3 velocity)
+        {
+            if (!Plugin.EmoteCamera.Value || !Plugin.RealRagdoll.Value) return false;
+            var player = Game.LocalPlayer;
+            var body = player != null ? player.transform.Find("body") : null;
+            var cam = Game.Camera;
+            if (body == null || cam == null) return false;
+            EndSelfRagdoll();
+            try
+            {
+                _selfRagdollRoot = new GameObject("SubnauticaMP_SelfRagdoll");
+                _selfRagdollRoot.transform.SetPositionAndRotation(player.transform.position, Quaternion.Euler(0f, cam.transform.eulerAngles.y, 0f));
+                var copy = DiverModel.Create(_selfRagdollRoot.transform);
+                if (copy == null) { EndSelfRagdoll(); return false; }
+                copy.transform.localPosition = body.localPosition;
+                Game.TryDo("ragdoll color", () => SuitPaint.Apply(copy, Plugin.DiverColor.Value));
+                _selfRagdoll = Ragdoll.Start(copy, _selfRagdollRoot.transform, velocity, Game.Is(player, "IsUnderwater"));
+                if (_selfRagdoll == null) { EndSelfRagdoll(); return false; }
+                foreach (var r in body.GetComponentsInChildren<Renderer>(true))
+                    if (r.enabled) { r.enabled = false; _hiddenBody.Add(r); }
+                HookCamera();
+                return true;
+            }
+            catch (System.Exception e)
+            {
+                Game.WarnOnce("selfragdoll", "Couldn't ragdoll you: " + e.GetBaseException().Message);
+                EndSelfRagdoll();
+                return false;
+            }
+        }
+
+        void EndSelfRagdoll()
+        {
+            _selfRagdoll?.Remove();
+            _selfRagdoll = null;
+            if (_selfRagdollRoot != null) Object.Destroy(_selfRagdollRoot);
+            _selfRagdollRoot = null;
+            foreach (var r in _hiddenBody) if (r != null) r.enabled = true;
+            _hiddenBody.Clear();
+            if (_self == null) _view = 0f;
+        }
+
+        void HookCamera()
+        {
+            _active = this;
+            if (_hooked) return;
+            _hooked = true;
+            Camera.onPreCull += PreCull;
+            Camera.onPostRender += PostRender;
         }
 
         public void Stop()
@@ -260,6 +319,17 @@ namespace SubnauticaMP
         // After the game has posed your body (LateUpdate).
         public void LateUpdate()
         {
+            if (_selfRagdoll != null)
+            {
+                if (_selfRagdoll.LateUpdate(Time.unscaledDeltaTime))
+                {
+                    _view = Mathf.MoveTowards(_view, 1f, Time.unscaledDeltaTime / CamBlendSeconds);
+                    var cam0 = Game.Camera;
+                    if (cam0 != null) AimCamera(cam0, _selfRagdoll.Focus.position + Vector3.up * 0.2f, cam0.transform.forward, _selfRagdollRoot != null ? _selfRagdollRoot.transform : null);
+                }
+                else EndSelfRagdoll();
+                return;
+            }
             if (_self == null) return;
             if (_selfBody == null) { _self = null; _view = 0f; ShowHead(false); return; }
             if (_local == Emote.None) _self.Stop();
@@ -267,17 +337,26 @@ namespace SubnauticaMP
             _view = Mathf.MoveTowards(_view, _self.Current != Emote.None ? 1f : 0f, Time.unscaledDeltaTime / CamBlendSeconds);
             if (_view <= 0f && !_self.Showing) { ShowHead(false); return; }
 
-            // where the camera goes: behind and a bit above you, looking at you, not through walls
             var cam = Game.Camera;
             if (cam == null) return;
-            var target = _self.Middle + Vector3.up * 0.25f;
-            var flat = Vector3.ProjectOnPlane(_selfBody.forward, Vector3.up);
-            if (flat.sqrMagnitude < 0.01f) flat = cam.transform.forward;
+            AimCamera(cam, _self.Middle + Vector3.up * 0.25f, _selfBody.forward, null);
+        }
+
+        // Where the camera goes: behind and a bit above `target`, looking at it, not through walls.
+        void AimCamera(Camera cam, Vector3 target, Vector3 facing, Transform ignore)
+        {
+            var flat = Vector3.ProjectOnPlane(facing, Vector3.up);
+            if (flat.sqrMagnitude < 0.01f) flat = Vector3.ProjectOnPlane(cam.transform.forward, Vector3.up);
+            if (flat.sqrMagnitude < 0.01f) flat = Vector3.forward;
             var back = (-flat.normalized * 0.9f + Vector3.up * 0.35f).normalized;
             float dist = CamDistance;
-            if (Physics.SphereCast(target, 0.2f, back, out var hit, CamDistance, ~0, QueryTriggerInteraction.Ignore)
-                && !hit.transform.IsChildOf(Game.LocalPlayer.transform))
-                dist = Mathf.Max(0.6f, hit.distance - 0.1f);
+            var me = Game.LocalPlayer != null ? Game.LocalPlayer.transform : null;
+            foreach (var hit in Physics.SphereCastAll(target, 0.2f, back, CamDistance, ~0, QueryTriggerInteraction.Ignore))
+            {
+                if (me != null && hit.transform.IsChildOf(me)) continue;
+                if (ignore != null && hit.transform.IsChildOf(ignore)) continue;
+                dist = Mathf.Min(dist, Mathf.Max(0.6f, hit.distance - 0.1f));
+            }
             var outPos = target + back * dist;
             var outRot = Quaternion.LookRotation(target - outPos, Vector3.up);
             float t = _view * _view * (3f - 2f * _view);
@@ -313,7 +392,7 @@ namespace SubnauticaMP
         static void PreCull(Camera cam)
         {
             var me = _active;
-            if (me == null || me._view <= 0f || me._self == null || cam != Game.Camera) return;
+            if (me == null || me._view <= 0f || (me._self == null && me._selfRagdoll == null) || cam != Game.Camera) return;
             me._savedPos = cam.transform.position;
             me._savedRot = cam.transform.rotation;
             cam.transform.SetPositionAndRotation(me._camPos, me._camRot);
