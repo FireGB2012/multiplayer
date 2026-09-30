@@ -14,7 +14,7 @@ namespace SubnauticaMP
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.firegb2012.subnauticamp";
-        public const string Version = "0.20.1";
+        public const string Version = "0.20.2";
 
         internal static ManualLogSource Log;
         internal static string Folder;
@@ -60,6 +60,16 @@ namespace SubnauticaMP
             DiverColor = Config.Bind("General", "DiverColor", Shared.DiverColors.Default, "Your suit color other players see (0xRRGGBB).");
             EnterForChat = Config.Bind("General", "EnterForChat", true, "Press Enter in game to open the chat box.");
             HostPassword = Config.Bind("General", "HostPassword", "", "Password friends need to join worlds you host (empty = no password).");
+
+            // Unity builds a full stack trace for every log line / warning. The game spams warnings while the map
+            // streams (hundreds when you turn around), and each trace costs real time: skip them for plain logs
+            // and warnings (errors keep theirs).
+            try
+            {
+                Application.SetStackTraceLogType(LogType.Log, StackTraceLogType.None);
+                Application.SetStackTraceLogType(LogType.Warning, StackTraceLogType.None);
+            }
+            catch (System.Exception e) { Log.LogInfo("Couldn't turn off log stack traces: " + e.Message); }
 
             Game.Init();
             Patches.Apply(new Harmony(Guid));

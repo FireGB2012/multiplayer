@@ -14,11 +14,16 @@ namespace SubnauticaMP
     internal sealed class CreatureSync
     {
         public const string IdPrefix = "s:";
-        const float ClaimRange = 80f, ReleaseRange = 120f, StreamRange = 150f;
+        const float ClaimRange = 80f, ReleaseRange = 120f;
+        // Only follow a teammate's creature while it's near you. Further out, the map around it isn't loaded on
+        // this PC: moving it there parks it in an asleep map cell ("Resetting cell with N waiters" spam), the game
+        // throws it away, it gets claimed again... churn every player paid for whenever someone swam around.
+        const float PuppetRange = 75f, StreamRange = 80f;
         const float ScanSeconds = 1f, StreamSeconds = 0.125f, SlotFlushSeconds = 0.5f, PendingSeconds = 5f;
 
         sealed class Tracked
         {
+            public bool Near; // close enough to us that we follow its owner's updates
             public GameObject Go;
             public Component Creature;
             public bool Puppet;
@@ -157,7 +162,7 @@ namespace SubnauticaMP
             float k = 1f - Mathf.Exp(-8f * Time.deltaTime);
             foreach (var t in _tracked.Values)
             {
-                if (!t.Puppet || !t.HasTarget || t.Go == null) continue;
+                if (!t.Puppet || !t.HasTarget || t.Go == null || !t.Near) continue;
                 var tr = t.Go.transform;
                 tr.position = Vector3.Lerp(tr.position, t.TargetPos, k);
                 tr.rotation = Quaternion.Slerp(tr.rotation, t.TargetRot, k);
@@ -289,10 +294,16 @@ namespace SubnauticaMP
 
         public void OnStates(CreatureStatesPacket p)
         {
+            var me = Game.LocalPlayer;
+            var myPos = me != null ? me.transform.position : Vector3.zero;
             foreach (var st in p.States)
             {
                 if (!_tracked.TryGetValue(st.Id, out var t) || !t.Puppet || t.Go == null) continue;
-                t.TargetPos = new Vector3(st.Position.X, st.Position.Y, st.Position.Z);
+                var target = new Vector3(st.Position.X, st.Position.Y, st.Position.Z);
+                t.Near = me != null && (target - myPos).sqrMagnitude < PuppetRange * PuppetRange &&
+                         (t.Go.transform.position - myPos).sqrMagnitude < PuppetRange * PuppetRange;
+                if (!t.Near) continue; // far from us: leave it where it is
+                t.TargetPos = target;
                 t.TargetRot = new Quaternion(st.Rotation.X, st.Rotation.Y, st.Rotation.Z, st.Rotation.W);
                 if (!t.HasTarget && Vector3.Distance(t.Go.transform.position, t.TargetPos) > 20f)
                     t.Go.transform.SetPositionAndRotation(t.TargetPos, t.TargetRot);
