@@ -71,6 +71,7 @@ namespace SubnauticaMP.Launcher
             Task.Run(() =>
             {
                 var r = Upnp.OpenPort(Port, "Subnautica Multiplayer");
+                _routerOpened = r.Success && !r.BehindCgnat && !r.DoubleNat;
                 var ip = r.PublicIp ?? (r.Success ? r.ExternalIp : null);
                 if (ip != null && IPAddress.TryParse(ip, out var addr)) InternetCode = JoinCode.Encode(addr, Port);
 
@@ -92,6 +93,8 @@ namespace SubnauticaMP.Launcher
             });
         }
 
+        bool _routerOpened;
+
         // Asks an outside website to connect to us: the real answer to "can friends join?"
         public void CheckReachable()
         {
@@ -103,9 +106,15 @@ namespace SubnauticaMP.Launcher
             Task.Run(() =>
             {
                 var ok = Upnp.CheckReachable(port);
+                if (ok != true) { System.Threading.Thread.Sleep(5000); ok = Upnp.CheckReachable(port) ?? ok; } // first try can be too early
                 Reachable = ok;
                 ReachStatus = ok == true ? "✔ Friends on other wifi CAN reach you. Send them the internet code!"
-                    : ok == false ? "✖ Port is closed from the internet. Most likely Windows Firewall: hit 'Allow through firewall', then 'Test again'."
+                    : ok == false && _routerOpened
+                        ? "✖ Your router opened the port, but the internet still can't get in. Hit 'Allow through firewall' (it also removes old hidden " +
+                          "block rules), check your antivirus firewall (Norton/Avast/Bitdefender...), then 'Test again'. Still closed? Your internet " +
+                          "provider blocks incoming connections: use Radmin VPN or Tailscale."
+                    : ok == false
+                        ? "✖ Port is closed: your router didn't open it (see above). Turn on UPnP in the router or forward the port by hand, or use Radmin VPN / Tailscale."
                     : "Couldn't run the reachability test (website didn't answer). Just try joining with a friend.";
                 Log?.Invoke(ReachStatus);
                 Changed?.Invoke();

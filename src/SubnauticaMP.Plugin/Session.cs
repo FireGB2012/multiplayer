@@ -656,10 +656,24 @@ namespace SubnauticaMP
                 _pendingChat.Enqueue(msg);
                 if (_joinCode != null) _pendingChat.Enqueue("Join code: " + _joinCode + " (F8 to see it again)");
 
+                // ask an outside site to connect to us; twice, the first try can be too early
                 var reach = Upnp.CheckReachable(port);
+                if (reach != true) { Thread.Sleep(5000); reach = Upnp.CheckReachable(port) ?? reach; }
+                Plugin.Log.LogInfo($"Reachability check for port {port}: {(reach == null ? "couldn't check" : reach.Value ? "open" : "closed")} " +
+                                   $"(router opened it: {r.Success}, CGNAT: {r.BehindCgnat}, double NAT: {r.DoubleNat}, this PC: {r.LocalIp})");
                 if (reach == true) _pendingChat.Enqueue("Friends on other wifi CAN reach you!");
                 else if (reach == false)
-                    _pendingChat.Enqueue("Port is closed from the internet. Probably Windows Firewall: in the launcher's Server tab hit 'Allow through firewall'.");
+                {
+                    if (r.BehindCgnat || r.DoubleNat) { } // already explained above
+                    else if (r.Success)
+                        _pendingChat.Enqueue($"Router opened port {port}, but the internet still can't get in. Either your PC blocks it " +
+                                             "(launcher > Server tab > 'Allow through firewall' also removes old hidden block rules; antivirus firewalls like Norton/Avast/Bitdefender need Subnautica allowed too), " +
+                                             "or your internet provider blocks incoming connections. Sure-fire fix: Radmin VPN or Tailscale.");
+                    else
+                        _pendingChat.Enqueue($"Port {port} is closed: your router didn't open it. Turn on UPnP in the router's settings, or forward TCP {port} to this PC ({r.LocalIp ?? "its local IP"}) by hand. " +
+                                             "Or skip all that with Radmin VPN / Tailscale.");
+                }
+                else _pendingChat.Enqueue("Couldn't test if friends can reach you (the checking site didn't answer). Just have a friend try the join code.");
             }) { IsBackground = true, Name = "SubnauticaMP upnp" }.Start();
         }
 

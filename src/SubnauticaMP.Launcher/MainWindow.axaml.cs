@@ -281,22 +281,31 @@ namespace SubnauticaMP.Launcher
         }
 
         // Windows blocks incoming connections for programs it hasn't asked about (the popup often hides
-        // behind the game). Add allow rules for the port, this launcher and Subnautica. Needs admin once.
+        // behind the game). And if that popup was ever closed / answered "private only", Windows made a hidden
+        // BLOCK rule for Subnautica, and block rules beat allow rules. So: remove those, then add allow rules for
+        // the port, this launcher and Subnautica. One admin popup.
         void AllowFirewall()
         {
             if (!OperatingSystem.IsWindows()) throw new Exception("Only needed on Windows.");
             int port = _host.Running ? _host.Port : int.TryParse(PortBox.Text, out var p) ? p : Protocol.DefaultPort;
-            var rules = new System.Collections.Generic.List<string>
-            {
-                $"netsh advfirewall firewall add rule name=\"Subnautica Multiplayer TCP {port}\" dir=in action=allow protocol=TCP localport={port} profile=any",
-            };
-            if (Environment.ProcessPath is string me)
-                rules.Add($"netsh advfirewall firewall add rule name=\"Subnautica Multiplayer Launcher\" dir=in action=allow program=\"{me}\" profile=any");
-            var game = Path.Combine(GameDir, "Subnautica.exe");
-            if (File.Exists(game))
-                rules.Add($"netsh advfirewall firewall add rule name=\"Subnautica Multiplayer Game\" dir=in action=allow program=\"{game}\" profile=any");
+            var game = Path.Combine(GameDir ?? "", "Subnautica.exe");
+            var me = Environment.ProcessPath ?? "";
+            string Q(string x) => "'" + x.Replace("'", "''") + "'";
 
-            var psi = new ProcessStartInfo("cmd.exe", "/c " + string.Join(" & ", rules))
+            var script = new System.Text.StringBuilder();
+            script.AppendLine("$ErrorActionPreference = 'SilentlyContinue'");
+            // old hidden block rules for the game / launcher (made when the Windows popup was dismissed)
+            script.AppendLine("Get-NetFirewallApplicationFilter | Where-Object { $_.Program -like '*\\Subnautica.exe' -or $_.Program -like '*\\SubnauticaMP-Launcher.exe' } |");
+            script.AppendLine("  Get-NetFirewallRule | Where-Object { $_.Action -eq 'Block' -and $_.Direction -eq 'Inbound' } | Remove-NetFirewallRule");
+            // our allow rules (replaced if they're already there)
+            script.AppendLine("Remove-NetFirewallRule -DisplayName 'Subnautica Multiplayer*'");
+            script.AppendLine($"New-NetFirewallRule -DisplayName 'Subnautica Multiplayer TCP {port}' -Direction Inbound -Action Allow -Protocol TCP -LocalPort {port} -Profile Any");
+            if (File.Exists(me)) script.AppendLine($"New-NetFirewallRule -DisplayName 'Subnautica Multiplayer Launcher' -Direction Inbound -Action Allow -Program {Q(me)} -Profile Any");
+            if (File.Exists(game)) script.AppendLine($"New-NetFirewallRule -DisplayName 'Subnautica Multiplayer Game' -Direction Inbound -Action Allow -Program {Q(game)} -Profile Any");
+            var file = Path.Combine(Path.GetTempPath(), "SubnauticaMP-firewall.ps1");
+            File.WriteAllText(file, script.ToString());
+
+            var psi = new ProcessStartInfo("powershell.exe", $"-NoProfile -ExecutionPolicy Bypass -File \"{file}\"")
             {
                 UseShellExecute = true,
                 Verb = "runas", // Windows asks "allow this app to make changes?" - say yes
@@ -305,13 +314,14 @@ namespace SubnauticaMP.Launcher
             try
             {
                 using var proc = Process.Start(psi);
-                proc?.WaitForExit(15000);
+                proc?.WaitForExit(30000);
             }
             catch (System.ComponentModel.Win32Exception)
             {
                 throw new Exception("You need to click Yes on the Windows popup to allow it.");
             }
-            Status("Firewall rules added. Hit 'Test again'.");
+            finally { try { File.Delete(file); } catch { } }
+            Status("Firewall fixed (old block rules removed, allow rules added). Restart Subnautica if it was running, then Test again.");
             if (_host.Running) _host.CheckReachable();
         }
 
