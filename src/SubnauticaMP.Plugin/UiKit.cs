@@ -171,6 +171,40 @@ namespace SubnauticaMP
             }
         }
 
+        // Inside the game's layouts a copied text box has no height of its own: give it one.
+        public static void GiveHeight(GameObject go, float height)
+        {
+            if (LayoutElement == null) return;
+            var le = go.GetComponent(LayoutElement) ?? go.AddComponent(LayoutElement);
+            Game.Set(LayoutElement, le, "minHeight", height);
+            Game.Set(LayoutElement, le, "preferredHeight", height);
+            Game.Set(LayoutElement, le, "flexibleWidth", 1f);
+        }
+
+        // A text box taken from somewhere else (like the dev console) may carry that place's scripts: drop them.
+        public static void KeepInputOnly(GameObject go)
+        {
+            foreach (var mb in go.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (mb == null) continue;
+                var ns = mb.GetType().Namespace ?? "";
+                if (ns.StartsWith("UnityEngine") || ns.StartsWith("TMPro") || (TmpInput != null && TmpInput.IsInstanceOfType(mb))) continue;
+                try { UnityEngine.Object.DestroyImmediate(mb); } catch { }
+            }
+        }
+
+        public static string Describe(GameObject go) =>
+            go == null ? "null" : go.name + " [" + string.Join(", ", go.GetComponentsInChildren<Component>(true).Where(c => c != null).Select(c => c.GetType().Name).Distinct().ToArray()) + "]";
+
+        // Any text box in the loaded game (for the pause menu, when the main menu's copy isn't usable).
+        public static GameObject SceneInput()
+        {
+            if (TmpInput == null) return null;
+            foreach (var o in Resources.FindObjectsOfTypeAll(TmpInput))
+                if (o is Component c && c != null && c.gameObject.scene.IsValid()) return c.gameObject;
+            return null;
+        }
+
         // ---------- canvases ----------
 
         // A screen overlay canvas that sorts above the game's HUD.

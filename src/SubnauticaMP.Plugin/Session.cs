@@ -129,8 +129,9 @@ namespace SubnauticaMP
 
             PumpPacketsWithBudget();
             WatchConnection();
-            SceneIndex.Tick();
+            SafeRun("object lists", SceneIndex.Tick);
             UpdateLoading();
+            WatchFrameTime();
             Lobby.Update();
             if (!Joined) return;
 
@@ -186,12 +187,37 @@ namespace SubnauticaMP
 
         // One broken feature shouldn't take the whole mod down with it.
         readonly HashSet<string> _failedOnce = new HashSet<string>();
+        readonly System.Diagnostics.Stopwatch _runTimer = new System.Diagnostics.Stopwatch();
+        readonly Dictionary<string, float> _slowLogged = new Dictionary<string, float>();
+
         void SafeRun(string what, Action a)
         {
+            _runTimer.Restart();
             try { a(); }
             catch (Exception e)
             {
                 if (_failedOnce.Add(what)) Plugin.Log.LogError($"[{what}] {e}");
+            }
+            // lag hunting: anything of ours that takes a noticeable part of a frame goes in the log
+            var ms = _runTimer.Elapsed.TotalMilliseconds;
+            if (ms > 15 && (!_slowLogged.TryGetValue(what, out var last) || Time.unscaledTime - last > 10f))
+            {
+                _slowLogged[what] = Time.unscaledTime;
+                Plugin.Log.LogWarning($"[lag] '{what}' took {ms:0} ms this frame");
+            }
+        }
+
+        float _lastHitchLog;
+
+        // Whole-frame hitches (ours or the game's), so a log shows when the stutters happen.
+        void WatchFrameTime()
+        {
+            if (!Game.InWorld || Loading) return;
+            float dt = Time.unscaledDeltaTime;
+            if (dt > 0.25f && Time.unscaledTime - _lastHitchLog > 5f)
+            {
+                _lastHitchLog = Time.unscaledTime;
+                Plugin.Log.LogWarning($"[lag] frame took {dt * 1000:0} ms (players: {_remotes.Count + 1}, creatures synced: {Creatures.TrackedCount}, GC heap {GC.GetTotalMemory(false) / (1024 * 1024)} MB)");
             }
         }
 
@@ -290,7 +316,7 @@ namespace SubnauticaMP
             switch (packet)
             {
                 case WelcomePacket welcome:
-                    foreach (var p in welcome.Players) AddRemote(p.Id, p.Name);
+                    foreach (var p in welcome.Players) AddRemote(p.Id, p.Name, p.Color);
                     _hostId = welcome.HostId;
                     _worldId = welcome.World.WorldId;
                     _slotRecorded = false;
@@ -308,7 +334,12 @@ namespace SubnauticaMP
                     BaseLife.Reset();
                     Ghosts.Reset();
                     AddChat($"Connected! {welcome.Players.Count} other player(s) here. {_gameMode} world.");
-                    if (_autoStart && !Game.InWorld) StartCoroutine(AutoStart());
+                    if (_autoStart && !Game.InWorld)
+                    {
+                        // a world nobody has started yet: wait together in the party lobby, in the menu
+                        if (WorldStarted || !_menuUi.OpenLobby()) StartCoroutine(AutoStart());
+                        else _menuLobby = true;
+                    }
                     _autoStart = false;
                     if (_lastAddress != null) SafeRun("server list", () => ServerList.Remember(_lastAddress, null, _lastPassword));
                     break;
@@ -321,10 +352,12 @@ namespace SubnauticaMP
                 case StartGamePacket _:
                     WorldStarted = true;
                     AddChat($"{HostName} started the game!");
+                    if (_menuLobby && !Game.InWorld) StartCoroutine(AutoStart());
+                    _menuLobby = false;
                     break;
 
                 case PlayerJoinedPacket joined:
-                    AddRemote(joined.Id, joined.Name);
+                    AddRemote(joined.Id, joined.Name, joined.Color);
                     AddChat($"{joined.Name} joined");
                     break;
 
@@ -371,6 +404,7 @@ namespace SubnauticaMP
                 case FireDousePacket douse: BaseLife.OnDouse(douse); break;
                 case HullHealthPacket hull: BaseLife.OnHull(hull); break;
                 case PickedPacket picked: BaseLife.OnPicked(picked); break;
+                case PlayerProfilePacket profile: OnProfile(profile); break;
                 case BuildGhostPacket ghost: Ghosts.OnGhost(ghost); break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
@@ -394,6 +428,8 @@ namespace SubnauticaMP
             if (state == _lastState) return;
             if (state == ClientState.Disconnected && _lastState != ClientState.Disconnected)
             {
+                if (_menuLobby && !Game.InWorld) _menuUi.Open();
+                _menuLobby = false;
                 AddChat("Disconnected: " + _client.LastError);
                 ClearRemotes();
                 World.Reset();
@@ -443,6 +479,16 @@ namespace SubnauticaMP
             _modeApplied = false;
             if (!started) AddChat("Couldn't start the game by itself. Click Play > New Game.");
         }
+
+        bool _menuLobby; // waiting in the party lobby on the main menu
+
+        public bool InMenuLobby => _menuLobby && Joined && !Game.InWorld;
+        internal string JoinCodeText => _joinCode;
+        internal string GameModeName => _gameMode;
+        internal int HostPlayerId => _hostId;
+        internal System.Collections.Generic.IEnumerable<RemotePlayer> RemotePlayers => _remotes.Values;
+        internal void StartFromLobby() => StartForEveryone();
+        internal void LeaveServer() { Leave(); _menuLobby = false; }
 
         void StartForEveryone()
         {
@@ -499,7 +545,7 @@ namespace SubnauticaMP
         {
             _lastPassword = string.IsNullOrEmpty(password) ? null : password;
             AddChat($"Joining {host}:{port}...");
-            _client.Connect(host, port, Plugin.PlayerName.Value, password: password ?? "");
+            _client.Connect(host, port, Plugin.PlayerName.Value, password: password ?? "", color: Plugin.DiverColor.Value);
         }
 
         void JoinFromUi()
@@ -602,11 +648,32 @@ namespace SubnauticaMP
 
         // ---------- remote players ----------
 
-        void AddRemote(int id, string name)
+        readonly Dictionary<int, int> _colors = new Dictionary<int, int>();
+
+        void AddRemote(int id, string name, int color = DiverColors.Default)
         {
             _names[id] = name;
+            _colors[id] = color;
             if (id == _client.LocalId || _remotes.ContainsKey(id)) return;
-            _remotes[id] = RemotePlayer.Create(id, name);
+            _remotes[id] = RemotePlayer.Create(id, name, color);
+        }
+
+        public int ColorOf(int id) => _colors.TryGetValue(id, out var c) ? c : DiverColors.Default;
+
+        // Name / suit color changed (in the party lobby).
+        public void SendProfile(string name, int color)
+        {
+            Plugin.PlayerName.Value = Protocol.CleanName(name);
+            Plugin.DiverColor.Value = color;
+            if (Joined) Send(new PlayerProfilePacket { Name = Plugin.PlayerName.Value, Color = color });
+        }
+
+        void OnProfile(PlayerProfilePacket p)
+        {
+            _names[p.Id] = p.Name;
+            _colors[p.Id] = p.Color;
+            if (p.Id == _client.LocalId) Plugin.PlayerName.Value = p.Name; // the server may have added a number
+            else if (_remotes.TryGetValue(p.Id, out var r) && r != null) r.SetProfile(p.Name, p.Color);
         }
 
         void RemoveRemote(int id)

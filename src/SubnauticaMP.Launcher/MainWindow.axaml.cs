@@ -23,9 +23,6 @@ namespace SubnauticaMP.Launcher
             InitializeComponent();
 
             VersionText.Text = "v" + GameFolder.BundledModVersion.ToString(3);
-            NameBox.Text = _settings.PlayerName;
-            JoinBox.Text = _settings.LastJoin;
-            JoinPasswordBox.Text = _settings.JoinPassword;
             HostPasswordBox.Text = _settings.HostPassword;
             WorldBox.Text = _settings.WorldName;
             ModeBox.ItemsSource = GameModes.All;
@@ -33,8 +30,7 @@ namespace SubnauticaMP.Launcher
             PortBox.Text = _settings.Port.ToString();
             GameDirBox.Text = GameFolder.IsGameDir(_settings.GameDir) ? _settings.GameDir : GameFinder.Detect() ?? _settings.GameDir;
 
-            JoinButton.Click += (_, _) => Run(JoinAndPlay);
-            HostPlayButton.Click += (_, _) => Run(HostAndPlay);
+            PlayButton.Click += (_, _) => Run(PlayGame);
             ServerButton.Click += (_, _) => Run(ToggleServer);
             KickButton.Click += (_, _) => Run(() => KickSelected(false));
             BanButton.Click += (_, _) => Run(() => KickSelected(true));
@@ -81,20 +77,17 @@ namespace SubnauticaMP.Launcher
         }
         string WorldName => string.IsNullOrWhiteSpace(WorldBox.Text) ? "My World" : WorldBox.Text.Trim();
         string Mode => ModeBox.SelectedItem as string ?? GameModes.Survival;
-        string PlayerName => Protocol.CleanName(NameBox.Text);
 
         protected override void OnClosing(WindowClosingEventArgs e)
         {
             SaveSettings();
             _host.Stop(); // saves the world
+            GameFolder.ClearLocalServer(GameDir);
             base.OnClosing(e);
         }
 
         void SaveSettings()
         {
-            _settings.PlayerName = NameBox.Text ?? "";
-            _settings.LastJoin = JoinBox.Text ?? "";
-            _settings.JoinPassword = JoinPasswordBox.Text ?? "";
             _settings.HostPassword = HostPasswordBox.Text ?? "";
             _settings.WorldName = WorldName;
             _settings.Mode = Mode;
@@ -120,23 +113,8 @@ namespace SubnauticaMP.Launcher
 
         // ---------- play ----------
 
-        void JoinAndPlay()
-        {
-            if (!JoinCode.TryParseAddress(JoinBox.Text, Protocol.DefaultPort, out var host, out var port))
-                throw new Exception("Type a join code (like KQ7MX-3HD2P) or an IP address first.");
-            LaunchGame(host, port, JoinPasswordBox.Text ?? "");
-            Status($"Starting Subnautica... you'll join {host}:{port} automatically.");
-        }
-
-        void HostAndPlay()
-        {
-            if (!_host.Running) StartServer();
-            LaunchGame("127.0.0.1", _host.Port);
-            Tabs.SelectedIndex = 1;
-            Status("Server running + game starting. Send friends the join code, then press ENTER in game when everyone's in. Keep this window open!");
-        }
-
-        void LaunchGame(string host, int port, string password = "")
+        // Opens the game on its main menu (multiplayer is started from the game's own Multiplayer button).
+        void PlayGame()
         {
             var dir = GameDir;
             if (!GameFolder.IsGameDir(dir))
@@ -148,16 +126,17 @@ namespace SubnauticaMP.Launcher
             }
 
             GameFolder.InstallMod(dir);
-            GameFolder.WriteLaunchInfo(dir, PlayerName, host, port, password);
+            GameFolder.ClearLaunchInfo(dir); // no auto-join: you pick a server in the game's menu
             SaveSettings();
             RefreshSetup();
 
             if (Process.GetProcessesByName("Subnautica").Any())
             {
-                Status("Subnautica is already running: press F8 in game and join from there.");
+                Status("Subnautica is already running: use the Multiplayer button in its main menu.");
                 return;
             }
             Process.Start(new ProcessStartInfo(Path.Combine(dir, "Subnautica.exe")) { WorkingDirectory = dir, UseShellExecute = true });
+            Status("Starting Subnautica... click Multiplayer in its main menu to host or join.");
         }
 
         // ---------- server ----------
@@ -167,13 +146,14 @@ namespace SubnauticaMP.Launcher
             if (_host.Running)
             {
                 _host.Stop();
+                GameFolder.ClearLocalServer(GameDir);
                 RefreshServer();
                 Status("Server stopped. World saved.");
             }
             else
             {
                 StartServer();
-                Status("Server running. Hit HOST & PLAY on the Play tab to jump in yourself.");
+                Status("Server running. Hit PLAY and pick 'Launcher server' in the game's Multiplayer menu to jump in yourself.");
             }
         }
 
@@ -190,6 +170,8 @@ namespace SubnauticaMP.Launcher
             {
                 throw new Exception($"Port {port} is already in use (another server running?). Try a different port.");
             }
+            // lets the game list this server as "Launcher server" (joins on 127.0.0.1, no password needed)
+            if (GameFolder.IsGameDir(GameDir)) GameFolder.WriteLocalServer(GameDir, _host.Port, WorldName);
             SaveSettings();
             RefreshServer();
         }

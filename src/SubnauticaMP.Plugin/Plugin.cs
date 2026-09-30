@@ -12,7 +12,7 @@ namespace SubnauticaMP
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.firegb2012.subnauticamp";
-        public const string Version = "0.12.0";
+        public const string Version = "0.13.0";
 
         internal static ManualLogSource Log;
         internal static string Folder;
@@ -21,6 +21,7 @@ namespace SubnauticaMP
         internal static ConfigEntry<int> Port;
         internal static ConfigEntry<KeyCode> MenuKey;
         internal static ConfigEntry<string> HostPassword;
+        internal static ConfigEntry<int> DiverColor;
 
         // Our own GameObject so we survive scene loads (menu -> game).
         static void EnsureSession()
@@ -41,6 +42,7 @@ namespace SubnauticaMP
             ServerAddress = Config.Bind("General", "ServerAddress", "", "Join code or IP you last joined.");
             Port = Config.Bind("General", "Port", Protocol.DefaultPort, "Port to host on / join.");
             MenuKey = Config.Bind("General", "MenuKey", KeyCode.F8, "Opens the multiplayer window.");
+            DiverColor = Config.Bind("General", "DiverColor", Shared.DiverColors.Default, "Your suit color other players see (0xRRGGBB).");
             HostPassword = Config.Bind("General", "HostPassword", "", "Password friends need to join worlds you host (empty = no password).");
 
             Game.Init();

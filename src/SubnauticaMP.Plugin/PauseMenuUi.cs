@@ -70,14 +70,39 @@ namespace SubnauticaMP
             _pauseList = copied[0].transform.parent;
             foreach (var b in copied) UnityEngine.Object.DestroyImmediate(b.gameObject);
 
-            if (MainMenuUi.InputPrototype != null)
+            var header = page.transform.Find("Header");
+            if (header != null) UiKit.SetText(header.gameObject, "Multiplayer");
+
+            // chat box: a copy of the main menu's text box, or any text box the game has loaded
+            try
             {
-                var input = UiKit.Place(UnityEngine.Object.Instantiate(MainMenuUi.InputPrototype, UiKit.Holder, false), _pauseList);
-                input.name = "SNMP_Chat";
-                _chatField = UiKit.FindInput(input);
-                UiKit.SetupInput(_chatField, "Type a message and press Enter", false, Protocol.MaxChatLength);
-                if (Game.Get(UiKit.TmpInput, _chatField, "onSubmit") is UnityEvent<string> submit)
-                    submit.AddListener(_ => SendChatFromBox());
+                GameObject input = null;
+                foreach (var source in new[] { MainMenuUi.InputPrototype, UiKit.SceneInput() })
+                {
+                    if (source == null) continue;
+                    input = UnityEngine.Object.Instantiate(source, UiKit.Holder, false);
+                    if (UiKit.FindInput(input) != null) break;
+                    Plugin.Log.LogWarning("Chat box copy has no input: " + UiKit.Describe(input));
+                    UnityEngine.Object.DestroyImmediate(input);
+                    input = null;
+                }
+                if (input != null)
+                {
+                    UiKit.KeepInputOnly(input);
+                    UiKit.Place(input, _pauseList);
+                    input.name = "SNMP_Chat";
+                    input.transform.SetAsFirstSibling();
+                    UiKit.GiveHeight(input, 55f);
+                    _chatField = UiKit.FindInput(input);
+                    UiKit.SetupInput(_chatField, "Type a message and press Enter", false, Protocol.MaxChatLength);
+                    if (Game.Get(UiKit.TmpInput, _chatField, "onSubmit") is UnityEvent<string> submit)
+                        submit.AddListener(_ => SendChatFromBox());
+                }
+            }
+            catch (Exception e)
+            {
+                _chatField = null;
+                Plugin.Log.LogWarning("No chat box in the pause menu: " + e.GetBaseException().Message);
             }
 
             UiKit.Place(page, _pauseMenu.transform, false);

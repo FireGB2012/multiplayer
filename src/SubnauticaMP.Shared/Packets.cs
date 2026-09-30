@@ -47,6 +47,7 @@ namespace SubnauticaMP.Shared
         FireDouse = 39,       // someone sprayed a fire
         HullHealth = 40,      // base / Cyclops damaged or welded (leaks)
         Picked = 41,          // fruit picked off a plant
+        PlayerProfile = 42,   // name / diver color changed (in the party lobby)
     }
 
     public struct Vec3
@@ -134,6 +135,7 @@ namespace SubnauticaMP.Shared
                 case PacketType.FireDouse: return new FireDousePacket();
                 case PacketType.HullHealth: return new HullHealthPacket();
                 case PacketType.Picked: return new PickedPacket();
+                case PacketType.PlayerProfile: return new PlayerProfilePacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
@@ -144,14 +146,16 @@ namespace SubnauticaMP.Shared
         public int ProtocolVersion;
         public string Name;
         public string Password = "";
+        public int Color = DiverColors.Default;
         public override PacketType Type => PacketType.Hello;
-        public override void Write(BinaryWriter w) { w.Write(ProtocolVersion); w.Write(Name ?? ""); w.Write(Password ?? ""); }
+        public override void Write(BinaryWriter w) { w.Write(ProtocolVersion); w.Write(Name ?? ""); w.Write(Password ?? ""); w.Write(Color); }
         public override void Read(BinaryReader r)
         {
             ProtocolVersion = r.ReadInt32();
             Name = r.ReadString();
             // older mods stop after the name; let them get the "version mismatch" message instead of an error
             Password = r.BaseStream.Position < r.BaseStream.Length ? r.ReadString() : "";
+            Color = r.BaseStream.Position < r.BaseStream.Length ? r.ReadInt32() : DiverColors.Default;
         }
     }
 
@@ -159,6 +163,7 @@ namespace SubnauticaMP.Shared
     {
         public int Id;
         public string Name;
+        public int Color = DiverColors.Default;
     }
 
     public sealed class WelcomePacket : Packet
@@ -174,7 +179,7 @@ namespace SubnauticaMP.Shared
             w.Write(YourId);
             w.Write(HostId);
             w.Write(Players.Count);
-            foreach (var p in Players) { w.Write(p.Id); w.Write(p.Name ?? ""); }
+            foreach (var p in Players) { w.Write(p.Id); w.Write(p.Name ?? ""); w.Write(p.Color); }
             World.Write(w);
         }
 
@@ -186,7 +191,7 @@ namespace SubnauticaMP.Shared
             if (count < 0 || count > Protocol.MaxPlayers) throw new InvalidDataException("Bad player count");
             Players = new List<PlayerInfo>(count);
             for (int i = 0; i < count; i++)
-                Players.Add(new PlayerInfo { Id = r.ReadInt32(), Name = r.ReadString() });
+                Players.Add(new PlayerInfo { Id = r.ReadInt32(), Name = r.ReadString(), Color = r.ReadInt32() });
             World = WorldState.Read(r);
         }
     }
@@ -203,9 +208,10 @@ namespace SubnauticaMP.Shared
     {
         public int Id;
         public string Name;
+        public int Color = DiverColors.Default;
         public override PacketType Type => PacketType.PlayerJoined;
-        public override void Write(BinaryWriter w) { w.Write(Id); w.Write(Name ?? ""); }
-        public override void Read(BinaryReader r) { Id = r.ReadInt32(); Name = r.ReadString(); }
+        public override void Write(BinaryWriter w) { w.Write(Id); w.Write(Name ?? ""); w.Write(Color); }
+        public override void Read(BinaryReader r) { Id = r.ReadInt32(); Name = r.ReadString(); Color = r.ReadInt32(); }
     }
 
     public sealed class PlayerLeftPacket : Packet

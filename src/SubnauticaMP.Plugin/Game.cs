@@ -491,9 +491,21 @@ namespace SubnauticaMP
         }
 
         // Finds a method by name whose first parameters accept `leading`.
+        // remembered per (type, name, argument types): looking methods up used to make garbage every call
+        static readonly Dictionary<(Type, string, Type, Type, int), MethodInfo> Methods = new Dictionary<(Type, string, Type, Type, int), MethodInfo>();
+
         internal static MethodInfo FindMethod(Type type, string name, params Type[] leading)
         {
             if (type == null) return null;
+            var key = (type, name, leading.Length > 0 ? leading[0] : null, leading.Length > 1 ? leading[1] : null, leading.Length);
+            if (leading.Length <= 2 && Methods.TryGetValue(key, out var cached)) return cached;
+            var found = FindMethodUncached(type, name, leading);
+            if (leading.Length <= 2) Methods[key] = found;
+            return found;
+        }
+
+        static MethodInfo FindMethodUncached(Type type, string name, Type[] leading)
+        {
             foreach (var m in AccessTools.GetDeclaredMethods(type))
             {
                 if (m.Name != name) continue;
@@ -511,7 +523,9 @@ namespace SubnauticaMP
         // so remote unlocks don't spam popups.
         internal static object Call(Type type, object target, string name, params object[] leading)
         {
-            var m = FindMethod(type, name, leading.Select(a => a?.GetType() ?? typeof(object)).ToArray());
+            var types = new Type[leading.Length];
+            for (int i = 0; i < leading.Length; i++) types[i] = leading[i]?.GetType() ?? typeof(object);
+            var m = FindMethod(type, name, types);
             if (m == null)
             {
                 WarnOnce("call:" + type?.Name + "." + name, $"Game method not found: {type?.Name}.{name}");

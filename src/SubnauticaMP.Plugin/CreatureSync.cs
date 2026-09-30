@@ -83,6 +83,8 @@ namespace SubnauticaMP
 
         // ---------- ownership ----------
 
+        public int TrackedCount => _tracked.Count;
+
         public bool IsPuppet(GameObject go) => go != null && _puppets.Contains(go.GetInstanceID());
 
         int OwnerOf(string id) => _owners.TryGetValue(id, out var o) ? o : 0;

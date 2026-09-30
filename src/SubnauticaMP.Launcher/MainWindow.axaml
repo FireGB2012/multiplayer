@@ -40,49 +40,17 @@
               </Grid>
             </Border>
 
-            <StackPanel Spacing="10">
-              <TextBlock Classes="label" Text="YOUR NAME" />
-              <TextBox x:Name="NameBox" Watermark="Diver" MaxLength="24" />
-            </StackPanel>
-
-            <Grid ColumnDefinitions="*,14,*">
-              <Border Classes="card" Grid.Column="0">
-                <StackPanel Spacing="10">
-                  <TextBlock Classes="h2" Text="Join a friend" />
-                  <TextBlock Classes="hint" Text="Paste their join code (like KQ7MX-3HD2P) or IP address." />
-                  <TextBox x:Name="JoinBox" Watermark="Join code or IP" />
-                  <TextBox x:Name="JoinPasswordBox" PasswordChar="*" Watermark="Password (only if they set one)" />
-                  <Button x:Name="JoinButton" Classes="primary" Content="JOIN &amp; PLAY" />
-                </StackPanel>
-              </Border>
-              <Border Classes="card" Grid.Column="2">
-                <StackPanel Spacing="10">
-                  <TextBlock Classes="h2" Text="Host a game" />
-                  <StackPanel Spacing="10">
-                    <TextBlock Classes="label" Text="WORLD NAME" />
-                    <TextBox x:Name="WorldBox" />
-                  </StackPanel>
-                  <StackPanel Spacing="10">
-                    <TextBlock Classes="label" Text="GAME MODE" />
-                    <ComboBox x:Name="ModeBox" HorizontalAlignment="Stretch" />
-                  </StackPanel>
-                  <TextBlock x:Name="ModeHint" Classes="hint" />
-                  <StackPanel Spacing="10">
-                    <TextBlock Classes="label" Text="PASSWORD (OPTIONAL)" />
-                    <TextBox x:Name="HostPasswordBox" PasswordChar="*" Watermark="Leave empty for no password" />
-                  </StackPanel>
-                  <Button x:Name="HostPlayButton" Classes="primary" Content="HOST &amp; PLAY" />
-                </StackPanel>
-              </Border>
-            </Grid>
+            <Button x:Name="PlayButton" Classes="primary" Content="PLAY" HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Center" FontSize="22" Padding="0,16" />
 
             <Border Classes="card">
               <StackPanel Spacing="4">
                 <TextBlock Classes="h2" Text="How it works" FontSize="14" />
-                <TextBlock Classes="hint" Text="1. Hit Host or Join. The game opens and goes straight into the world by itself." />
-                <TextBlock Classes="hint" Text="2. New world: everyone waits on a black screen. When all your friends are in, the host presses ENTER and the intro plays for everyone." />
-                <TextBlock Classes="hint" Text="3. Next time, the same buttons load your save for that world." />
-                <TextBlock Classes="hint" Text="4. F8 in game opens the multiplayer menu (chat, leave, join code)." />
+                <TextBlock Classes="hint" TextWrapping="Wrap" Text="1. Hit PLAY. The game opens on its main menu, with the mod installed and up to date." />
+                <TextBlock Classes="hint" TextWrapping="Wrap" Text="2. Click Multiplayer in the game's menu. Host a world, or Add a server with your friend's join code (and password if they set one)." />
+                <TextBlock Classes="hint" TextWrapping="Wrap" Text="3. New world: everyone meets in the party lobby, picks a name and suit color, and the host clicks Start." />
+                <TextBlock Classes="hint" TextWrapping="Wrap" Text="4. Want the server to run here instead? Start it on the Server tab: it shows up in the game's Multiplayer list as 'Launcher server'." />
+                <TextBlock Classes="hint" TextWrapping="Wrap" Text="5. In game: Esc > Multiplayer (or F8) for players, chat, join code. Enter = chat." />
               </StackPanel>
             </Border>
           </StackPanel>
@@ -93,9 +61,21 @@
       <TabItem Header="Server">
         <Grid RowDefinitions="Auto,Auto,*" Margin="4,12,4,12">
           <Grid ColumnDefinitions="*,10,110,10,Auto">
-            <StackPanel Spacing="10">
-              <TextBlock Classes="label" Text="WORLD (SET ON THE PLAY TAB)" />
-              <TextBlock x:Name="WorldSummary" FontSize="15" Foreground="White" Margin="0,6,0,0" />
+            <StackPanel Spacing="8">
+              <TextBlock Classes="label" Text="WORLD NAME" />
+              <TextBox x:Name="WorldBox" />
+              <Grid ColumnDefinitions="*,10,*">
+                <StackPanel Spacing="6">
+                  <TextBlock Classes="label" Text="GAME MODE" />
+                  <ComboBox x:Name="ModeBox" HorizontalAlignment="Stretch" />
+                </StackPanel>
+                <StackPanel Grid.Column="2" Spacing="6">
+                  <TextBlock Classes="label" Text="PASSWORD (OPTIONAL)" />
+                  <TextBox x:Name="HostPasswordBox" PasswordChar="*" Watermark="Empty = no password" />
+                </StackPanel>
+              </Grid>
+              <TextBlock x:Name="ModeHint" Classes="hint" TextWrapping="Wrap" />
+              <TextBlock x:Name="WorldSummary" FontSize="15" Foreground="White" />
             </StackPanel>
             <StackPanel Grid.Column="2" Spacing="10">
               <TextBlock Classes="label" Text="PORT" />

@@ -11,6 +11,7 @@ namespace SubnauticaMP
     internal static class SceneIndex
     {
         const float RecheckSeconds = 20f;
+        const float HookedRecheckSeconds = 180f;
 
         sealed class Entry
         {
@@ -65,7 +66,9 @@ namespace SubnauticaMP
             if (_lastScanFrame == Time.frameCount) return;
             foreach (var kv in _types)
             {
-                if (Time.unscaledTime - kv.Value.LastFullScan < RecheckSeconds) continue;
+                // hooked lists stay right by themselves; only rarely double-check them (a full search can hitch)
+                float every = kv.Value.Hooked ? HookedRecheckSeconds : RecheckSeconds;
+                if (Time.unscaledTime - kv.Value.LastFullScan < every) continue;
                 FullScan(kv.Key, kv.Value);
                 return;
             }

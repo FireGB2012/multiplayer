@@ -18,18 +18,18 @@ namespace SubnauticaMP.Shared
         public string LastError { get; private set; }
 
         // Non-blocking: kicks off the connect on a worker thread.
-        public void Connect(string host, int port, string name, int timeoutMs = 5000, string password = null)
+        public void Connect(string host, int port, string name, int timeoutMs = 5000, string password = null, int color = DiverColors.Default)
         {
             if (State != ClientState.Disconnected) return;
             State = ClientState.Connecting;
             LastError = null;
             LocalId = 0;
 
-            var thread = new Thread(() => DoConnect(host, port, name, timeoutMs, password)) { IsBackground = true, Name = "SubnauticaMP connect" };
+            var thread = new Thread(() => DoConnect(host, port, name, timeoutMs, password, color)) { IsBackground = true, Name = "SubnauticaMP connect" };
             thread.Start();
         }
 
-        void DoConnect(string host, int port, string name, int timeoutMs, string password)
+        void DoConnect(string host, int port, string name, int timeoutMs, string password, int color)
         {
             try
             {
@@ -48,7 +48,7 @@ namespace SubnauticaMP.Shared
                 conn.Closed += OnClosed;
                 _conn = conn;
                 conn.Start();
-                conn.Send(new HelloPacket { ProtocolVersion = Protocol.Version, Name = Protocol.CleanName(name), Password = password ?? "" });
+                conn.Send(new HelloPacket { ProtocolVersion = Protocol.Version, Name = Protocol.CleanName(name), Password = password ?? "", Color = color });
             }
             catch (Exception e)
             {

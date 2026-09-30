@@ -157,6 +157,34 @@ public class Batch5Tests
     }
 
     [Fact]
+    public void LobbyNamesAndColorsAreSharedAndUnique()
+    {
+        var server = new NetServer();
+        server.Start(0);
+        try
+        {
+            var a = new NetClient();
+            a.Connect("127.0.0.1", server.Port, "Diver", color: 0xFF4D4D);
+            WaitFor<WelcomePacket>(a);
+            var b = new NetClient();
+            b.Connect("127.0.0.1", server.Port, "Diver", color: 0x3DC8FF);
+            var wb = WaitFor<WelcomePacket>(b);
+            Assert.Equal(0xFF4D4D, wb.Players[0].Color);
+            var joined = WaitFor<PlayerJoinedPacket>(a);
+            Assert.Equal("Diver 2", joined.Name);          // same name gets a number
+            Assert.Equal(0x3DC8FF, joined.Color);
+
+            b.Send(new PlayerProfilePacket { Name = "Mark", Color = 0x5BD68B });
+            var p = WaitFor<PlayerProfilePacket>(a);
+            Assert.Equal(wb.YourId, p.Id);
+            Assert.Equal("Mark", p.Name);
+            Assert.Equal(0x5BD68B, p.Color);
+            Assert.Contains(server.Players, x => x.Name == "Mark");
+        }
+        finally { server.Stop(); }
+    }
+
+    [Fact]
     public void LauncherPassesThePassword()
     {
         var path = Path.Combine(Path.GetTempPath(), "snmp-launch-" + Guid.NewGuid() + ".txt");

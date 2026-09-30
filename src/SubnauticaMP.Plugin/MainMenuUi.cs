@@ -15,7 +15,7 @@ namespace SubnauticaMP
     // If anything about the game's menu isn't where we expect, the old window is used instead.
     internal sealed class MainMenuUi
     {
-        public const string ListGroup = "SNMP_Multiplayer", HostGroup = "SNMP_Host", AddGroup = "SNMP_Add";
+        public const string ListGroup = "SNMP_Multiplayer", HostGroup = "SNMP_Host", AddGroup = "SNMP_Add", LobbyGroup = "SNMP_Lobby";
 
         // pieces kept for later (the in-game menu and overlays use them too)
         public static GameObject InputPrototype, ButtonPrototype, TextPrototype;
@@ -28,8 +28,12 @@ namespace SubnauticaMP
         Transform _content;
         GameObject _tileTemplate, _rowTemplate, _scrollBar;
         Component _listHeader, _worldName, _hostPassword, _addAddress, _addName, _addPassword;
-        GameObject _statusTile;
-        string _status = "", _shownStatus;
+        string _status = "";
+        GameObject _lobbyButtonTemplate;
+        Transform _lobbyList;
+        Component _lobbyName, _lobbyHeader;
+        string _lobbyShown;
+        float _lobbyRefreshAt;
         string _armedDelete;
         float _armedUntil;
 
@@ -51,17 +55,25 @@ namespace SubnauticaMP
                     Plugin.Log.LogWarning("Couldn't build the multiplayer menu from the game's menu, using the simple window: " + e);
                 }
             }
-            if (_built && _statusTile != null && _shownStatus != _status)
-            {
-                _shownStatus = _status;
-                _statusTile.SetActive(_status.Length > 0);
-                UiKit.SetText(_statusTile, _status);
-            }
+            if (_built && _s.InMenuLobby && Time.unscaledTime >= _lobbyRefreshAt) RefreshLobby();
+            if (_headerResetAt > 0 && Time.unscaledTime > _headerResetAt) { _headerResetAt = 0; UiKit.SetText(_listHeader, "Multiplayer"); }
             if (_armedDelete != null && Time.unscaledTime > _armedUntil) { _armedDelete = null; Refresh(); }
         }
 
         // Messages while you're in the menu (connecting, wrong password...).
-        public void SetStatus(string text) => _status = text ?? "";
+        // Problems (can't connect, wrong password...) show for a few seconds in the panel's title.
+        public void SetStatus(string text)
+        {
+            _status = text ?? "";
+            bool problem = _status.IndexOf("Couldn't", StringComparison.OrdinalIgnoreCase) >= 0 || _status.StartsWith("Server said no") ||
+                           _status.StartsWith("Disconnected") || _status.IndexOf("doesn't look", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                           _status.IndexOf("password", StringComparison.OrdinalIgnoreCase) >= 0 || _status.IndexOf("first", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (!problem || _listHeader == null) return;
+            UiKit.SetText(_listHeader, "Multiplayer  ·  " + _status);
+            _headerResetAt = Time.unscaledTime + 8f;
+        }
+
+        float _headerResetAt;
 
         public bool Open(string group = ListGroup)
         {
@@ -110,6 +122,7 @@ namespace SubnauticaMP
             BuildList(rs, saved);
             BuildHost(rs, newGame);
             BuildAdd(rs, newGame);
+            BuildLobby(rs, newGame);
         }
 
         static GameObject FindEmailField(Transform root)
@@ -247,6 +260,88 @@ namespace SubnauticaMP
             Register(add);
         }
 
+        // The party lobby: your name, suit color, who's here, and the host's Start button.
+        void BuildLobby(Transform rs, Transform newGame)
+        {
+            var old = rs.Find(LobbyGroup);
+            if (old != null) UnityEngine.Object.Destroy(old.gameObject);
+            var lobby = UiKit.Copy(newGame.gameObject, LobbyGroup);
+            _lobbyHeader = Header(lobby, null);
+            UiKit.SetText(_lobbyHeader, "Party lobby");
+
+            GameObject first = null;
+            foreach (var b in lobby.GetComponentsInChildren(UiKit.Button, true).ToList())
+            {
+                var target = UiKit.ClickTarget(b);
+                if (target.StartsWith("OnButton")) { if (first == null) first = b.gameObject; else UnityEngine.Object.DestroyImmediate(b.gameObject); }
+                else if (target.Contains("Back") || target.Contains("Home")) UiKit.OnClick(b, () => _s.LeaveServer());
+            }
+            if (first == null) throw new Exception("no buttons in the New game panel");
+            _lobbyList = first.transform.parent;
+            _lobbyButtonTemplate = UiKit.Copy(first, "SNMP_LobbyButton");
+            SetButtonLabel(_lobbyButtonTemplate, "");
+            UnityEngine.Object.DestroyImmediate(first);
+
+            // name box stays; the rows under it are rebuilt when something changes
+            var nameGo = UiKit.Place(UnityEngine.Object.Instantiate(InputPrototype, UiKit.Holder, false), _lobbyList);
+            nameGo.name = "SNMP_LobbyName";
+            UiKit.GiveHeight(nameGo, 60f);
+            _lobbyName = UiKit.FindInput(nameGo);
+            UiKit.SetupInput(_lobbyName, "Your diver's name", false, Protocol.MaxNameLength);
+            if (Game.Get(UiKit.TmpInput, _lobbyName, "onEndEdit") is UnityEngine.Events.UnityEvent<string> ended)
+                ended.AddListener(name => { if (name.Trim().Length > 0 && name.Trim() != Plugin.PlayerName.Value) _s.SendProfile(name.Trim(), Plugin.DiverColor.Value); });
+
+            UiKit.Place(lobby, rs, false);
+            Register(lobby);
+        }
+
+        public bool OpenLobby()
+        {
+            if (!Ready || _lobbyList == null) return false;
+            UiKit.SetInput(_lobbyName, Plugin.PlayerName.Value);
+            _lobbyShown = null;
+            RefreshLobby();
+            Game.Call(Game.MainMenuRightSide, _rightSide, "OpenGroup", LobbyGroup);
+            return true;
+        }
+
+        void RefreshLobby()
+        {
+            _lobbyRefreshAt = Time.unscaledTime + 0.5f;
+            if (_lobbyList == null) return;
+            var rows = new List<(string text, Action click)>();
+            int myColor = Plugin.DiverColor.Value;
+            rows.Add(($"Suit color:  <color=#{DiverColors.Hex(myColor)}>■■■</color>  {DiverColors.NameOf(myColor)}   (click to change)",
+                () => _s.SendProfile(Plugin.PlayerName.Value, DiverColors.Next(Plugin.DiverColor.Value))));
+
+            int hostId = _s.HostPlayerId;
+            rows.Add(($"<color=#{DiverColors.Hex(myColor)}>■</color>  {Plugin.PlayerName.Value}  (you)" + (_s.IsHost ? "  ·  host" : ""), null));
+            foreach (var r in _s.RemotePlayers.Where(r => r != null).OrderBy(r => r.Id))
+                rows.Add(($"<color=#{DiverColors.Hex(_s.ColorOf(r.Id))}>■</color>  {r.PlayerName}" + (r.Id == hostId ? "  ·  host" : ""), null));
+
+            if (_s.IsHost && _s.JoinCodeText != null)
+                rows.Add(($"Join code: {_s.JoinCodeText}   (click to copy)", () => GUIUtility.systemCopyBuffer = _s.JoinCodeText));
+            if (_s.IsHost) rows.Add(("Start the game", _s.StartFromLobby));
+            else rows.Add(("Waiting for " + _s.HostName + " to start...", null));
+            rows.Add(("Leave", () => { _s.LeaveServer(); Open(ListGroup); }));
+
+            var key = string.Join("\n", rows.Select(r => r.text + (r.click == null ? "" : "*")).ToArray()) + _status;
+            if (key == _lobbyShown) return;
+            _lobbyShown = key;
+            UiKit.SetText(_lobbyHeader, $"Party lobby  ·  {_s.GameModeName}  ·  {_s.RemotePlayers.Count(r => r != null) + 1} players");
+
+            foreach (Transform child in _lobbyList.Cast<Transform>().ToList())
+                if (child.name != "SNMP_LobbyName") UnityEngine.Object.Destroy(child.gameObject);
+            foreach (var (text, click) in rows)
+            {
+                var b = UiKit.Place(UnityEngine.Object.Instantiate(_lobbyButtonTemplate, UiKit.Holder, false), _lobbyList);
+                b.name = "SNMP_LobbyRow";
+                UiKit.SetText(b, text);
+                UiKit.OnClick(b, click ?? (() => { }));
+                if (click == null) UiKit.SetInteractable(b, false);
+            }
+        }
+
         // A mode button may have a title and a description: use the first text for the title, hide the rest.
         static void SetButtonLabel(GameObject button, string text)
         {
@@ -265,7 +360,9 @@ namespace SubnauticaMP
             var go = UiKit.Place(UnityEngine.Object.Instantiate(InputPrototype, UiKit.Holder, false), before.transform.parent);
             go.name = "SNMP_Input";
             go.transform.SetSiblingIndex(before.transform.GetSiblingIndex());
+            UiKit.GiveHeight(go, 60f);
             var field = UiKit.FindInput(go);
+            if (field == null) Plugin.Log.LogWarning("Text box copy has no input: " + UiKit.Describe(go));
             UiKit.SetupInput(field, placeholder, password, max);
             UiKit.SetInput(field, "");
             return field;
@@ -278,13 +375,17 @@ namespace SubnauticaMP
             if (_content == null) return;
             foreach (Transform child in _content.Cast<Transform>().ToList()) UnityEngine.Object.Destroy(child.gameObject);
 
-            _statusTile = AddTile(_status, null);
-            _statusTile.SetActive(_status.Length > 0);
-            _shownStatus = _status;
             AddTile("Host a world", () => Open(HostGroup));
             AddTile("Add a server", () => { UiKit.SetInput(_addAddress, ""); UiKit.SetInput(_addName, ""); UiKit.SetInput(_addPassword, ""); Open(AddGroup); });
 
             int rows = 0;
+            var local = LocalServer();
+            if (local != null)
+            {
+                AddRow("Launcher server: " + local.Value.world, "Running on this PC · click to join", "Server",
+                    () => _s.JoinFromMenu("127.0.0.1:" + local.Value.port), () => { });
+                rows++;
+            }
             foreach (var (name, world) in MyWorlds())
             {
                 var key = "world:" + name;
@@ -317,6 +418,25 @@ namespace SubnauticaMP
             _armedDelete = null;
             remove();
             Refresh();
+        }
+
+        // The launcher leaves this file while its server runs (deleted when it stops).
+        static (int port, string world)? LocalServer()
+        {
+            try
+            {
+                var path = Path.Combine(Plugin.Folder, "local_server.txt");
+                if (!File.Exists(path) || (DateTime.UtcNow - File.GetLastWriteTimeUtc(path)).TotalHours > 24) return null;
+                int port = 0;
+                string world = "World";
+                foreach (var line in File.ReadAllLines(path))
+                {
+                    if (line.StartsWith("port=")) int.TryParse(line.Substring(5), out port);
+                    else if (line.StartsWith("world=")) world = line.Substring(6);
+                }
+                return port > 0 ? (port, world) : ((int, string)?)null;
+            }
+            catch { return null; }
         }
 
         static List<(string name, WorldState world)> MyWorlds()

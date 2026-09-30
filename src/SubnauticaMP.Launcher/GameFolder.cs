@@ -57,6 +57,28 @@ namespace SubnauticaMP.Launcher
             }
         }
 
+        public static void ClearLaunchInfo(string dir)
+        {
+            try { File.Delete(Path.Combine(PluginDir(dir), Shared.LaunchInfo.FileName)); } catch { }
+        }
+
+        const string LocalServerFile = "local_server.txt";
+
+        public static void WriteLocalServer(string dir, int port, string world)
+        {
+            try
+            {
+                Directory.CreateDirectory(PluginDir(dir));
+                File.WriteAllLines(Path.Combine(PluginDir(dir), LocalServerFile), new[] { "port=" + port, "world=" + world });
+            }
+            catch { }
+        }
+
+        public static void ClearLocalServer(string dir)
+        {
+            try { if (IsGameDir(dir)) File.Delete(Path.Combine(PluginDir(dir), LocalServerFile)); } catch { }
+        }
+
         public static void WriteLaunchInfo(string dir, string name, string host, int port, string password = "")
         {
             new Shared.LaunchInfo { PlayerName = name, Host = host, Port = port, Password = password ?? "" }

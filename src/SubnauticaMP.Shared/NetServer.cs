@@ -18,6 +18,7 @@ namespace SubnauticaMP.Shared
         {
             public int Id;
             public string Name;
+            public int Color = DiverColors.Default;
             public bool Joined;
             public bool IsLocal; // playing on the same PC as the server: that's the host
             public string Ip = "";
@@ -71,7 +72,7 @@ namespace SubnauticaMP.Shared
             {
                 lock (_lock)
                     return _connections.Select(c => (Client)c.Tag).Where(c => c.Joined)
-                        .Select(c => new PlayerInfo { Id = c.Id, Name = c.Name }).ToList();
+                        .Select(c => new PlayerInfo { Id = c.Id, Name = c.Name, Color = c.Color }).ToList();
             }
         }
 
@@ -176,7 +177,13 @@ namespace SubnauticaMP.Shared
             if (_savePath == null) return;
             try
             {
-                SnapshotWorld().SaveToFile(_savePath);
+                // written straight from the live world (no copy): big worlds made a lot of garbage every save,
+                // and the garbage collector pausing the game was felt as random lag when hosting in-game
+                lock (_lock)
+                {
+                    _world.TimePassed = CurrentTime();
+                    _world.SaveToFile(_savePath);
+                }
                 _dirty = false;
             }
             catch (Exception e)
@@ -463,6 +470,18 @@ namespace SubnauticaMP.Shared
                     HandlePower(conn, client, power);
                     break;
 
+                case PlayerProfilePacket profile:
+                    string newName;
+                    lock (_lock)
+                    {
+                        newName = UniqueName(Protocol.CleanName(profile.Name), client);
+                        client.Name = newName;
+                        client.Color = profile.Color & 0xFFFFFF;
+                    }
+                    Broadcast(new PlayerProfilePacket { Id = client.Id, Name = newName, Color = client.Color }, except: null);
+                    PlayersChanged?.Invoke();
+                    break;
+
                 case CraftPacket _:
                 case FiresPacket _:
                 case FireDousePacket _:
@@ -685,11 +704,12 @@ namespace SubnauticaMP.Shared
                 }
 
                 client.Id = _nextId++;
-                client.Name = Protocol.CleanName(hello.Name);
+                client.Name = UniqueName(Protocol.CleanName(hello.Name), client);
+                client.Color = hello.Color & 0xFFFFFF;
                 foreach (var other in _connections)
                 {
                     var oc = (Client)other.Tag;
-                    if (oc.Joined) welcome.Players.Add(new PlayerInfo { Id = oc.Id, Name = oc.Name });
+                    if (oc.Joined) welcome.Players.Add(new PlayerInfo { Id = oc.Id, Name = oc.Name, Color = oc.Color });
                 }
                 welcome.YourId = client.Id;
                 welcome.World = _world.Clone();
@@ -704,10 +724,24 @@ namespace SubnauticaMP.Shared
             conn.MaxPacketSize = Protocol.MaxClientPacketSize;
             conn.Send(welcome);
             foreach (var p in owners) conn.Send(p);
-            Broadcast(new PlayerJoinedPacket { Id = client.Id, Name = client.Name }, except: conn);
+            Broadcast(new PlayerJoinedPacket { Id = client.Id, Name = client.Name, Color = client.Color }, except: conn);
             if (hostChanged) Broadcast(new HostPacket { HostId = HostId }, except: conn);
             Log?.Invoke($"{client.Name} joined (id {client.Id})");
             PlayersChanged?.Invoke();
+        }
+
+        // Two players can't have the same name (kick/ban and chat go by name): add a number. Call inside _lock.
+        string UniqueName(string name, Client self)
+        {
+            var taken = new HashSet<string>(_connections.Select(c => (Client)c.Tag).Where(c => c != self && c.Joined && c.Name != null)
+                .Select(c => c.Name), StringComparer.OrdinalIgnoreCase);
+            if (!taken.Contains(name)) return name;
+            for (int i = 2; ; i++)
+            {
+                var candidate = name.Length > Protocol.MaxNameLength - 3 ? name.Substring(0, Protocol.MaxNameLength - 3) : name;
+                candidate += " " + i;
+                if (!taken.Contains(candidate)) return candidate;
+            }
         }
 
         // Host = whoever plays on the server's own PC, otherwise whoever has been here longest. Call inside _lock.

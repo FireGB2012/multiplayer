@@ -40,7 +40,39 @@ namespace SubnauticaMP
         bool _underwater = true, _visible = true;
         float _nextModelTry;
 
-        public static RemotePlayer Create(int id, string name)
+        public int SuitColor { get; private set; } = DiverColors.Default;
+
+        // New name / suit color from the party lobby.
+        public void SetProfile(string name, int color)
+        {
+            if (!string.IsNullOrEmpty(name) && name != PlayerName)
+            {
+                PlayerName = name;
+                var ping = Game.PingInstance != null ? GetComponent(Game.PingInstance) : null;
+                if (ping != null) Game.TryDo("ping label", () => Game.Call(Game.PingInstance, ping, "SetLabel", name));
+            }
+            if (color != SuitColor)
+            {
+                SuitColor = color;
+                Tint();
+            }
+        }
+
+        // Colors their suit (the game's shaders multiply textures by _Color).
+        void Tint()
+        {
+            if (_diver == null) return;
+            var c = new Color(((SuitColor >> 16) & 0xFF) / 255f, ((SuitColor >> 8) & 0xFF) / 255f, (SuitColor & 0xFF) / 255f, 1f);
+            var block = new MaterialPropertyBlock();
+            foreach (var r in _diver.GetComponentsInChildren<SkinnedMeshRenderer>(true))
+            {
+                r.GetPropertyBlock(block);
+                block.SetColor("_Color", c);
+                r.SetPropertyBlock(block);
+            }
+        }
+
+        public static RemotePlayer Create(int id, string name, int color = DiverColors.Default)
         {
             var root = new GameObject("RemotePlayer_" + id);
             Game.KeepAlive(root);
@@ -62,6 +94,7 @@ namespace SubnauticaMP
             var remote = root.AddComponent<RemotePlayer>();
             remote.Id = id;
             remote.PlayerName = name;
+            remote.SuitColor = color;
             body.GetComponent<Renderer>().material.color = ColorFor(id);
             remote._capsule = capsule;
             remote._renderers = capsule.GetComponentsInChildren<Renderer>();
@@ -174,6 +207,7 @@ namespace SubnauticaMP
                     ApplyVisibility();
                     if (_held.Length > 0) SetHeld(_held); // they were already holding something
                     PlayerLooks.ApplyGear(_diver, _gear);
+                    Tint();
                     _anim.SetToolAnims(_anims);
                 }
             }

@@ -5,7 +5,8 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 ## What syncs
 | Thing | Status |
 |---|---|
-| Lobby: new worlds wait on a black screen, host starts the intro for everyone | ✔ |
+| Party lobby in the main menu: pick your name + suit color, see who's in, host clicks Start | ✔ |
+| Suit colors | ✔ everyone sees your diver in your color |
 | Game mode picked in the launcher (Survival / Hardcore / Creative / Freedom) | ✔ |
 | Players (position, facing, name tags) | ✔ |
 | Chat | ✔ |
@@ -62,15 +63,14 @@ Multiplayer saves are kept out of the normal single-player Load list. The launch
 1. Download `SubnauticaMP-Launcher.exe` and run it.
 2. **Setup tab**: check it found your Subnautica folder. If BepInEx is missing, hit **Install BepInEx for me**
    (or install BepInEx 5 x64 yourself). Start the game once after installing BepInEx, then close it.
-3. **Play tab**:
-   - **Host & Play**: pick a world name + game mode, and it starts a server on your PC and opens the game.
-     Your join code is in the **Server** tab. Keep the launcher open.
-   - **Join & Play**: paste a friend's join code (like `KQ7MX-3HD2P`) or IP.
-4. The game goes straight into the world by itself (no menus):
-   - **New world**: everyone lands on a black *Waiting for players* screen showing who's in.
-     When everyone's there the host presses **ENTER** (or clicks START) and the lifepod intro plays for everyone at once.
-   - **Existing world**: it loads your save for that world. First time joining someone's world? You get a fresh game in their mode.
-5. In game, **F8** (or the Multiplayer button in the pause menu) opens the multiplayer page: chat, join code, players, kick/ban if you host, leave. **Enter** jumps straight to chat.
+3. **Play tab**: hit **PLAY**. The game opens on its main menu with the mod installed.
+4. Click **Multiplayer** in the game's main menu:
+   - **Host a world**: world name, password (optional), then click a game mode.
+   - **Add a server**: your friend's join code (like `KQ7MX-3HD2P`) or IP, a name, and the password if they set one.
+   - Server running in the launcher (**Server** tab)? It shows up as **Launcher server**: click it to join.
+   - **New world**: everyone meets in the **party lobby**: type your name, click to change your suit color,
+     and the host clicks **Start the game**. **Existing world**: it loads your save for that world.
+5. In game, **Esc > Multiplayer** or **F8** (or the Multiplayer button in the pause menu) opens the multiplayer page: chat, join code, players, kick/ban if you host, leave. **Enter** jumps straight to chat.
 
 The host is whoever plays on the server's PC (otherwise whoever joined first).
 Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.
