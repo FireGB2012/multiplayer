@@ -49,6 +49,7 @@ namespace SubnauticaMP.Shared
         Picked = 41,          // fruit picked off a plant
         PlayerProfile = 42,   // name / diver color changed (in the party lobby)
         ModFix = 43,          // your modded item numbers don't match the world's: here are the right ones
+        Emote = 44,           // wave, dance, ...
     }
 
     public struct Vec3
@@ -138,6 +139,7 @@ namespace SubnauticaMP.Shared
                 case PacketType.Picked: return new PickedPacket();
                 case PacketType.PlayerProfile: return new PlayerProfilePacket();
                 case PacketType.ModFix: return new ModFixPacket();
+                case PacketType.Emote: return new EmotePacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }

@@ -32,6 +32,7 @@ namespace SubnauticaMP
         internal PowerSync Power;
         internal BaseLifeSync BaseLife;
         internal GhostSync Ghosts;
+        internal EmoteSync Emoting;
         internal IEnumerable<RemotePlayer> Remotes => _remotes.Values;
 
         NetServer _hostedServer;
@@ -76,6 +77,7 @@ namespace SubnauticaMP
             Power = new PowerSync(this);
             BaseLife = new BaseLifeSync(this);
             Ghosts = new GhostSync(this);
+            Emoting = new EmoteSync(this);
 
             if (!_launchRead)
             {
@@ -100,6 +102,8 @@ namespace SubnauticaMP
                 (Input.GetKeyDown(KeyCode.Return) || Input.GetKeyDown(KeyCode.KeypadEnter)) &&
                 !(_pauseMenu != null && _pauseMenu.gameObject.activeInHierarchy))
                 ShowPausePage(true); // Enter = chat
+            if (Input.GetKeyDown(Plugin.EmoteKey.Value) && Joined && Game.InWorld && !Lobby.Holding && !Loading && !_menuOpen && !UiKit.Typing())
+                ToggleEmotes();
             bool inMenu = Game.MainMenu != null;
             if (inMenu != _wasInMenu)
             {
@@ -167,6 +171,7 @@ namespace SubnauticaMP
             SafeRun("power", Power.Update);
             SafeRun("base life", BaseLife.Update);
             SafeRun("build holograms", Ghosts.Update);
+            SafeRun("emotes", Emoting.Update);
 
             _sendTimer += Time.unscaledDeltaTime;
             if (_sendTimer >= SendInterval)
@@ -412,6 +417,7 @@ namespace SubnauticaMP
                         AddChat("Your Nautilus item numbers were fixed to match this world. Quit and restart Subnautica (don't save first), then join again.");
                     break;
                 case BuildGhostPacket ghost: Ghosts.OnGhost(ghost); break;
+                case EmotePacket emote: Emoting.OnEmote(emote); break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
                     AddChat($"{NameOf(died.Id)} died!");
@@ -449,6 +455,7 @@ namespace SubnauticaMP
                 Power.Reset();
                 BaseLife.Reset();
                 Ghosts.Reset();
+                Emoting.Reset();
             }
             _lastState = state;
         }
@@ -662,6 +669,7 @@ namespace SubnauticaMP
             Power.Reset();
             BaseLife.Reset();
             Ghosts.Reset();
+            Emoting.Reset();
         }
 
         static string SafeFileName(string s)

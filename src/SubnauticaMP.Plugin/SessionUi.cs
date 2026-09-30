@@ -176,7 +176,7 @@ namespace SubnauticaMP
             _chatInput = GUILayout.TextField(_chatInput, Protocol.MaxChatLength);
             if ((GUILayout.Button("SEND", GUILayout.Width(70)) || enter) && _chatInput.Trim().Length > 0)
             {
-                Send(new ChatPacket { Text = _chatInput });
+                SendChatText(_chatInput);
                 _chatInput = "";
             }
             GUILayout.EndHorizontal();

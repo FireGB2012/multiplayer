@@ -23,6 +23,7 @@ namespace SubnauticaMP.Shared
             public bool IsLocal; // playing on the same PC as the server: that's the host
             public string Ip = "";
             public bool Admin; // host, or typed /login with the admin password
+            public DateTime NextEmote; // spam guard
         }
 
         const double TimeSyncSeconds = 5;
@@ -547,6 +548,10 @@ namespace SubnauticaMP.Shared
                     PlayersChanged?.Invoke();
                     break;
 
+                case EmotePacket emote:
+                    RelayEmote(conn, client, emote.Emote);
+                    break;
+
                 case CraftPacket _:
                 case FiresPacket _:
                 case FireDousePacket _:
@@ -594,9 +599,29 @@ namespace SubnauticaMP.Shared
 
         // ---------- admin commands (typed in chat) ----------
 
+        // Emotes go to everyone else (the sender plays their own). Max ~4 a second each, so nobody can flood.
+        void RelayEmote(Connection conn, Client client, Emote emote)
+        {
+            if (!Emotes.IsValid(emote)) return;
+            var now = DateTime.UtcNow;
+            lock (_lock)
+            {
+                if (emote != Emote.None && now < client.NextEmote) return;
+                client.NextEmote = now.AddMilliseconds(250);
+            }
+            Broadcast(new EmotePacket { Id = client.Id, Emote = emote }, except: conn);
+        }
+
         void HandleCommand(Connection conn, Client client, string text)
         {
             void Reply(string msg) => conn.Send(new ChatPacket { SenderId = 0, Text = msg });
+            // the game plays "/e wave" itself; this is just in case one slips through
+            if (Emotes.TryParseCommand(text, out var emote, out var listOnly))
+            {
+                if (listOnly) Reply("Emotes: " + Emotes.List() + ". Type /e <emote> or press G in game.");
+                else RelayEmote(conn, client, emote);
+                return;
+            }
             var parts = text.Substring(1).Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
             var cmd = parts.Length > 0 ? parts[0].ToLowerInvariant() : "";
             var arg = parts.Length > 1 ? parts[1].Trim() : "";
@@ -626,8 +651,8 @@ namespace SubnauticaMP.Shared
             }
             if (cmd == "help" || cmd == "?")
             {
-                Reply(admin ? "Commands: /players, /mods, /kick <name>, /ban <name>, /unban <name>, /bans, /save, /backup, /resetmods"
-                            : "Commands: /players, /mods, /login <admin password>");
+                Reply(admin ? "Commands: /players, /mods, /e <emote>, /kick <name>, /ban <name>, /unban <name>, /bans, /save, /backup, /resetmods"
+                            : "Commands: /players, /mods, /e <emote>, /login <admin password>");
                 return;
             }
             if (!admin) { Reply("That needs admin. Type /login <admin password> (the host's server window shows it)."); return; }

@@ -13,7 +13,10 @@ namespace SubnauticaMP
         const string PauseScreen = "SNMP_Multiplayer";
 
         Component _pauseMenu, _chatField;
-        GameObject _pausePage, _pauseButtonTemplate;
+        GameObject _pausePage, _pauseButtonTemplate, _pauseHeader;
+        bool _pauseEmotes; // showing the emote picker instead of the multiplayer page
+        int _emotePage;
+        const int EmotesPerPage = 7;
         Transform _pauseList;
         bool _pauseFailed, _pauseDumped, _banArmed;
         int _pauseSelected;
@@ -40,6 +43,7 @@ namespace SubnauticaMP
                 }
             }
             if (PausePageShowing && Time.unscaledTime >= _pauseRefreshAt) RefreshPausePage();
+            if (PausePageShowing) UpdateEmoteKeys();
         }
 
         void BuildPauseUi()
@@ -71,7 +75,8 @@ namespace SubnauticaMP
             foreach (var b in copied) UnityEngine.Object.DestroyImmediate(b.gameObject);
 
             var header = page.transform.Find("Header");
-            if (header != null) UiKit.SetText(header.gameObject, "Multiplayer");
+            _pauseHeader = header != null ? header.gameObject : null;
+            if (_pauseHeader != null) UiKit.SetText(_pauseHeader, "Multiplayer");
 
             // chat box: a copy of the main menu's text box, or any text box the game has loaded
             try
@@ -113,24 +118,90 @@ namespace SubnauticaMP
         {
             var text = UiKit.GetInput(_chatField).Trim();
             if (text.Length == 0 || !Joined) return;
-            Send(new ChatPacket { Text = text });
             UiKit.SetInput(_chatField, "");
+            if (SendChatText(text)) { ClosePauseMenu(); return; } // an emote: go watch... well, everyone else watches
             UiKit.Focus(_chatField);
         }
 
+        // Chat box text: "/e wave" and friends play an emote, anything else goes to the server.
+        // Returns true if it was an emote.
+        internal bool SendChatText(string text)
+        {
+            text = (text ?? "").Trim();
+            if (text.Length == 0 || !Joined) return false;
+            if (Emotes.TryParseCommand(text, out var emote, out var listOnly))
+            {
+                if (listOnly) { AddChat("Emotes: " + Emotes.List() + ". Type /e <emote> or press " + Plugin.EmoteKey.Value + "."); return false; }
+                if (emote == Emote.None) Emoting.Stop();
+                else Emoting.Play(emote);
+                return true;
+            }
+            Send(new ChatPacket { Text = text });
+            return false;
+        }
+
         // F8 / Enter / the pause menu button. Returns false if the page isn't available (use the old window).
-        bool ShowPausePage(bool focusChat)
+        bool ShowPausePage(bool focusChat, bool emotes = false)
         {
             if (!PauseUiReady) return false;
             if (!_pauseMenu.gameObject.activeInHierarchy) Game.Call(Game.IngameMenu, _pauseMenu, "Open");
             if (!_pauseMenu.gameObject.activeInHierarchy) return false; // the game won't open it right now (cutscene...)
             _pauseSelected = 0;
             _banArmed = false;
+            SetEmoteMode(emotes);
+            Game.Call(Game.IngameMenu, _pauseMenu, "ChangeSubscreen", PauseScreen);
+            if (focusChat && !emotes) UiKit.Focus(_chatField);
+            return true;
+        }
+
+        void SetEmoteMode(bool emotes)
+        {
+            _pauseEmotes = emotes;
+            _emotePage = 0;
+            if (_pauseHeader != null) UiKit.SetText(_pauseHeader, emotes ? "Emotes" : "Multiplayer");
+            var chat = _pauseList != null ? _pauseList.Find("SNMP_Chat") : null;
+            if (chat != null) chat.gameObject.SetActive(!emotes);
             _pauseShown = null;
             RefreshPausePage();
-            Game.Call(Game.IngameMenu, _pauseMenu, "ChangeSubscreen", PauseScreen);
-            if (focusChat) UiKit.Focus(_chatField);
-            return true;
+        }
+
+        // G: open the emote picker, or close it again.
+        void ToggleEmotes()
+        {
+            if (PausePageShowing && _pauseEmotes) { ClosePauseMenu(); return; }
+            if (PausePageShowing) { SetEmoteMode(true); return; }
+            if (Cursor.lockState != CursorLockMode.Locked || (_pauseMenu != null && _pauseMenu.gameObject.activeInHierarchy)) return; // PDA, inventory, other menus
+            if (!ShowPausePage(false, emotes: true))
+                AddChat("Emotes: " + Emotes.List() + ". Type /e <emote> in chat.");
+        }
+
+        void PickEmote(Emote emote)
+        {
+            if (emote == Emote.None) Emoting.Stop();
+            else Emoting.Play(emote);
+            _pauseEmotes = false;
+            // a moment later, so the number key you pressed doesn't also switch your quickslot
+            RunLater(0.05f, ClosePauseMenu);
+        }
+
+        void ClosePauseMenu()
+        {
+            if (_pauseMenu == null) return;
+            _pauseEmotes = false;
+            Game.Call(Game.IngameMenu, _pauseMenu, "Close");
+        }
+
+        // 1-7 pick an emote while the picker is open.
+        void UpdateEmoteKeys()
+        {
+            if (!_pauseEmotes || !PausePageShowing || UiKit.Typing()) return;
+            for (int i = 0; i < EmotesPerPage; i++)
+                if (Input.GetKeyDown(KeyCode.Alpha1 + i) || Input.GetKeyDown(KeyCode.Keypad1 + i))
+                {
+                    int index = _emotePage * EmotesPerPage + i;
+                    if (index < Emotes.All.Length) PickEmote(Emotes.All[index].Emote);
+                    return;
+                }
         }
 
         void BackToPauseMain() => Game.Call(Game.IngameMenu, _pauseMenu, "ChangeSubscreen", "Main");
@@ -146,6 +217,27 @@ namespace SubnauticaMP
 
         void FillPauseRows()
         {
+            if (_pauseEmotes && Joined)
+            {
+                int pages = (Emotes.All.Length + EmotesPerPage - 1) / EmotesPerPage;
+                _emotePage = Mathf.Clamp(_emotePage, 0, pages - 1);
+                for (int i = 0; i < EmotesPerPage; i++)
+                {
+                    int index = _emotePage * EmotesPerPage + i;
+                    if (index >= Emotes.All.Length) break;
+                    var info = Emotes.All[index];
+                    PauseButton($"{i + 1}.  {info.Label}", () => PickEmote(info.Emote));
+                }
+                if (pages > 1) PauseButton(_emotePage + 1 < pages ? "More emotes  >" : "<  First emotes", () =>
+                {
+                    _emotePage = (_emotePage + 1) % pages;
+                    RefreshPausePage();
+                });
+                if (Emoting.Local != Emote.None) PauseButton("Stop emote", () => PickEmote(Emote.None));
+                PauseButton("Back", () => SetEmoteMode(false));
+                return;
+            }
+
             if (!Joined)
             {
                 PauseButton("Not connected. Host or join from the main menu.", null);
@@ -171,6 +263,7 @@ namespace SubnauticaMP
             _pauseSelected = 0;
 
             if (_chatField != null) PauseButton("Send message", SendChatFromBox);
+            PauseButton($"Emotes  ({Plugin.EmoteKey.Value})", () => SetEmoteMode(true));
             if (_joinCode != null) PauseButton($"Join code: {_joinCode}  (click to copy)", () => { GUIUtility.systemCopyBuffer = _joinCode; AddChat("Join code copied: " + _joinCode); });
 
             PauseButton($"{Plugin.PlayerName.Value} (you)" + (IsHost ? "  ·  host" : ""), null);

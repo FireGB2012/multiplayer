@@ -35,6 +35,9 @@ namespace SubnauticaMP
         GameObject _capsule;
         GameObject _diver;
         DiverAnimator _anim;
+        EmoteAnimator _emoteAnim;
+        Emote _emote = Emote.None;
+        float _emoteStarted;
         Vector3 _velocity, _lastTargetPos;
         float _lastTargetTime;
         bool _underwater = true, _visible = true;
@@ -154,6 +157,43 @@ namespace SubnauticaMP
             if (!gameObject.activeSelf) gameObject.SetActive(true);
         }
 
+        public Emote CurrentEmote => _emote;
+
+        // Returns false when it's just a looping emote (dance...) being sent again to keep it going.
+        public bool PlayEmote(Emote emote)
+        {
+            if (emote == Emote.None) { StopEmote(); return false; }
+            bool repeat = emote == _emote && Emotes.Loops(emote) && EmoteRunning();
+            if (!repeat) _emoteStarted = Time.unscaledTime;
+            _emote = emote;
+            try { _emoteAnim?.Play(emote); }
+            catch (Exception e) { Game.WarnOnce("emote", "Couldn't play emote: " + e.GetBaseException().Message); }
+            return !repeat;
+        }
+
+        public void StopEmote()
+        {
+            _emote = Emote.None;
+            _emoteAnim?.Stop();
+        }
+
+        bool EmoteRunning()
+        {
+            var info = Emotes.Get(_emote);
+            return info != null && (info.Seconds <= 0f || Time.unscaledTime - _emoteStarted < info.Seconds);
+        }
+
+        void LateUpdate()
+        {
+            if (_emoteAnim == null || _diver == null || !_diver.activeSelf) return;
+            try { _emoteAnim.Apply(Time.unscaledDeltaTime); }
+            catch (Exception e)
+            {
+                Game.WarnOnce("emote", "Emotes turned off for " + PlayerName + ": " + e.GetBaseException().Message);
+                _emoteAnim = null;
+            }
+        }
+
         void ApplyVisibility()
         {
             bool diver = _diver != null;
@@ -209,6 +249,9 @@ namespace SubnauticaMP
                     PlayerLooks.ApplyGear(_diver, _gear);
                     Tint();
                     _anim.SetToolAnims(_anims);
+                    try { _emoteAnim = new EmoteAnimator(_diver); }
+                    catch (Exception e) { Game.WarnOnce("emote", "No emotes on divers: " + e.GetBaseException().Message); }
+                    if (_emote != Emote.None && EmoteRunning()) _emoteAnim?.Play(_emote);
                 }
             }
 
@@ -224,6 +267,11 @@ namespace SubnauticaMP
                     _targetRot = sub.rotation * _localRot;
                 }
             }
+
+            // dancing / chilling stops once they swim off or get in a vehicle
+            if (_emote != Emote.None && (!EmoteRunning() || !_visible ||
+                (Emotes.Loops(_emote) && Time.unscaledTime - _emoteStarted > 0.6f && _velocity.magnitude > 1.5f)))
+                StopEmote();
 
             if (_anim != null && _diver != null && _diver.activeSelf)
             {

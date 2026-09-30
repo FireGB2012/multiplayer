@@ -10,6 +10,7 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
 | Game mode picked in the launcher (Survival / Hardcore / Creative / Freedom) | ✔ |
 | Players (position, facing, name tags) | ✔ |
 | Chat | ✔ |
+| Emotes (wave, point, cheer, dance, laugh, nod, no, salute, facepalm, shrug, clap, backflip, spin, chill) | ✔ press **G** or type `/e wave`, everyone sees your diver do it |
 | Blueprints (unlocks, fragment scans) | ✔ everyone shares one tech tree |
 | Databank / PDA entries | ✔ |
 | Picked-up items + broken outcrops | ✔ gone for everyone |
@@ -71,6 +72,8 @@ Multiplayer saves are kept out of the normal single-player Load list. The launch
    - **New world**: everyone meets in the **party lobby**: type your name, click to change your suit color,
      and the host clicks **Start the game**. **Existing world**: it loads your save for that world.
 5. In game, **Esc > Multiplayer** or **F8** (or the Multiplayer button in the pause menu) opens the multiplayer page: chat, join code, players, kick/ban if you host, leave. **Enter** jumps straight to chat.
+6. **G** opens the emote picker (keys **1-7** pick one, "More emotes" for the rest). Or type `/e wave`, `/e dance`, `/wave`... in chat
+   (`/e` lists them all). Dance and chill keep going until you swim off. Change the key in the config (`EmoteKey`) or Options > Mods.
 
 The host is whoever plays on the server's PC (otherwise whoever joined first).
 Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.
@@ -82,7 +85,7 @@ Works alongside mods built on [Nautilus](https://github.com/SubnauticaModding/Na
 - Nautilus numbers modded items differently on each PC depending on install order. If yours don't match the world,
   the mod **fixes Nautilus's cache for you** (`BepInEx\config\Nautilus\TechTypeCache`, old one kept as `.bak`):
   restart Subnautica without saving and join again.
-- With Nautilus installed, the mod's settings (menu key, suit color, Enter for chat) also show up in **Options > Mods**.
+- With Nautilus installed, the mod's settings (menu key, emote key, suit color, Enter for chat) also show up in **Options > Mods**.
 - Chat: `/mods` shows the world's mod list; admins can `/resetmods` so the next player to join sets it.
 
 ## Friends on a different wifi

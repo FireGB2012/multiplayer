@@ -13,6 +13,9 @@ namespace SubnauticaMP
         [Keybind("Multiplayer menu key", Tooltip = "Opens the multiplayer page (players, chat, join code).")]
         public KeyCode MenuKey = KeyCode.F8;
 
+        [Keybind("Emote key", Tooltip = "Opens the emote picker: wave, dance, backflip... (/e wave in chat works too).")]
+        public KeyCode EmoteKey = KeyCode.G;
+
         [Choice("Suit color", "Standard", "Orange", "Yellow", "Green", "Cyan", "Blue", "Purple", "Pink", "Red", "Black",
             Tooltip = "The color other players see your diver in.")]
         public int SuitColor;
@@ -28,6 +31,7 @@ namespace SubnauticaMP
             if (_page == null) return;
             // start from the BepInEx config values
             _page.MenuKey = Plugin.MenuKey.Value;
+            _page.EmoteKey = Plugin.EmoteKey.Value;
             _page.SuitColor = System.Array.IndexOf(DiverColors.All, Plugin.DiverColor.Value) is int i && i >= 0 ? i : 0;
             _page.EnterForChat = Plugin.EnterForChat.Value;
             Plugin.Log.LogInfo("Settings added to Options > Mods (Nautilus)");
@@ -38,6 +42,7 @@ namespace SubnauticaMP
         {
             if (_page == null) return;
             if (_page.MenuKey != Plugin.MenuKey.Value) Plugin.MenuKey.Value = _page.MenuKey;
+            if (_page.EmoteKey != Plugin.EmoteKey.Value) Plugin.EmoteKey.Value = _page.EmoteKey;
             if (_page.EnterForChat != Plugin.EnterForChat.Value) Plugin.EnterForChat.Value = _page.EnterForChat;
             if (_page.SuitColor >= 0 && _page.SuitColor < DiverColors.All.Length && DiverColors.All[_page.SuitColor] != Plugin.DiverColor.Value)
                 Session.Instance?.SendProfile(Plugin.PlayerName.Value, DiverColors.All[_page.SuitColor]);
