@@ -249,7 +249,8 @@ namespace SubnauticaMP
         static void SlotRolled(object[] __args, ref object __result)
         {
             _slotKey = null;
-            var creatures = S?.Creatures;
+            if (S == null || !S.Joined) return; // single player: leave spawns alone
+            var creatures = S.Creatures;
             if (creatures == null || __result == null || __args.Length == 0 || __args[0] == null) return;
 
             Vector3 pos;
@@ -280,7 +281,11 @@ namespace SubnauticaMP
         {
             if (_slotKey == null || S == null || __args.Length == 0 || !(__args[0] is Component lwe) || lwe == null) return;
             if (Game.VirtualPrefabIdentifier == null || lwe.GetComponent(Game.VirtualPrefabIdentifier) == null) return;
-            Game.TakeId(lwe.gameObject, _slotKey + "#" + _slotIndex++);
+            var id = _slotKey + "#" + _slotIndex++;
+            // the slot filled again while what it made is still here: don't make a second copy
+            // (this is how crashfish homes used to stack up, each one popping out its own crashfish)
+            if (Game.IsDuplicateOf(lwe.gameObject, id)) { UnityEngine.Object.Destroy(lwe.gameObject); return; }
+            Game.TakeId(lwe.gameObject, id);
         }
 
         // When a placeholder turns into the real fish/plant, the real thing keeps the placeholder's id.
@@ -297,6 +302,7 @@ namespace SubnauticaMP
                 var go = Game.TryGet(task.GetType(), task, "GetResult") as GameObject;
                 if (go == null || owner == null) return;
                 Game.Set(Game.UniqueIdentifier, owner, "Id", Guid.NewGuid().ToString("N")); // placeholder is about to go away
+                if (Game.IsDuplicateOf(go, id)) { UnityEngine.Object.Destroy(go); return; }
                 Game.TakeId(go, id);
             };
             var existing = Game.TryGet(Game.VirtualPrefabIdentifier, owner, "OnInstantiate") as Delegate;

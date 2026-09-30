@@ -134,6 +134,7 @@ namespace SubnauticaMP
             PumpPacketsWithBudget();
             WatchConnection();
             SafeRun("object lists", SceneIndex.Tick);
+            SafeRun("duplicate cleanup", DuplicateCleaner.Tick);
             RunDue();
             if (Time.unscaledTime >= _optionsSyncAt) { _optionsSyncAt = Time.unscaledTime + 1f; NautilusCompat.SyncOptions(); }
             UpdateLoading();
@@ -184,6 +185,7 @@ namespace SubnauticaMP
         void LateUpdate()
         {
             if (Joined) SafeRun("vehicles", Vehicles.LateUpdate);
+            SafeRun("emote camera", Emoting.LateUpdate);
             if (_menuOpen || Lobby.Holding)
             {
                 // the game re-locks the cursor every frame; keep it free while our window is up

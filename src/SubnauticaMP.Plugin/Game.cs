@@ -25,7 +25,7 @@ namespace SubnauticaMP
             Creature, EcoTarget, LastTarget, CellManager, EntitySlot, EntitySlotsPlaceholder, VirtualPrefabIdentifier, DeferredSpawner,
             PowerSource, SolarPanel, ThermalPlant, BaseBioReactor, BaseNuclearReactor, Crafter, SubFire, Fire, PrefabSpawnBase,
             PickPrefab, WaterPark, WaterParkCreature, Builder,
-            MainMenuRightSide, MainMenuLoadPanel, MainMenuEmailHandler, MainMenuGroup, IngameMenu, ErrorMessage;
+            MainMenuRightSide, MainMenuLoadPanel, MainMenuEmailHandler, MainMenuGroup, IngameMenu, ErrorMessage, CrashHome;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         // keyed by (type, name) so looking one up doesn't build a string every call (these run every frame)
@@ -122,6 +122,7 @@ namespace SubnauticaMP
             MainMenuGroup = Find("MainMenuGroup");
             IngameMenu = Find("IngameMenu");
             ErrorMessage = Find("ErrorMessage");
+            CrashHome = Find("CrashHome");
         }
 
         // ---------- story ----------
@@ -901,6 +902,14 @@ namespace SubnauticaMP
                 if (uid != null) Set(UniqueIdentifier, uid, "Id", id + "~" + Guid.NewGuid().ToString("N").Substring(0, 8));
             }
             SetId(go, id);
+        }
+
+        // Another live copy of the same thing already holds this id, right there: `go` is a duplicate spawn.
+        public static bool IsDuplicateOf(GameObject go, string id)
+        {
+            var other = FindById(id);
+            return other != null && other != go && other.activeInHierarchy &&
+                   (other.transform.position - go.transform.position).sqrMagnitude < 4f;
         }
 
         public static GameObject FindById(string id)

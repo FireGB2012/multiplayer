@@ -73,7 +73,7 @@ Multiplayer saves are kept out of the normal single-player Load list. The launch
      and the host clicks **Start the game**. **Existing world**: it loads your save for that world.
 5. In game, **Esc > Multiplayer** or **F8** (or the Multiplayer button in the pause menu) opens the multiplayer page: chat, join code, players, kick/ban if you host, leave. **Enter** jumps straight to chat.
 6. **G** opens the emote picker (keys **1-7** pick one, "More emotes" for the rest). Or type `/e wave`, `/e dance`, `/wave`... in chat
-   (`/e` lists them all). Dance and chill keep going until you swim off. Change the key in the config (`EmoteKey`) or Options > Mods.
+   (`/e` lists them all). Dance and chill keep going until you swim off. The camera swings behind you while you emote so you see it too (`EmoteCamera` in the config turns that off). Change the key in the config (`EmoteKey`) or Options > Mods.
 
 The host is whoever plays on the server's PC (otherwise whoever joined first).
 Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.

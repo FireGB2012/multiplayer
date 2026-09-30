@@ -102,6 +102,25 @@ namespace SubnauticaMP
 
         public void Stop() => _active = false;
 
+        public bool Showing => _showing != Emote.None;
+
+        public Vector3 Middle => _chest != null ? _chest.position : _body.position + _body.up * 0.9f;
+
+        // Straight back to normal (no fade), e.g. when you leave the server mid-dance.
+        public void ResetNow()
+        {
+            if (_showing == Emote.None) return;
+            if (_body != null)
+            {
+                RestoreIfAnimatorSkipped();
+                _body.localPosition = _basePos;
+                _body.localRotation = _baseRot;
+            }
+            _showing = Emote.None;
+            _active = false;
+            _tracking = false;
+        }
+
         // Call from LateUpdate, after the animator has posed the diver.
         public void Apply(float dt)
         {
