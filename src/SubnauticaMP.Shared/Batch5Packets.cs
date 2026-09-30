@@ -107,4 +107,15 @@ namespace SubnauticaMP.Shared
         public override void Write(BinaryWriter w) => w.Write(Key ?? "");
         public override void Read(BinaryReader r) => Key = r.ReadString();
     }
+
+    // A world that was just started: everyone's game waits behind the loading screen until every player has
+    // loaded, so the lifepod crash intro plays for all of them at the same moment.
+    // client -> server: I've loaded (Go = false). server -> everyone: go (Go = true).
+    public sealed class IntroPacket : Packet
+    {
+        public bool Go;
+        public override PacketType Type => PacketType.Intro;
+        public override void Write(BinaryWriter w) => w.Write(Go);
+        public override void Read(BinaryReader r) => Go = r.ReadBoolean();
+    }
 }

@@ -70,6 +70,7 @@ namespace SubnauticaMP
             }
 
             if (!_s.Joined || !Game.InWorld) { Close(); return; }
+            if (Game.LockCursor) Game.SetLockCursor(false); // something grabbed the mouse again
             Game.TryDo("clear input", () => Game.Call(Game.GameInput, null, "ClearInput", 1)); // no looking around / swimming while it's up
 
             if (Input.GetKeyDown(KeyCode.Escape) || Input.GetMouseButtonDown(1))
@@ -111,7 +112,9 @@ namespace SubnauticaMP
         }
 
         bool CanOpen() =>
-            _s.Joined && Game.InWorld && !UiKit.Typing() && Cursor.lockState == CursorLockMode.Locked;
+            _s.Joined && Game.InWorld && !UiKit.Typing() && Game.LockCursor && !PdaOrMenuOpen();
+
+        static bool PdaOrMenuOpen() => Cursor.lockState != CursorLockMode.Locked && !Game.LockCursor;
 
         bool Typing => GUIUtility.keyboardControl != 0;
 
@@ -123,6 +126,7 @@ namespace SubnauticaMP
             _editSlot = -1;
             _hover = -1;
             _pressAt = -1f;
+            Game.SetLockCursor(false); // free the mouse the way the game's own menus do
             try { _preview = _preview ?? new EmotePreview(); _preview.Show(true); }
             catch (Exception e) { Game.WarnOnce("preview", "No emote preview: " + e.GetBaseException().Message); _preview = null; }
         }
@@ -134,8 +138,7 @@ namespace SubnauticaMP
             _editSlot = -1;
             GUIUtility.keyboardControl = 0;
             _preview?.Show(false);
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+            Game.SetLockCursor(true);
         }
 
         // -1 = none, 8 = the middle (party)

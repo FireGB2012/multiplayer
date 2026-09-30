@@ -41,6 +41,10 @@ namespace SubnauticaMP.Shared
         int _nextId = 1;
         int _hostId;
         PartyPacket _party; // the dance party going on right now (not saved)
+        const double IntroWaitSeconds = 90;
+        readonly HashSet<int> _introWaiting = new HashSet<int>(), _introReady = new HashSet<int>();
+        bool _introOpen;
+        DateTime _introDeadline;
         readonly Dictionary<string, int> _creatureOwners = new Dictionary<string, int>(); // creature id -> player id (not saved)
         readonly HashSet<int> _sleepers = new HashSet<int>();
         readonly Dictionary<string, (int id, double time)> _powerWriters = new Dictionary<string, (int, double)>();
@@ -159,6 +163,10 @@ namespace SubnauticaMP.Shared
 
         void Tick()
         {
+            bool introLate;
+            lock (_lock) introLate = _introOpen && DateTime.UtcNow > _introDeadline;
+            if (introLate) CheckIntro(true);
+
             double up = _uptime.Elapsed.TotalSeconds;
             bool hasTime;
             double worldTime;
@@ -557,6 +565,17 @@ namespace SubnauticaMP.Shared
                     HandleParty(client, party);
                     break;
 
+                case IntroPacket _:
+                    bool open;
+                    lock (_lock)
+                    {
+                        open = _introOpen;
+                        if (open) _introReady.Add(client.Id);
+                    }
+                    if (!open) conn.Send(new IntroPacket { Go = true }); // nobody to wait for
+                    else CheckIntro(false);
+                    break;
+
                 case CraftPacket _:
                 case FiresPacket _:
                 case FireDousePacket _:
@@ -581,6 +600,12 @@ namespace SubnauticaMP.Shared
                     {
                         if (client.Id != _hostId || _world.Started) return;
                         _world.Started = true;
+                        // everyone here now loads in; the intro waits for all of them
+                        _introWaiting.Clear();
+                        _introReady.Clear();
+                        foreach (var c in _connections) if (c.Tag is Client cl && cl.Joined) _introWaiting.Add(cl.Id);
+                        _introOpen = true;
+                        _introDeadline = DateTime.UtcNow.AddSeconds(IntroWaitSeconds);
                     }
                     _dirty = true;
                     Log?.Invoke($"{client.Name} started the game!");
@@ -615,6 +640,22 @@ namespace SubnauticaMP.Shared
                 client.NextEmote = now.AddMilliseconds(250);
             }
             Broadcast(new EmotePacket { Id = client.Id, Emote = emote }, except: conn);
+        }
+
+        // Everyone who was here at the start has loaded (or waited long enough): roll the intro.
+        void CheckIntro(bool timeUp)
+        {
+            lock (_lock)
+            {
+                if (!_introOpen) return;
+                var connected = new HashSet<int>(_connections.Select(c => c.Tag).OfType<Client>().Where(c => c.Joined).Select(c => c.Id));
+                _introWaiting.IntersectWith(connected);
+                bool all = _introWaiting.All(_introReady.Contains);
+                if (!all && !(timeUp && _introReady.Count > 0)) return;
+                _introOpen = false;
+            }
+            Log?.Invoke("Everyone has loaded: intro rolling");
+            Broadcast(new IntroPacket { Go = true }, except: null);
         }
 
         // Start (or restart) the dance party, or end it (only whoever started it, or an admin, can end it).
@@ -1033,6 +1074,7 @@ namespace SubnauticaMP.Shared
             }
 
             if (partyOver) Broadcast(new PartyPacket { LeaderId = client.Id, Active = false }, except: null);
+            CheckIntro(false); // don't keep everyone waiting on someone who left
             for (int i = 0; i < freedCreatures.Count; i += CreatureOwnerPacket.MaxIds)
                 Broadcast(new CreatureOwnerPacket { OwnerId = 0, Ids = freedCreatures.Skip(i).Take(CreatureOwnerPacket.MaxIds).ToList() }, except: null);
 

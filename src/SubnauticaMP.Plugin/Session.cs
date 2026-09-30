@@ -59,6 +59,8 @@ namespace SubnauticaMP
         public int LocalId => _client.LocalId;
         public bool InWorldAndSettled => _inWorldTimer >= SettleSeconds;
         public bool WorldStarted { get; private set; }
+        public bool FreshStart { get; set; }   // we were here when the host hit Start: the intro waits for everyone
+        public string WorldId => _worldId;
         public bool InLobby => Joined && !WorldStarted;
         public bool IsHost => Joined && _hostId == LocalId;
         public string HostName => NameOf(_hostId);
@@ -364,6 +366,7 @@ namespace SubnauticaMP
 
                 case StartGamePacket _:
                     WorldStarted = true;
+                    FreshStart = true;
                     AddChat($"{HostName} started the game!");
                     if (_menuLobby && !Game.InWorld) StartCoroutine(AutoStart());
                     _menuLobby = false;
@@ -425,6 +428,7 @@ namespace SubnauticaMP
                 case BuildGhostPacket ghost: Ghosts.OnGhost(ghost); break;
                 case EmotePacket emote: Emoting.OnEmote(emote); break;
                 case PartyPacket party: Emoting.OnParty(party); break;
+                case IntroPacket intro: if (intro.Go) Lobby.IntroGo = true; break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
                     AddChat($"{NameOf(died.Id)} died!");

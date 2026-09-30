@@ -51,6 +51,7 @@ namespace SubnauticaMP.Shared
         ModFix = 43,          // your modded item numbers don't match the world's: here are the right ones
         Emote = 44,           // wave, dance, ...
         Party = 45,           // dance party started / ended
+        Intro = 46,           // new world: "I've loaded" / "everyone has, go"
     }
 
     public struct Vec3
@@ -142,6 +143,7 @@ namespace SubnauticaMP.Shared
                 case PacketType.ModFix: return new ModFixPacket();
                 case PacketType.Emote: return new EmotePacket();
                 case PacketType.Party: return new PartyPacket();
+                case PacketType.Intro: return new IntroPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }

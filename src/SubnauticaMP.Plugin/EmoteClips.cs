@@ -46,18 +46,20 @@ namespace SubnauticaMP
             _clips = new Dictionary<string, Clip>();
             try
             {
-                using (var res = typeof(EmoteClips).Assembly.GetManifestResourceStream("SubnauticaMP.Emotes.bin"))
+                var asm = typeof(EmoteClips).Assembly;
+                var resName = System.Array.Find(asm.GetManifestResourceNames(), n => n.EndsWith("Emotes.bin")) ?? "SubnauticaMP.Emotes.bin";
+                using (var res = asm.GetManifestResourceStream(resName))
                 {
                     if (res == null) { Plugin.Log.LogWarning("Emote clips missing from the mod; dances won't play"); return; }
                     using (var z = new DeflateStream(SkipZlibHeader(res), CompressionMode.Decompress))
                     using (var r = new BinaryReader(z))
                     {
-                        if (new string(r.ReadChars(4)) != "SNEM") throw new InvalidDataException("bad header");
+                        if (System.Text.Encoding.ASCII.GetString(r.ReadBytes(4)) != "SNEM") throw new InvalidDataException("bad header");
                         r.ReadByte(); // version
                         int count = r.ReadUInt16();
                         for (int c = 0; c < count; c++)
                         {
-                            var name = new string(r.ReadChars(r.ReadByte()));
+                            var name = System.Text.Encoding.ASCII.GetString(r.ReadBytes(r.ReadByte()));
                             var clip = new Clip { Name = name, Fps = r.ReadByte() };
                             int n = r.ReadUInt16();
                             clip.Loops = r.ReadByte() != 0;

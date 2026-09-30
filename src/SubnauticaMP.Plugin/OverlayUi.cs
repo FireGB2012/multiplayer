@@ -74,7 +74,16 @@ namespace SubnauticaMP
             if (_overlay == null) return;
             if (!_overlay.gameObject.activeSelf) _overlay.gameObject.SetActive(true);
 
-            if (lobby)
+            if (lobby && Lobby.WaitingForLoads)
+            {
+                SetOv(_ovTitle, "ALMOST THERE");
+                SetOv(_ovLine1, "Waiting for everyone to finish loading...");
+                SetOv(_ovLine2, "The crash starts for all of you at the same moment.");
+                SetOv(_ovLine3, $"{_remotes.Count + 1} player(s) in this world");
+                SetOv(_ovLine4, "");
+                if (_ovStart != null && _ovStart.activeSelf) _ovStart.SetActive(false);
+            }
+            else if (lobby)
             {
                 var names = Plugin.PlayerName.Value;
                 foreach (var r in _remotes.Values) if (r != null) names += "     " + r.PlayerName;

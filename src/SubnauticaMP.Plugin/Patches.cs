@@ -74,6 +74,7 @@ namespace SubnauticaMP
             Hook("story", Game.StoryGoal, "Execute", prefix: nameof(StoryGoalRan));
             Hook("lobby start", Game.GameInput, "get_AnyKeyDown", postfix: nameof(AnyKeyDown));
             Hook("intro sync", Game.EscapePod, "TriggerIntroCinematic", postfix: nameof(IntroCinematicStarted));
+            Hook("same lifepod spot", Game.RandomStart, "GetRandomStartPoint", prefix: nameof(StartPointSeed), postfix: nameof(StartPointRestore));
 
             // creatures: same spawns, same ids, one brain each
             Hook("spawns (groups)", Game.EntitySlotsPlaceholder, "Spawn", prefix: nameof(SlotGroupStart), postfix: nameof(SlotEnd));
@@ -181,6 +182,30 @@ namespace SubnauticaMP
         }
 
         static void IntroCinematicStarted() => Lobby.OnIntroCinematicStarted();
+
+        // Every player's lifepod lands in the same spot: the "random" landing spot is rolled from the world's id.
+        static UnityEngine.Random.State _randomBefore;
+        static bool _seeded;
+
+        static void StartPointSeed()
+        {
+            _seeded = false;
+            var id = S != null && S.Joined ? S.WorldId : null;
+            if (string.IsNullOrEmpty(id)) return;
+            uint h = 2166136261;
+            foreach (char c in id) h = (h ^ c) * 16777619; // same number on every PC
+            _randomBefore = UnityEngine.Random.state;
+            UnityEngine.Random.InitState((int)h);
+            _seeded = true;
+        }
+
+        static void StartPointRestore(Vector3 __result)
+        {
+            if (!_seeded) return;
+            _seeded = false;
+            UnityEngine.Random.state = _randomBefore;
+            Plugin.Log.LogInfo($"Lifepod lands at {__result} (same spot for everyone in this world)");
+        }
 
         static void Built(Component __instance)
         {

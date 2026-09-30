@@ -25,7 +25,7 @@ namespace SubnauticaMP
             Creature, EcoTarget, LastTarget, CellManager, EntitySlot, EntitySlotsPlaceholder, VirtualPrefabIdentifier, DeferredSpawner,
             PowerSource, SolarPanel, ThermalPlant, BaseBioReactor, BaseNuclearReactor, Crafter, SubFire, Fire, PrefabSpawnBase,
             PickPrefab, WaterPark, WaterParkCreature, Builder,
-            MainMenuRightSide, MainMenuLoadPanel, MainMenuEmailHandler, MainMenuGroup, IngameMenu, ErrorMessage, CrashHome, AvatarInputHandler;
+            MainMenuRightSide, MainMenuLoadPanel, MainMenuEmailHandler, MainMenuGroup, IngameMenu, ErrorMessage, CrashHome, AvatarInputHandler, RandomStart;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         // keyed by (type, name) so looking one up doesn't build a string every call (these run every frame)
@@ -124,6 +124,7 @@ namespace SubnauticaMP
             ErrorMessage = Find("ErrorMessage");
             CrashHome = Find("CrashHome");
             AvatarInputHandler = Find("AvatarInputHandler");
+            RandomStart = Find("RandomStart");
         }
 
         // ---------- story ----------
@@ -912,6 +913,36 @@ namespace SubnauticaMP
             return other != null && other != go && other.activeInHierarchy &&
                    (other.transform.position - go.transform.position).sqrMagnitude < 4f;
         }
+
+        // The game's own "mouse is captured for looking around" switch (UWE.Utils.lockCursor, in the firstpass dll).
+        static Type _uweUtils;
+        static bool _uweLooked;
+        static Type UweUtils
+        {
+            get
+            {
+                if (_uweLooked) return _uweUtils;
+                _uweLooked = true;
+                _uweUtils = Type.GetType("UWE.Utils, Assembly-CSharp-firstpass");
+                if (_uweUtils == null)
+                    foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+                    {
+                        _uweUtils = asm.GetType("UWE.Utils", false);
+                        if (_uweUtils != null) break;
+                    }
+                if (_uweUtils == null) WarnOnce("uweutils", "Couldn't find the game's cursor switch; the emote wheel may not free the mouse");
+                return _uweUtils;
+            }
+        }
+
+        public static void SetLockCursor(bool locked)
+        {
+            if (UweUtils != null) TryDo("lock cursor", () => Set(UweUtils, null, "lockCursor", locked));
+            Cursor.lockState = locked ? CursorLockMode.Locked : CursorLockMode.None;
+            Cursor.visible = !locked;
+        }
+
+        public static bool LockCursor => UweUtils != null && Get(UweUtils, null, "lockCursor") is bool b ? b : Cursor.lockState == CursorLockMode.Locked;
 
         // Turns the game's "click to grab the mouse" handler on/off (off while our emote wheel is up).
         static bool _avatarInputOff;

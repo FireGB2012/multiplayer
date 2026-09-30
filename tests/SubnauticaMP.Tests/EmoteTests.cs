@@ -235,4 +235,54 @@ public class EmoteTests
         }
         finally { server.Stop(); }
     }
+
+    // After the host hits Start, nobody's intro rolls until everyone who was there has loaded.
+    [Fact]
+    public void IntroWaitsUntilEveryoneHasLoaded()
+    {
+        var server = new NetServer();
+        server.Start(0);
+        try
+        {
+            var (host, _) = Join(server, "Host");
+            var (b, _) = Join(server, "B");
+            var (c, _) = Join(server, "C");
+            WaitFor<PlayerJoinedPacket>(host, p => p.Name == "C");
+            host.Send(new StartGamePacket());
+            WaitFor<StartGamePacket>(b);
+
+            host.Send(new IntroPacket());
+            b.Send(new IntroPacket());
+            Assert.DoesNotContain(Drain(b, 400), p => p is IntroPacket); // C is still loading
+
+            c.Send(new IntroPacket());
+            Assert.True(WaitFor<IntroPacket>(b).Go);
+            Assert.True(WaitFor<IntroPacket>(host).Go);
+
+            // someone loading into a world that's already going doesn't wait
+            var (d, _) = Join(server, "D");
+            d.Send(new IntroPacket());
+            Assert.True(WaitFor<IntroPacket>(d).Go);
+        }
+        finally { server.Stop(); }
+    }
+
+    [Fact]
+    public void IntroDoesntWaitForSomeoneWhoLeft()
+    {
+        var server = new NetServer();
+        server.Start(0);
+        try
+        {
+            var (host, _) = Join(server, "Host");
+            var (b, _) = Join(server, "B");
+            WaitFor<PlayerJoinedPacket>(host, p => p.Name == "B");
+            host.Send(new StartGamePacket());
+            WaitFor<StartGamePacket>(host);
+            host.Send(new IntroPacket());
+            b.Disconnect();
+            Assert.True(WaitFor<IntroPacket>(host).Go);
+        }
+        finally { server.Stop(); }
+    }
 }
