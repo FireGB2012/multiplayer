@@ -99,6 +99,10 @@ If it didn't:
 Send `Subnautica\BepInEx\LogOutput.log`. The mod logs which features hooked in
 (`Synced features: ...`) and anything it couldn't find in the game (`Game member not found: ...`).
 
+**Game closes by itself on the loading screen** and the log ends with `Couldn't initialize Steamworks`?
+That's the Steam version quitting because Steam wasn't running. Open Steam first (the launcher's PLAY
+now does that for you).
+
 ## Dedicated server
 ```
 dotnet run --project src/SubnauticaMP.Server -- 11000 world.dat --password secret
