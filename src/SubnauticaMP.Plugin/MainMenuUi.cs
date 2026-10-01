@@ -109,7 +109,11 @@ namespace SubnauticaMP
 
             // pieces for later
             var emailField = FindEmailField(home) ?? FindEmailField(rs);
-            if (emailField != null && InputPrototype == null) InputPrototype = PrepareInputPrototype(emailField);
+            // copies kept from an earlier visit can lose their scripts when that menu was unloaded: start over
+            if (InputPrototype != null && !UiKit.Works(InputPrototype)) { UnityEngine.Object.Destroy(InputPrototype); InputPrototype = null; }
+            if (ButtonPrototype != null && !UiKit.Intact(ButtonPrototype)) { UnityEngine.Object.Destroy(ButtonPrototype); ButtonPrototype = null; }
+            if (TextPrototype != null && !UiKit.Intact(TextPrototype)) { UnityEngine.Object.Destroy(TextPrototype); TextPrototype = null; }
+            if (InputPrototype == null) InputPrototype = PrepareInputPrototype(emailField);
             var play = GameObject.Find("Menu canvas")?.transform.Find("Panel/MainMenu/PrimaryOptions/MenuButtons/ButtonPlay");
             if (play != null && ButtonPrototype == null)
             {
@@ -139,7 +143,8 @@ namespace SubnauticaMP
 
         static GameObject PrepareInputPrototype(GameObject field)
         {
-            var copy = UiKit.Copy(field, "SNMP_InputPrototype");
+            var copy = UiKit.InputFrom(field, "SNMP_InputPrototype");
+            if (copy == null) return null;
             UiKit.StopTranslating(copy);
             UiKit.SetupInput(UiKit.FindInput(copy), "", false, 60);
             return copy;
@@ -283,7 +288,7 @@ namespace SubnauticaMP
             UnityEngine.Object.DestroyImmediate(first);
 
             // name box stays; the rows under it are rebuilt when something changes
-            var nameGo = UiKit.Place(UnityEngine.Object.Instantiate(InputPrototype, UiKit.Holder, false), _lobbyList);
+            var nameGo = UiKit.Place(NewInput(), _lobbyList);
             nameGo.name = "SNMP_LobbyName";
             UiKit.GiveHeight(nameGo, 60f);
             _lobbyName = UiKit.FindInput(nameGo);
@@ -353,11 +358,22 @@ namespace SubnauticaMP
             }
         }
 
+        // A fresh working text box (a copy of the prototype, or built from scratch if that copy is broken).
+        public static GameObject NewInput()
+        {
+            if (InputPrototype != null && !UiKit.Works(InputPrototype)) { UnityEngine.Object.Destroy(InputPrototype); InputPrototype = null; }
+            var go = InputPrototype != null ? UnityEngine.Object.Instantiate(InputPrototype, UiKit.Holder, false) : null;
+            if (UiKit.Works(go)) return go;
+            if (go != null) UnityEngine.Object.DestroyImmediate(go);
+            go = UiKit.MakeInput("SNMP_Input");
+            if (go != null) UiKit.SetupInput(UiKit.FindInput(go), "", false, 60);
+            return go;
+        }
+
         // A copy of the game's text box, put just above `before`.
         Component AddInput(GameObject before, string placeholder, bool password, int max)
         {
-            if (InputPrototype == null) throw new Exception("no text box to copy");
-            var go = UiKit.Place(UnityEngine.Object.Instantiate(InputPrototype, UiKit.Holder, false), before.transform.parent);
+            var go = UiKit.Place(NewInput() ?? throw new Exception("no text box"), before.transform.parent);
             go.name = "SNMP_Input";
             go.transform.SetSiblingIndex(before.transform.GetSiblingIndex());
             UiKit.GiveHeight(go, 60f);

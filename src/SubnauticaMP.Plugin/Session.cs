@@ -328,6 +328,7 @@ namespace SubnauticaMP
                 LocalRotation = localRot,
                 Gear = _gearCache,
                 Anim = _animCache,
+                SentAt = Time.unscaledTime,
             });
         }
 

@@ -15,7 +15,7 @@ namespace SubnauticaMP
 
         void EnsureOverlay()
         {
-            if (_overlay != null || _overlayFailed || MainMenuUi.TextPrototype == null) return;
+            if (_overlay != null || _overlayFailed || !UiKit.Intact(MainMenuUi.TextPrototype)) return;
             try
             {
                 _overlay = UiKit.MakeCanvas("SubnauticaMP_Overlay", 32000);
@@ -26,7 +26,7 @@ namespace SubnauticaMP
                 _ovLine2 = OverlayText(bg, 24, 55);
                 _ovLine3 = OverlayText(bg, 24, 0);
                 _ovLine4 = OverlayText(bg, 22, -230);
-                if (MainMenuUi.ButtonPrototype != null)
+                if (UiKit.Intact(MainMenuUi.ButtonPrototype))
                 {
                     _ovStart = UiKit.Place(UnityEngine.Object.Instantiate(MainMenuUi.ButtonPrototype, UiKit.Holder, false), bg.transform);
                     _ovStart.name = "Start";

@@ -6,10 +6,18 @@ namespace SubnauticaMP
 {
     // Another player: a real diver model (copied from your own body, animated) once you're in the world,
     // or a colored capsule until then / if the copy fails.
-    // Smoothly chases the latest position from the network so 20Hz updates don't look choppy.
+    // Movement is replayed a tiny bit in the past on the sender's own clock (snapshot interpolation): even when
+    // their game hitches (turning into new terrain) or the network bunches packets up, they glide evenly.
     public sealed class RemotePlayer : MonoBehaviour
     {
         const float SnapDistance = 30f; // teleports / respawns: jump instead of gliding across the map
+        const float InterpDelay = 0.12f;   // how far in the past they're shown (a bit over 2 updates)
+        const float MaxExtrapolate = 0.3f; // updates late: keep them going this long in the same direction
+        const int MaxSnaps = 32;
+
+        struct Snap { public float T; public Vector3 P; public Quaternion R; }
+        readonly System.Collections.Generic.List<Snap> _snaps = new System.Collections.Generic.List<Snap>(MaxSnaps + 1);
+        float _clockOffset; // their clock minus ours (the least delayed estimate)
 
         public int Id { get; private set; }
         public string PlayerName { get; private set; }
@@ -112,10 +120,24 @@ namespace SubnauticaMP
             _targetPos = new Vector3(state.Position.X, state.Position.Y, state.Position.Z);
             _targetRot = new Quaternion(state.Rotation.X, state.Rotation.Y, state.Rotation.Z, state.Rotation.W);
 
-            // how fast they're going, for the swim animation
             float now = Time.unscaledTime;
-            if (_hasTarget && now > _lastTargetTime)
-                _velocity = Vector3.Lerp(_velocity, (_targetPos - _lastTargetPos) / (now - _lastTargetTime), 0.5f);
+            float sent = state.SentAt > 0f ? state.SentAt : now; // older versions don't send their clock
+            bool teleported = !_hasTarget || Vector3.Distance(_lastTargetPos, _targetPos) > SnapDistance;
+            if (teleported || (_snaps.Count > 0 && sent < _snaps[_snaps.Count - 1].T - 1f)) _snaps.Clear(); // jumped / their game restarted
+            if (_snaps.Count == 0 || sent > _snaps[_snaps.Count - 1].T)
+            {
+                // how fast they're going, for the swim animation (on their clock: hitches don't fake speed bursts)
+                if (_snaps.Count > 0)
+                {
+                    var last = _snaps[_snaps.Count - 1];
+                    _velocity = Vector3.Lerp(_velocity, (_targetPos - last.P) / Mathf.Max(0.02f, sent - last.T), 0.5f);
+                }
+                _snaps.Add(new Snap { T = sent, P = _targetPos, R = _targetRot });
+                if (_snaps.Count > MaxSnaps) _snaps.RemoveAt(0);
+                float offset = sent - now;
+                if (_snaps.Count == 1 || offset > _clockOffset || offset < _clockOffset - 1f) _clockOffset = offset;
+                else _clockOffset -= 0.002f; // drift slowly back so a single early packet doesn't count forever
+            }
             _lastTargetPos = _targetPos;
             _lastTargetTime = now;
             _underwater = (state.Flags & PlayerFlags.Underwater) != 0;
@@ -296,9 +318,45 @@ namespace SubnauticaMP
                 _anim.Update(transform, _velocity, _underwater, Time.unscaledDeltaTime);
             }
             if (_ragdoll != null) return; // lying where physics put them; catches up after getting up
-            float t = 1f - Mathf.Exp(-12f * Time.unscaledDeltaTime);
-            transform.position = Vector3.Lerp(transform.position, _targetPos, t);
-            transform.rotation = Quaternion.Slerp(transform.rotation, _targetRot, t);
+            var pos = _targetPos;
+            var rot = _targetRot;
+            float k = 12f;
+            if (_subId.Length == 0 && _snaps.Count > 0)
+            {
+                Sample(Time.unscaledTime + _clockOffset - InterpDelay, out pos, out rot);
+                k = 30f; // already smooth: only soften the small fixes after guessing ahead
+            }
+            float t = 1f - Mathf.Exp(-k * Time.unscaledDeltaTime);
+            transform.position = Vector3.Lerp(transform.position, pos, t);
+            transform.rotation = Quaternion.Slerp(transform.rotation, rot, t);
+        }
+
+        // Where they were at `time` on their clock: between the two updates around it, or guessed a little ahead.
+        void Sample(float time, out Vector3 pos, out Quaternion rot)
+        {
+            int n = _snaps.Count;
+            var first = _snaps[0];
+            if (n == 1 || time <= first.T) { pos = first.P; rot = first.R; return; }
+            var last = _snaps[n - 1];
+            if (time >= last.T)
+            {
+                var prev = _snaps[n - 2];
+                var vel = (last.P - prev.P) / Mathf.Max(0.02f, last.T - prev.T);
+                pos = last.P + vel * Mathf.Min(time - last.T, MaxExtrapolate);
+                rot = last.R;
+                return;
+            }
+            for (int i = n - 1; i > 0; i--)
+            {
+                var a = _snaps[i - 1];
+                if (a.T > time) continue;
+                var b = _snaps[i];
+                float f = Mathf.Clamp01((time - a.T) / Mathf.Max(0.0001f, b.T - a.T));
+                pos = Vector3.LerpUnclamped(a.P, b.P, f);
+                rot = Quaternion.Slerp(a.R, b.R, f);
+                return;
+            }
+            pos = first.P; rot = first.R;
         }
     }
 }

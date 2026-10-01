@@ -250,6 +250,75 @@ namespace SubnauticaMP
             rt.offsetMin = rt.offsetMax = Vector2.zero;
         }
 
+        static readonly Type TmpUgui = Type.GetType("TMPro.TextMeshProUGUI, Unity.TextMeshPro");
+        static readonly Type TmpAlign = Type.GetType("TMPro.TextAlignmentOptions, Unity.TextMeshPro");
+        static readonly Type TmpStyles = Type.GetType("TMPro.FontStyles, Unity.TextMeshPro");
+        static readonly Type RectMask = Type.GetType("UnityEngine.UI.RectMask2D, UnityEngine.UI");
+
+        // True if the copy really is a working text box (copies of the game's UI can lose their scripts once
+        // the scene they came from is gone: then they look right but you can't type in them).
+        public static bool Works(GameObject go) => Intact(go) && FindInput(go) != null;
+
+        public static bool Intact(GameObject go) => go != null && go.GetComponentsInChildren<Component>(true).All(c => c != null);
+
+        // A text box built from scratch with Unity's own parts (sleeping, in Holder): never depends on a game
+        // menu that may have been unloaded.
+        public static GameObject MakeInput(string name)
+        {
+            if (TmpInput == null || TmpUgui == null) return null;
+            Component font = null;
+            foreach (var o in Resources.FindObjectsOfTypeAll(TmpText))
+                if (o is Component c && c != null && c.gameObject.scene.IsValid() && Game.TryGet(TmpText, c, "font") != null) { font = c; break; }
+
+            var root = SolidImage(Holder, name, new Color(0f, 0f, 0f, 0.45f));
+            var area = new GameObject("Text Area");
+            area.transform.SetParent(root.transform, false);
+            Stretch(area);
+            Rect(area).offsetMin = new Vector2(12f, 6f);
+            Rect(area).offsetMax = new Vector2(-12f, -6f);
+            if (RectMask != null) area.AddComponent(RectMask);
+
+            Component MakeText(string n, Color color, bool italic)
+            {
+                var go = new GameObject(n);
+                go.transform.SetParent(area.transform, false);
+                Stretch(go);
+                var t = go.AddComponent(TmpUgui);
+                if (font != null) Game.Set(TmpText, t, "font", Game.TryGet(TmpText, font, "font"));
+                Game.Set(TmpText, t, "fontSize", 22f);
+                Game.Set(TmpText, t, "color", color);
+                Game.Set(TmpText, t, "enableWordWrapping", false);
+                Game.Set(TmpText, t, "richText", false);
+                if (TmpAlign != null) Game.Set(TmpText, t, "alignment", Enum.Parse(TmpAlign, "MidlineLeft"));
+                if (italic && TmpStyles != null) Game.Set(TmpText, t, "fontStyle", Enum.Parse(TmpStyles, "Italic"));
+                return t;
+            }
+            var placeholder = MakeText("Placeholder", new Color(1f, 1f, 1f, 0.45f), true);
+            var text = MakeText("Text", Color.white, false);
+
+            var input = root.AddComponent(TmpInput);
+            Game.Set(TmpInput, input, "textViewport", Rect(area));
+            Game.Set(TmpInput, input, "textComponent", text);
+            Game.Set(TmpInput, input, "placeholder", placeholder);
+            if (Image != null) Game.Set(Selectable, input, "targetGraphic", root.GetComponent(Image));
+            Game.Set(TmpInput, input, "caretColor", Color.white);
+            Game.Set(TmpInput, input, "customCaretColor", true);
+            Game.Set(TmpInput, input, "selectionColor", new Color(0.3f, 0.7f, 1f, 0.5f));
+            return root;
+        }
+
+        // A working text box: a copy of `source` if that copy works, else one built from scratch.
+        public static GameObject InputFrom(GameObject source, string name)
+        {
+            if (source != null)
+            {
+                var copy = Copy(source, name);
+                if (Works(copy)) return copy;
+                UnityEngine.Object.DestroyImmediate(copy);
+            }
+            return MakeInput(name);
+        }
+
         public static GameObject SolidImage(Transform parent, string name, Color color)
         {
             var go = new GameObject(name);

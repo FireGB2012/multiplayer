@@ -254,6 +254,7 @@ namespace SubnauticaMP.Shared
         public Quat LocalRotation;
         public string Gear = "";   // what they wear: "Body=RadiationSuit;Foots=Fins;..."
         public string Anim = "";   // animation switches that are on: "holding_knife,using_tool"
+        public float SentAt;       // sender's clock (s): others replay the movement on this timeline, so hitches don't jerk it
         public override PacketType Type => PacketType.PlayerState;
 
         public override void Write(BinaryWriter w)
@@ -268,6 +269,7 @@ namespace SubnauticaMP.Shared
             if (!string.IsNullOrEmpty(SubId)) { LocalPosition.Write(w); LocalRotation.Write(w); }
             w.Write(Gear ?? "");
             w.Write(Anim ?? "");
+            w.Write(SentAt);
         }
 
         public override void Read(BinaryReader r)
@@ -282,6 +284,7 @@ namespace SubnauticaMP.Shared
             if (SubId.Length > 0) { LocalPosition = Vec3.Read(r); LocalRotation = Quat.Read(r); }
             Gear = r.ReadString();
             Anim = r.ReadString();
+            if (r.BaseStream.Position < r.BaseStream.Length) SentAt = r.ReadSingle(); // older versions don't send it
         }
     }
 

@@ -40,6 +40,14 @@ public class Batch2Tests
     }
 
     [Fact]
+    public void PlayerStateCarriesTheSendersClock()
+    {
+        var p = new PlayerStatePacket { Held = "", SentAt = 123.25f };
+        var got = (PlayerStatePacket)Protocol.ReadPacket(new MemoryStream(Protocol.Serialize(p)));
+        Assert.Equal(123.25, (double)got.SentAt);
+    }
+
+    [Fact]
     public void VehicleStatsSnapshotsDockingAndCyclopsControls()
     {
         var path = Path.Combine(Path.GetTempPath(), "snmp-b2-" + Guid.NewGuid() + ".dat");

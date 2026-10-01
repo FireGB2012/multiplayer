@@ -83,16 +83,10 @@ namespace SubnauticaMP
             // chat box: a copy of the main menu's text box, or any text box the game has loaded
             try
             {
-                GameObject input = null;
-                foreach (var source in new[] { MainMenuUi.InputPrototype, UiKit.SceneInput() })
-                {
-                    if (source == null) continue;
-                    input = UnityEngine.Object.Instantiate(source, UiKit.Holder, false);
-                    if (UiKit.FindInput(input) != null) break;
-                    Plugin.Log.LogWarning("Chat box copy has no input: " + UiKit.Describe(input));
-                    UnityEngine.Object.DestroyImmediate(input);
-                    input = null;
-                }
+                // a copy of a text box in this scene, else one built from scratch (copies of the main menu's
+                // box lose their scripts once the menu is unloaded)
+                var input = UiKit.InputFrom(UiKit.SceneInput(), "SNMP_ChatInput");
+                if (input == null) Plugin.Log.LogWarning("No chat box: couldn't make a text box");
                 if (input != null)
                 {
                     UiKit.KeepInputOnly(input);
