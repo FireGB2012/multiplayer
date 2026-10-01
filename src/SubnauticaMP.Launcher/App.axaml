@@ -3,135 +3,89 @@
              x:Class="SubnauticaMP.Launcher.App"
              RequestedThemeVariant="Dark">
 
-  <!-- "Alterra PDA" theme (theme-factory: Ocean Depths + Tech Innovation).
-       Abyss background, PDA glass panels, scanner-cyan for the one main action, seafoam labels, cream text. -->
+  <!-- Subnautica PDA look: electric-blue glowing frame, near-black screen, frosted light-blue panels, white text. -->
   <Application.Resources>
-    <Color x:Key="Abyss">#06111B</Color>
-    <Color x:Key="Glass">#0B1E2C</Color>
-    <Color x:Key="GlassDeep">#081826</Color>
-    <Color x:Key="Edge">#1E5A6E</Color>
-    <Color x:Key="Scanner">#3FE0E8</Color>
-    <Color x:Key="Teal">#2D8B8B</Color>
-    <Color x:Key="Seafoam">#A8DADC</Color>
-    <Color x:Key="Cream">#F1FAEE</Color>
-
-    <SolidColorBrush x:Key="AbyssBrush" Color="#06111B" />
-    <SolidColorBrush x:Key="GlassBrush" Color="#0B1E2C" />
-    <SolidColorBrush x:Key="GlassDeepBrush" Color="#081826" />
-    <SolidColorBrush x:Key="EdgeBrush" Color="#1E5A6E" />
-    <SolidColorBrush x:Key="ScannerBrush" Color="#3FE0E8" />
-    <SolidColorBrush x:Key="TealBrush" Color="#2D8B8B" />
-    <SolidColorBrush x:Key="SeafoamBrush" Color="#A8DADC" />
-    <SolidColorBrush x:Key="MutedBrush" Color="#6FA9B3" />
-    <SolidColorBrush x:Key="CreamBrush" Color="#F1FAEE" />
-    <SolidColorBrush x:Key="OkBrush" Color="#5BD68B" />
-    <SolidColorBrush x:Key="WarnBrush" Color="#F2C14E" />
+    <SolidColorBrush x:Key="ScreenBrush" Color="#020A1A" />
+    <SolidColorBrush x:Key="PanelBrush" Color="#D9214F86" />
+    <SolidColorBrush x:Key="PanelEdgeBrush" Color="#5C9FE0" />
+    <SolidColorBrush x:Key="GlowBrush" Color="#3B8CFF" />
+    <SolidColorBrush x:Key="IceBrush" Color="#BFE2FF" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#93BCE6" />
+    <SolidColorBrush x:Key="WhiteBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="OkBrush" Color="#6BE39A" />
+    <SolidColorBrush x:Key="WarnBrush" Color="#FFC857" />
     <SolidColorBrush x:Key="BadBrush" Color="#FF7A6B" />
 
-    <!-- Fluent controls in theme colors -->
-    <SolidColorBrush x:Key="ButtonBackground" Color="#0E2A3B" />
-    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#134056" />
-    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#0B2232" />
-    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#0A1A26" />
-    <SolidColorBrush x:Key="ButtonForeground" Color="#F1FAEE" />
+    <!-- Fluent controls in PDA colors -->
+    <SolidColorBrush x:Key="ButtonBackground" Color="#1C4A82" />
+    <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#2862A8" />
+    <SolidColorBrush x:Key="ButtonBackgroundPressed" Color="#163D6E" />
+    <SolidColorBrush x:Key="ButtonBackgroundDisabled" Color="#132E52" />
+    <SolidColorBrush x:Key="ButtonForeground" Color="#FFFFFF" />
     <SolidColorBrush x:Key="ButtonForegroundPointerOver" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#A8DADC" />
-    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#4E6C78" />
-    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#2D8B8B" />
-    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#3FE0E8" />
-    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#3FE0E8" />
-    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#163445" />
+    <SolidColorBrush x:Key="ButtonForegroundPressed" Color="#BFE2FF" />
+    <SolidColorBrush x:Key="ButtonForegroundDisabled" Color="#6585AA" />
+    <SolidColorBrush x:Key="ButtonBorderBrush" Color="#5C9FE0" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPointerOver" Color="#9AD0FF" />
+    <SolidColorBrush x:Key="ButtonBorderBrushPressed" Color="#9AD0FF" />
+    <SolidColorBrush x:Key="ButtonBorderBrushDisabled" Color="#24466F" />
 
-    <SolidColorBrush x:Key="TextControlBackground" Color="#081826" />
-    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#0A1F2F" />
-    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#081826" />
-    <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="#0A1A26" />
-    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#1E5A6E" />
-    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#2D8B8B" />
-    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#3FE0E8" />
-    <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="#163445" />
-    <SolidColorBrush x:Key="TextControlForeground" Color="#F1FAEE" />
-    <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#F1FAEE" />
+    <SolidColorBrush x:Key="TextControlBackground" Color="#0B1F3D" />
+    <SolidColorBrush x:Key="TextControlBackgroundPointerOver" Color="#0E274B" />
+    <SolidColorBrush x:Key="TextControlBackgroundFocused" Color="#0B1F3D" />
+    <SolidColorBrush x:Key="TextControlBackgroundDisabled" Color="#0D213D" />
+    <SolidColorBrush x:Key="TextControlBorderBrush" Color="#3E79BD" />
+    <SolidColorBrush x:Key="TextControlBorderBrushPointerOver" Color="#5C9FE0" />
+    <SolidColorBrush x:Key="TextControlBorderBrushFocused" Color="#9AD0FF" />
+    <SolidColorBrush x:Key="TextControlBorderBrushDisabled" Color="#24466F" />
+    <SolidColorBrush x:Key="TextControlForeground" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="TextControlForegroundPointerOver" Color="#FFFFFF" />
     <SolidColorBrush x:Key="TextControlForegroundFocused" Color="#FFFFFF" />
-    <SolidColorBrush x:Key="TextControlForegroundDisabled" Color="#6FA9B3" />
-    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#5E8A96" />
-    <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#6FA9B3" />
-    <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#5E8A96" />
-    <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#2D8B8B" />
+    <SolidColorBrush x:Key="TextControlForegroundDisabled" Color="#93BCE6" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForeground" Color="#6E93BE" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundPointerOver" Color="#7FA3CC" />
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundFocused" Color="#6E93BE" />
+    <SolidColorBrush x:Key="TextControlSelectionHighlightColor" Color="#2F7BFF" />
 
-    <SolidColorBrush x:Key="ComboBoxBackground" Color="#081826" />
-    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#0A1F2F" />
-    <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#081826" />
-    <SolidColorBrush x:Key="ComboBoxBackgroundDisabled" Color="#0A1A26" />
-    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#1E5A6E" />
-    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#2D8B8B" />
-    <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#3FE0E8" />
-    <SolidColorBrush x:Key="ComboBoxBorderBrushDisabled" Color="#163445" />
-    <SolidColorBrush x:Key="ComboBoxForegroundDisabled" Color="#6FA9B3" />
-    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#0B1E2C" />
-    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#2D8B8B" />
+    <SolidColorBrush x:Key="ComboBoxBackground" Color="#0B1F3D" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundPointerOver" Color="#0E274B" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundPressed" Color="#0B1F3D" />
+    <SolidColorBrush x:Key="ComboBoxBackgroundDisabled" Color="#0D213D" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrush" Color="#3E79BD" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrushPointerOver" Color="#5C9FE0" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrushPressed" Color="#9AD0FF" />
+    <SolidColorBrush x:Key="ComboBoxBorderBrushDisabled" Color="#24466F" />
+    <SolidColorBrush x:Key="ComboBoxForegroundDisabled" Color="#93BCE6" />
+    <SolidColorBrush x:Key="ComboBoxDropDownBackground" Color="#0E274B" />
+    <SolidColorBrush x:Key="ComboBoxDropDownBorderBrush" Color="#5C9FE0" />
 
-    <SolidColorBrush x:Key="ListBoxItemBackgroundPointerOver" Color="#0E2A3B" />
-    <SolidColorBrush x:Key="ListBoxItemBackgroundSelected" Color="#134056" />
-    <SolidColorBrush x:Key="ListBoxItemBackgroundSelectedPointerOver" Color="#17506A" />
+    <SolidColorBrush x:Key="ListBoxItemBackgroundPointerOver" Color="#1C4A82" />
+    <SolidColorBrush x:Key="ListBoxItemBackgroundSelected" Color="#2862A8" />
+    <SolidColorBrush x:Key="ListBoxItemBackgroundSelectedPointerOver" Color="#2F70BE" />
   </Application.Resources>
 
   <Application.Styles>
     <FluentTheme>
       <FluentTheme.Palettes>
-        <ColorPaletteResources x:Key="Dark" Accent="#3FE0E8" RegionColor="#06111B" ErrorText="#FF7A6B"
-                               AltHigh="#06111B" AltLow="#06111B" AltMedium="#06111B" AltMediumHigh="#06111B" AltMediumLow="#06111B"
-                               BaseHigh="#F1FAEE" BaseLow="#1E5A6E" BaseMedium="#A8DADC" BaseMediumHigh="#CFEFF0" BaseMediumLow="#6FA9B3"
-                               ChromeAltLow="#CFEFF0" ChromeBlackHigh="#000000" ChromeBlackLow="#CFEFF0" ChromeBlackMedium="#000000"
-                               ChromeBlackMediumLow="#000000" ChromeDisabledHigh="#1E5A6E" ChromeDisabledLow="#5A7A8A" ChromeGray="#6FA9B3"
-                               ChromeHigh="#2D6B7E" ChromeLow="#0B1E2C" ChromeMedium="#0E2536" ChromeMediumLow="#0B1E2C" ChromeWhite="#F1FAEE"
-                               ListLow="#0E2A3B" ListMedium="#134056" />
+        <ColorPaletteResources x:Key="Dark" Accent="#3B8CFF" RegionColor="#020A1A" ErrorText="#FF7A6B"
+                               AltHigh="#020A1A" AltLow="#020A1A" AltMedium="#020A1A" AltMediumHigh="#020A1A" AltMediumLow="#020A1A"
+                               BaseHigh="#FFFFFF" BaseLow="#24466F" BaseMedium="#BFE2FF" BaseMediumHigh="#DDEFFF" BaseMediumLow="#93BCE6"
+                               ChromeAltLow="#DDEFFF" ChromeBlackHigh="#000000" ChromeBlackLow="#DDEFFF" ChromeBlackMedium="#000000"
+                               ChromeBlackMediumLow="#000000" ChromeDisabledHigh="#24466F" ChromeDisabledLow="#6585AA" ChromeGray="#93BCE6"
+                               ChromeHigh="#3E79BD" ChromeLow="#0B1F3D" ChromeMedium="#0E274B" ChromeMediumLow="#0B1F3D" ChromeWhite="#FFFFFF"
+                               ListLow="#1C4A82" ListMedium="#2862A8" />
       </FluentTheme.Palettes>
     </FluentTheme>
 
     <Style Selector="Window">
       <Setter Property="FontFamily" Value="fonts:Inter#Inter" />
-      <Setter Property="Foreground" Value="{StaticResource CreamBrush}" />
-    </Style>
-
-    <!-- ===== PDA shell ===== -->
-    <Style Selector="Border.shell">
-      <Setter Property="CornerRadius" Value="16" />
-      <Setter Property="BorderThickness" Value="1.5" />
-      <Setter Property="ClipToBounds" Value="True" />
-      <Setter Property="BorderBrush">
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-          <GradientStop Offset="0" Color="#3FE0E8" />
-          <GradientStop Offset="0.35" Color="#1E5A6E" />
-          <GradientStop Offset="0.7" Color="#123747" />
-          <GradientStop Offset="1" Color="#2D8B8B" />
-        </LinearGradientBrush>
-      </Setter>
-      <Setter Property="Background">
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-          <GradientStop Offset="0" Color="#0A1A27" />
-          <GradientStop Offset="1" Color="#07131E" />
-        </LinearGradientBrush>
-      </Setter>
-    </Style>
-    <Style Selector="Path.bracket">
-      <Setter Property="Stroke" Value="{StaticResource ScannerBrush}" />
-      <Setter Property="StrokeThickness" Value="2" />
-      <Setter Property="Opacity" Value="0.85" />
-      <Setter Property="IsHitTestVisible" Value="False" />
+      <Setter Property="Foreground" Value="{StaticResource WhiteBrush}" />
     </Style>
 
     <!-- ===== text ===== -->
-    <Style Selector="TextBlock.eyebrow">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="LetterSpacing" Value="2.5" />
-      <Setter Property="Foreground" Value="{StaticResource SeafoamBrush}" />
-    </Style>
-    <Style Selector="TextBlock.h2">
-      <Setter Property="FontSize" Value="15" />
+    <Style Selector="TextBlock.title">
+      <Setter Property="FontSize" Value="24" />
       <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="LetterSpacing" Value="1.5" />
     </Style>
     <Style Selector="TextBlock.hint">
       <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
@@ -140,27 +94,29 @@
       <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
     <Style Selector="TextBlock.label">
-      <Setter Property="Foreground" Value="{StaticResource SeafoamBrush}" />
+      <Setter Property="Foreground" Value="{StaticResource IceBrush}" />
       <Setter Property="FontSize" Value="11" />
-      <Setter Property="FontWeight" Value="SemiBold" />
-      <Setter Property="LetterSpacing" Value="1.5" />
+      <Setter Property="FontWeight" Value="Bold" />
+      <Setter Property="LetterSpacing" Value="1" />
       <Setter Property="Margin" Value="0,0,0,2" />
+    </Style>
+    <Style Selector="TextBlock.step">
+      <Setter Property="FontSize" Value="13" />
+      <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
     <Style Selector="TextBlock.code">
       <Setter Property="FontSize" Value="30" />
       <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="Foreground" Value="{StaticResource ScannerBrush}" />
       <Setter Property="LetterSpacing" Value="3" />
     </Style>
-    <Style Selector="TextBlock.step">
-      <Setter Property="Foreground" Value="{StaticResource SeafoamBrush}" />
-      <Setter Property="FontSize" Value="13" />
-      <Setter Property="TextWrapping" Value="Wrap" />
+    <Style Selector="TextBlock.rowtitle">
+      <Setter Property="FontSize" Value="15" />
+      <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
-    <Style Selector="TextBlock.num">
-      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
-      <Setter Property="FontSize" Value="13" />
-      <Setter Property="FontWeight" Value="Bold" />
+    <Style Selector="TextBlock.rowdetail">
+      <Setter Property="FontSize" Value="12" />
+      <Setter Property="Foreground" Value="{StaticResource IceBrush}" />
+      <Setter Property="TextTrimming" Value="CharacterEllipsis" />
     </Style>
     <Style Selector="TextBlock.ok">
       <Setter Property="Foreground" Value="{StaticResource OkBrush}" />
@@ -171,58 +127,65 @@
     <Style Selector="TextBlock.bad">
       <Setter Property="Foreground" Value="{StaticResource BadBrush}" />
     </Style>
+    <!-- on the Home rows the detail line stays light: the dot shows the state -->
+    <Style Selector="Border.row TextBlock.rowdetail">
+      <Setter Property="Foreground" Value="{StaticResource IceBrush}" />
+    </Style>
 
-    <!-- ===== panels ===== -->
+    <!-- ===== panels (frosted blue, like the PDA's pages) ===== -->
     <Style Selector="Border.card">
-      <Setter Property="Background" Value="#B30B1E2C" />
-      <Setter Property="BorderBrush" Value="{StaticResource EdgeBrush}" />
+      <Setter Property="Background" Value="{StaticResource PanelBrush}" />
+      <Setter Property="BorderBrush" Value="{StaticResource PanelEdgeBrush}" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="12" />
-      <Setter Property="Padding" Value="18,16" />
+      <Setter Property="Padding" Value="16,14" />
     </Style>
     <Style Selector="Border.inset">
-      <Setter Property="Background" Value="{StaticResource GlassDeepBrush}" />
-      <Setter Property="BorderBrush" Value="#163C4D" />
+      <Setter Property="Background" Value="#990B1F3D" />
+      <Setter Property="BorderBrush" Value="#3E79BD" />
       <Setter Property="BorderThickness" Value="1" />
       <Setter Property="CornerRadius" Value="8" />
       <Setter Property="Padding" Value="12,10" />
     </Style>
 
-    <!-- status chips: a dot + a word, colored by state -->
-    <Style Selector="Border.chip">
-      <Setter Property="CornerRadius" Value="999" />
-      <Setter Property="Padding" Value="11,5,13,5" />
-      <Setter Property="Background" Value="#A6061420" />
-      <Setter Property="BorderThickness" Value="1" />
-      <Setter Property="BorderBrush" Value="#2A5566" />
+    <!-- Home: list rows like the PDA's log, round icon on the left, status dot on the right -->
+    <Style Selector="Border.row">
+      <Setter Property="Padding" Value="8,8,12,8" />
+      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="Background" Value="#33102C55" />
     </Style>
-    <Style Selector="Border.chip TextBlock">
-      <Setter Property="FontSize" Value="12" />
-      <Setter Property="FontWeight" Value="SemiBold" />
+    <Style Selector="Border.bubble">
+      <Setter Property="Width" Value="40" />
+      <Setter Property="Height" Value="40" />
+      <Setter Property="CornerRadius" Value="20" />
+      <Setter Property="Background" Value="#123A6B" />
+      <Setter Property="BorderBrush" Value="#9AD0FF" />
+      <Setter Property="BorderThickness" Value="1.5" />
+    </Style>
+    <Style Selector="Path.glyph">
+      <Setter Property="Width" Value="20" />
+      <Setter Property="Height" Value="20" />
+      <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Stroke" Value="{StaticResource WhiteBrush}" />
+      <Setter Property="StrokeThickness" Value="1.6" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="StrokeJoin" Value="Round" />
+      <Setter Property="HorizontalAlignment" Value="Center" />
       <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="Border.chip Ellipse">
-      <Setter Property="Width" Value="8" />
-      <Setter Property="Height" Value="8" />
+    <Style Selector="Ellipse.dot">
+      <Setter Property="Width" Value="12" />
+      <Setter Property="Height" Value="12" />
       <Setter Property="VerticalAlignment" Value="Center" />
-      <Setter Property="Fill" Value="#5E8A96" />
+      <Setter Property="Fill" Value="#5E7FA6" />
     </Style>
-    <Style Selector="Border.chip.ok">
-      <Setter Property="BorderBrush" Value="#3A5BD68B" />
-    </Style>
-    <Style Selector="Border.chip.ok Ellipse">
+    <Style Selector="Border.row.ok Ellipse.dot">
       <Setter Property="Fill" Value="{StaticResource OkBrush}" />
     </Style>
-    <Style Selector="Border.chip.warn">
-      <Setter Property="BorderBrush" Value="#4DF2C14E" />
-    </Style>
-    <Style Selector="Border.chip.warn Ellipse">
+    <Style Selector="Border.row.warn Ellipse.dot">
       <Setter Property="Fill" Value="{StaticResource WarnBrush}" />
     </Style>
-    <Style Selector="Border.chip.bad">
-      <Setter Property="BorderBrush" Value="#59FF7A6B" />
-    </Style>
-    <Style Selector="Border.chip.bad Ellipse">
+    <Style Selector="Border.row.bad Ellipse.dot">
       <Setter Property="Fill" Value="{StaticResource BadBrush}" />
     </Style>
 
@@ -235,140 +198,137 @@
       <Setter Property="FontSize" Value="13" />
     </Style>
     <Style Selector="Button.primary">
-      <Setter Property="Foreground" Value="#04121C" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
       <Setter Property="FontWeight" Value="Bold" />
       <Setter Property="HorizontalContentAlignment" Value="Center" />
       <Setter Property="VerticalContentAlignment" Value="Center" />
       <Setter Property="Padding" Value="18,12" />
-      <Setter Property="CornerRadius" Value="10" />
-      <Setter Property="BorderThickness" Value="0" />
+      <Setter Property="CornerRadius" Value="12" />
+      <Setter Property="BorderThickness" Value="1.5" />
+      <Setter Property="BorderBrush" Value="#BFE2FF" />
       <Setter Property="Background">
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-          <GradientStop Offset="0" Color="#5FF0F5" />
-          <GradientStop Offset="1" Color="#1FB6C9" />
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+          <GradientStop Offset="0" Color="#5DB3FF" />
+          <GradientStop Offset="1" Color="#1767EA" />
         </LinearGradientBrush>
-      </Setter>
-    </Style>
-    <Style Selector="Button.primary /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="BoxShadow" Value="0 0 22 0 #593FE0E8" />
-      <Setter Property="Transitions">
-        <Transitions>
-          <BoxShadowsTransition Property="BoxShadow" Duration="0:0:0.18" />
-        </Transitions>
       </Setter>
     </Style>
     <Style Selector="Button.primary:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background">
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-          <GradientStop Offset="0" Color="#8AF7FA" />
-          <GradientStop Offset="1" Color="#36CADB" />
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+          <GradientStop Offset="0" Color="#86C8FF" />
+          <GradientStop Offset="1" Color="#2B7BF5" />
         </LinearGradientBrush>
       </Setter>
-      <Setter Property="Foreground" Value="#04121C" />
-      <Setter Property="BoxShadow" Value="0 0 34 2 #8C3FE0E8" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
+      <Setter Property="BorderBrush" Value="#FFFFFF" />
     </Style>
     <Style Selector="Button.primary:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#1FB6C9" />
-      <Setter Property="Foreground" Value="#04121C" />
+      <Setter Property="Background" Value="#1767EA" />
+      <Setter Property="Foreground" Value="#FFFFFF" />
     </Style>
     <Style Selector="Button.primary:disabled /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="#14313F" />
-      <Setter Property="Foreground" Value="#4E6C78" />
-      <Setter Property="BoxShadow" Value="0 0 0 0 Transparent" />
+      <Setter Property="Background" Value="#183A66" />
+      <Setter Property="Foreground" Value="#6585AA" />
     </Style>
     <Style Selector="Button.play">
-      <Setter Property="FontSize" Value="28" />
-      <Setter Property="CornerRadius" Value="10" />
+      <Setter Property="FontSize" Value="30" />
+      <Setter Property="CornerRadius" Value="16" />
     </Style>
     <Style Selector="Button.danger">
-      <Setter Property="BorderBrush" Value="#59FF7A6B" />
+      <Setter Property="BorderBrush" Value="#99FF7A6B" />
     </Style>
     <Style Selector="Button.danger:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="BorderBrush" Value="{StaticResource BadBrush}" />
-      <Setter Property="Background" Value="#2A1A1E" />
+      <Setter Property="Background" Value="#4A2230" />
+    </Style>
+    <!-- minimize / close in the screen's corner -->
+    <Style Selector="Button.chrome">
+      <Setter Property="Width" Value="32" />
+      <Setter Property="Height" Value="32" />
+      <Setter Property="Padding" Value="0" />
+      <Setter Property="CornerRadius" Value="16" />
+      <Setter Property="HorizontalContentAlignment" Value="Center" />
+      <Setter Property="VerticalContentAlignment" Value="Center" />
+      <Setter Property="Background" Value="#123A6B" />
+    </Style>
+    <Style Selector="Button.chrome Path">
+      <Setter Property="Stroke" Value="{StaticResource WhiteBrush}" />
+      <Setter Property="StrokeThickness" Value="1.8" />
+      <Setter Property="StrokeLineCap" Value="Round" />
+      <Setter Property="Width" Value="12" />
+      <Setter Property="Height" Value="12" />
+    </Style>
+    <Style Selector="Button.close:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="#C8453A" />
+      <Setter Property="BorderBrush" Value="#FF9A8F" />
     </Style>
 
-    <!-- ===== sidebar navigation (a TabControl with its tabs on the left) ===== -->
-    <Style Selector="TabControl.nav">
+    <!-- ===== PDA tabs: a strip across the top of the screen, like the game's PDA ===== -->
+    <Style Selector="TabControl.pda">
       <Setter Property="Padding" Value="0" />
       <Setter Property="Template">
         <ControlTemplate>
-          <Grid ColumnDefinitions="96,*">
-            <Border Background="#66040D15" BorderBrush="#143746" BorderThickness="0,0,1,0">
-              <DockPanel>
-                <!-- emblem -->
-                <Panel DockPanel.Dock="Top" Width="44" Height="44" Margin="0,18,0,18" HorizontalAlignment="Center">
-                  <Path Data="M22,1 L40,11.5 L40,32.5 L22,43 L4,32.5 L4,11.5 Z" Stroke="{StaticResource ScannerBrush}" StrokeThickness="1.5"
-                        Fill="#1A3FE0E8" />
-                  <TextBlock Text="MP" FontWeight="Bold" FontSize="13" LetterSpacing="1" Foreground="{StaticResource ScannerBrush}"
-                             HorizontalAlignment="Center" VerticalAlignment="Center" />
-                </Panel>
-                <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
-              </DockPanel>
+          <DockPanel>
+            <Border DockPanel.Dock="Top" HorizontalAlignment="Center" Height="52" Padding="6" CornerRadius="14"
+                    Background="#59214F86" BorderBrush="#3E79BD" BorderThickness="1">
+              <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
             </Border>
-            <ContentPresenter Grid.Column="1" Name="PART_SelectedContentHost" Margin="{TemplateBinding Padding}"
-                              Content="{TemplateBinding SelectedContent}" ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
-          </Grid>
+            <ContentPresenter Name="PART_SelectedContentHost" Content="{TemplateBinding SelectedContent}"
+                              ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+          </DockPanel>
         </ControlTemplate>
       </Setter>
       <Setter Property="ItemsPanel">
         <ItemsPanelTemplate>
-          <StackPanel Orientation="Vertical" Spacing="6" />
+          <StackPanel Orientation="Horizontal" Spacing="4" />
         </ItemsPanelTemplate>
       </Setter>
     </Style>
-    <Style Selector="TabControl.nav > TabItem">
-      <Setter Property="Foreground" Value="{StaticResource MutedBrush}" />
+    <Style Selector="TabControl.pda > TabItem">
+      <Setter Property="Foreground" Value="{StaticResource IceBrush}" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Cursor" Value="Hand" />
       <Setter Property="Template">
         <ControlTemplate>
-          <Panel Margin="10,0">
-            <Border Name="bg" Background="{TemplateBinding Background}" CornerRadius="8" Padding="0,11,0,9">
-              <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
-                                HorizontalContentAlignment="Center" Foreground="{TemplateBinding Foreground}" />
-            </Border>
-            <Border Name="pipe" Width="3" CornerRadius="2" Margin="-6,14" HorizontalAlignment="Left" Background="Transparent" />
-          </Panel>
+          <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
+                  CornerRadius="9" Padding="16,0" MinWidth="110">
+            <ContentPresenter Name="PART_ContentPresenter" Content="{TemplateBinding Header}" ContentTemplate="{TemplateBinding HeaderTemplate}"
+                              HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Foreground="{TemplateBinding Foreground}" />
+          </Border>
         </ControlTemplate>
       </Setter>
+      <Setter Property="BorderBrush" Value="Transparent" />
     </Style>
-    <Style Selector="TabControl.nav > TabItem:pointerover">
-      <Setter Property="Background" Value="#0E2A3B" />
-      <Setter Property="Foreground" Value="{StaticResource SeafoamBrush}" />
+    <Style Selector="TabControl.pda > TabItem:pointerover">
+      <Setter Property="Background" Value="#2A5A9A" />
+      <Setter Property="Foreground" Value="{StaticResource WhiteBrush}" />
     </Style>
-    <Style Selector="TabControl.nav > TabItem:selected">
-      <Setter Property="Background" Value="#16405A" />
-      <Setter Property="Foreground" Value="{StaticResource ScannerBrush}" />
+    <Style Selector="TabControl.pda > TabItem:selected">
+      <Setter Property="Background" Value="#4F95E8" />
+      <Setter Property="BorderBrush" Value="#CFE8FF" />
+      <Setter Property="Foreground" Value="{StaticResource WhiteBrush}" />
     </Style>
-    <Style Selector="TabControl.nav > TabItem:selected /template/ Border#pipe">
-      <Setter Property="Background" Value="{StaticResource ScannerBrush}" />
-    </Style>
-    <Style Selector="TabControl.nav > TabItem Path.icon">
-      <Setter Property="Stroke" Value="{StaticResource MutedBrush}" />
-      <Setter Property="Width" Value="22" />
-      <Setter Property="Height" Value="22" />
+    <Style Selector="TabControl.pda > TabItem Path.icon">
+      <Setter Property="Width" Value="18" />
+      <Setter Property="Height" Value="18" />
       <Setter Property="Stretch" Value="Uniform" />
+      <Setter Property="Stroke" Value="{StaticResource IceBrush}" />
       <Setter Property="StrokeThickness" Value="1.8" />
       <Setter Property="StrokeLineCap" Value="Round" />
       <Setter Property="StrokeJoin" Value="Round" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
-    <Style Selector="TabControl.nav > TabItem:pointerover Path.icon">
-      <Setter Property="Stroke" Value="{StaticResource SeafoamBrush}" />
+    <Style Selector="TabControl.pda > TabItem:selected Path.icon">
+      <Setter Property="Stroke" Value="{StaticResource WhiteBrush}" />
     </Style>
-    <Style Selector="TabControl.nav > TabItem:selected Path.icon">
-      <Setter Property="Stroke" Value="{StaticResource ScannerBrush}" />
-    </Style>
-    <Style Selector="TabControl.nav > TabItem TextBlock.navlabel">
-      <Setter Property="FontSize" Value="11" />
-      <Setter Property="FontWeight" Value="Bold" />
-      <Setter Property="LetterSpacing" Value="1.5" />
-      <Setter Property="HorizontalAlignment" Value="Center" />
-      <Setter Property="Margin" Value="0,6,0,0" />
+    <Style Selector="TabControl.pda > TabItem TextBlock.navlabel">
+      <Setter Property="FontSize" Value="14" />
+      <Setter Property="FontWeight" Value="SemiBold" />
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
-    <!-- ===== lists / log ===== -->
+    <!-- ===== lists ===== -->
     <Style Selector="ListBox">
       <Setter Property="Background" Value="Transparent" />
     </Style>

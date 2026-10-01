@@ -3,205 +3,118 @@
         x:Class="SubnauticaMP.Launcher.MainWindow"
         Title="Subnautica Multiplayer"
         Icon="/Assets/icon.ico"
-        Width="1000" Height="720" MinWidth="820" MinHeight="620"
-        Background="{StaticResource AbyssBrush}"
+        Width="1120" Height="690" CanResize="False"
+        SystemDecorations="None" TransparencyLevelHint="Transparent" Background="Transparent"
         WindowStartupLocation="CenterScreen">
 
-  <!-- The PDA: a glass device with glowing edges and corner brackets. Inside it, a game-launcher layout. -->
-  <Panel Margin="14">
-    <!-- soft glow around the device (the shell itself clips, so the glow lives on its own layer) -->
-    <Border CornerRadius="16" Background="#0A1A27" BoxShadow="0 0 26 0 #383FE0E8" />
-    <Border Classes="shell">
-      <Grid RowDefinitions="Auto,*,Auto">
+  <!-- The window IS the PDA: a white handle with a rubber grip on the left (drag it to move the window),
+       a glowing blue frame and the dark screen. Everything happens on the screen. -->
+  <Grid>
+    <!-- blue frame -->
+    <Border Margin="128,16,16,16" CornerRadius="42" Padding="20" BoxShadow="0 0 26 3 #992F7BFF">
+      <Border.Background>
+        <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+          <GradientStop Offset="0" Color="#4AA6FF" />
+          <GradientStop Offset="0.5" Color="#1767EA" />
+          <GradientStop Offset="1" Color="#0C4FCB" />
+        </LinearGradientBrush>
+      </Border.Background>
 
-        <!-- top strip -->
-        <Border Grid.Row="0" Padding="22,11" BorderBrush="#143746" BorderThickness="0,0,0,1" Background="#4D040D15">
-          <Grid ColumnDefinitions="Auto,*,Auto">
-            <Path Data="M0,10 L10,0 L10,10 Z" Fill="{StaticResource ScannerBrush}" Width="10" Height="10" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" Classes="eyebrow" Margin="10,0,0,0" VerticalAlignment="Center"
-                       Text="PDA  //  ALTERRA SURVIVAL NETWORK" />
-            <Border Grid.Column="2" CornerRadius="999" Padding="10,3" BorderBrush="#2A5566" BorderThickness="1">
-              <TextBlock x:Name="VersionText" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SeafoamBrush}" />
-            </Border>
-          </Grid>
-        </Border>
+      <!-- screen -->
+      <Border CornerRadius="24" Background="#020A1A" BorderBrush="#86C8FF" BorderThickness="1.5"
+              BoxShadow="inset 0 0 44 6 #8C2F7BFF" Padding="20,12,20,12" ClipToBounds="True">
+        <Grid RowDefinitions="Auto,*,Auto">
+          <TabControl Grid.RowSpan="2" x:Name="Tabs" Classes="pda">
 
-        <!-- sidebar + pages -->
-        <TabControl Grid.Row="1" x:Name="Tabs" Classes="nav">
+            <!-- ================= HOME ================= -->
+            <TabItem>
+              <TabItem.Header>
+                <StackPanel Orientation="Horizontal" Spacing="8">
+                  <Path Classes="icon" Data="M4,11 L12,4 L20,11 V20 H4 Z M10,20 V14.5 H14 V20" />
+                  <TextBlock Classes="navlabel" Text="Home" />
+                </StackPanel>
+              </TabItem.Header>
 
-          <!-- ================= PLAY ================= -->
-          <TabItem>
-            <TabItem.Header>
-              <StackPanel>
-                <Path Classes="icon" Data="M4,11 L12,4 L20,11 V20 H4 Z M10,20 V14.5 H14 V20" />
-                <TextBlock Classes="navlabel" Text="HOME" />
-              </StackPanel>
-            </TabItem.Header>
+              <Grid RowDefinitions="Auto,Auto,*,Auto" Margin="6,14,6,4">
+                <StackPanel Spacing="2" Margin="2,0,0,14">
+                  <TextBlock Text="Subnautica Multiplayer" Classes="title" />
+                  <TextBlock Classes="hint" Text="Play the whole game together with your friends." />
+                </StackPanel>
 
-            <Grid RowDefinitions="*,Auto" Margin="22,20,22,20">
-
-              <!-- hero banner: the ocean, drawn (no pictures to ship) -->
-              <Border CornerRadius="12" ClipToBounds="True" MinHeight="250" BorderBrush="#1E5A6E" BorderThickness="1">
-                <Panel>
-                  <Panel.Background>
-                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="35%,100%">
-                      <GradientStop Offset="0" Color="#11607F" />
-                      <GradientStop Offset="0.45" Color="#0A3550" />
-                      <GradientStop Offset="1" Color="#06111B" />
-                    </LinearGradientBrush>
-                  </Panel.Background>
-
-                  <Viewbox Stretch="UniformToFill" HorizontalAlignment="Right" VerticalAlignment="Bottom">
-                    <Canvas Width="840" Height="400">
-                      <!-- sun glow at the surface -->
-                      <Ellipse Canvas.Left="340" Canvas.Top="-190" Width="460" Height="300">
-                        <Ellipse.Fill>
-                          <RadialGradientBrush>
-                            <GradientStop Offset="0" Color="#553FE0E8" />
-                            <GradientStop Offset="1" Color="#003FE0E8" />
-                          </RadialGradientBrush>
-                        </Ellipse.Fill>
-                      </Ellipse>
-                      <!-- light rays -->
-                      <Polygon Points="470,0 510,0 420,400 340,400" Opacity="0.55">
-                        <Polygon.Fill>
-                          <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                            <GradientStop Offset="0" Color="#663FE0E8" /><GradientStop Offset="1" Color="#003FE0E8" />
-                          </LinearGradientBrush>
-                        </Polygon.Fill>
-                      </Polygon>
-                      <Polygon Points="550,0 570,0 560,400 510,400" Opacity="0.45">
-                        <Polygon.Fill>
-                          <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                            <GradientStop Offset="0" Color="#663FE0E8" /><GradientStop Offset="1" Color="#003FE0E8" />
-                          </LinearGradientBrush>
-                        </Polygon.Fill>
-                      </Polygon>
-                      <Polygon Points="620,0 680,0 760,400 650,400" Opacity="0.4">
-                        <Polygon.Fill>
-                          <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                            <GradientStop Offset="0" Color="#553FE0E8" /><GradientStop Offset="1" Color="#003FE0E8" />
-                          </LinearGradientBrush>
-                        </Polygon.Fill>
-                      </Polygon>
-                      <Polygon Points="720,0 740,0 840,293.333 840,400 810,400" Opacity="0.3">
-                        <Polygon.Fill>
-                          <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
-                            <GradientStop Offset="0" Color="#553FE0E8" /><GradientStop Offset="1" Color="#003FE0E8" />
-                          </LinearGradientBrush>
-                        </Polygon.Fill>
-                      </Polygon>
-                      <!-- the seabed scene sits along the bottom -->
-                      <Canvas Canvas.Left="40" Canvas.Top="100" Width="800" Height="300">
-                        <!-- far rocks -->
-                      <Path Fill="#0A2C3E" Data="M0,236 C70,214 120,232 190,222 C260,212 300,190 360,204 C420,218 470,196 540,206 C610,216 660,190 720,200 C760,207 785,198 800,200 L800,300 L0,300 Z" />
-                      <!-- kelp -->
-                      <Path Stroke="#0F5A55" StrokeThickness="5" StrokeLineCap="Round" Opacity="0.9"
-                            Data="M640,262 C630,230 652,206 640,176 C630,150 648,128 640,104 M664,264 C676,238 656,214 668,188 C678,166 662,146 672,126 M612,266 C604,246 618,228 610,206" />
-                      <Path Stroke="#0C4744" StrokeThickness="4" StrokeLineCap="Round" Opacity="0.85"
-                            Data="M742,262 C734,238 750,218 742,194 C736,176 748,160 742,144 M764,266 C772,246 760,230 768,210" />
-                      <!-- near seabed -->
-                      <Path Fill="#05111A" Data="M0,262 C90,246 150,270 240,258 C330,246 380,272 470,260 C560,248 610,270 700,256 C740,250 780,258 800,254 L800,300 L0,300 Z" />
-                      <!-- coral tufts -->
-                      <Path Fill="#123F4A" Data="M520,262 C516,250 524,244 528,252 C530,240 540,240 540,252 C546,244 554,250 550,262 Z" />
-                      <Path Fill="#2A2342" Data="M690,258 C686,246 694,240 698,248 C700,236 710,236 710,248 C716,240 724,246 720,258 Z" />
-
-                      <!-- bubbles -->
-                      <Ellipse Canvas.Left="560" Canvas.Top="150" Width="10" Height="10" Stroke="#803FE0E8" StrokeThickness="1.2" Fill="#143FE0E8" />
-                      <Ellipse Canvas.Left="574" Canvas.Top="122" Width="6" Height="6" Stroke="#803FE0E8" StrokeThickness="1" Fill="#143FE0E8" />
-                      <Ellipse Canvas.Left="566" Canvas.Top="96" Width="4" Height="4" Stroke="#663FE0E8" StrokeThickness="1" />
-                      <Ellipse Canvas.Left="700" Canvas.Top="170" Width="8" Height="8" Stroke="#663FE0E8" StrokeThickness="1.2" Fill="#103FE0E8" />
-                      <Ellipse Canvas.Left="712" Canvas.Top="140" Width="5" Height="5" Stroke="#663FE0E8" StrokeThickness="1" />
-                      <Ellipse Canvas.Left="430" Canvas.Top="190" Width="7" Height="7" Stroke="#4D3FE0E8" StrokeThickness="1" />
-                      <Ellipse Canvas.Left="440" Canvas.Top="166" Width="4" Height="4" Stroke="#4D3FE0E8" StrokeThickness="1" />
-
-                      <!-- a little peeper in the distance -->
-                      <Path Fill="#1A6B7E" Opacity="0.8" Data="M610,92 C618,84 632,84 640,92 C632,100 618,100 610,92 Z M640,92 L650,85 L650,99 Z" />
-                      <Path Fill="#155A6B" Opacity="0.6" Data="M676,72 C681,67 690,67 695,72 C690,77 681,77 676,72 Z M695,72 L701,68 L701,76 Z" />
-                      </Canvas>
-                    </Canvas>
-                  </Viewbox>
-
-                  <!-- darken the left so the title reads -->
-                  <Border>
-                    <Border.Background>
-                      <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
-                        <GradientStop Offset="0" Color="#D906111B" />
-                        <GradientStop Offset="0.5" Color="#4006111B" />
-                        <GradientStop Offset="1" Color="#0006111B" />
-                      </LinearGradientBrush>
-                    </Border.Background>
+                <Grid Grid.Row="1">
+                  <Border Classes="card" Padding="8">
+                    <StackPanel Spacing="6">
+                      <Border x:Name="GameChip" Classes="row">
+                        <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                          <Border Classes="bubble"><Path Classes="glyph" Data="M3,8 H21 V18 H3 Z M7,12 H10 M8.5,10.5 V13.5 M15,12 H15.5 M17.5,13 H18" /></Border>
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="2">
+                            <TextBlock x:Name="GameChipText" Classes="rowtitle" />
+                            <TextBlock x:Name="PlayGameStatus" Classes="rowdetail" />
+                          </StackPanel>
+                          <Button Grid.Column="2" x:Name="PlayBrowseButton" Content="Browse..." VerticalAlignment="Center" Margin="0,0,12,0" />
+                          <Ellipse Grid.Column="3" Classes="dot" />
+                        </Grid>
+                      </Border>
+                      <Border x:Name="ModChip" Classes="row">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <Border Classes="bubble"><Path Classes="glyph" Data="M12,3 L20,7.5 V16.5 L12,21 L4,16.5 V7.5 Z M4,7.5 L12,12 L20,7.5 M12,12 V21" /></Border>
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="2">
+                            <TextBlock x:Name="ModChipText" Classes="rowtitle" />
+                            <TextBlock Classes="rowdetail" Text="BepInEx and the mod, in the game folder" />
+                          </StackPanel>
+                          <Ellipse Grid.Column="2" Classes="dot" />
+                        </Grid>
+                      </Border>
+                      <Border x:Name="ServerChip" Classes="row">
+                        <Grid ColumnDefinitions="Auto,*,Auto">
+                          <Border Classes="bubble"><Path Classes="glyph" Data="M4,4.5 H20 V10.5 H4 Z M4,13.5 H20 V19.5 H4 Z M7.5,7.5 H8.5 M7.5,16.5 H8.5" /></Border>
+                          <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="2">
+                            <TextBlock x:Name="ServerChipText" Classes="rowtitle" />
+                            <TextBlock Classes="rowdetail" Text="Host a world here on the Server tab, or join one in the game" />
+                          </StackPanel>
+                          <Ellipse Grid.Column="2" Classes="dot" />
+                        </Grid>
+                      </Border>
+                    </StackPanel>
                   </Border>
 
-                  <StackPanel Margin="34,0,34,30" VerticalAlignment="Bottom" Spacing="2">
-                    <TextBlock Classes="eyebrow" Text="CO-OP SURVIVAL  //  PLANET 4546B" Margin="0,0,0,8" />
-                    <TextBlock Text="SUBNAUTICA" FontSize="46" FontWeight="Bold" LetterSpacing="7" Foreground="White" />
-                    <TextBlock Text="MULTIPLAYER" FontSize="15" FontWeight="SemiBold" LetterSpacing="14" Foreground="{StaticResource ScannerBrush}" Margin="3,0,0,0" />
-                    <TextBlock Text="Explore the ocean together. Build, dive, survive." FontSize="13" Foreground="{StaticResource SeafoamBrush}" Margin="3,10,0,16" />
-                    <WrapPanel>
-                      <Border x:Name="GameChip" Classes="chip" Margin="0,0,8,6">
-                        <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse /><TextBlock x:Name="GameChipText" /></StackPanel>
-                      </Border>
-                      <Border x:Name="ModChip" Classes="chip" Margin="0,0,8,6">
-                        <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse /><TextBlock x:Name="ModChipText" /></StackPanel>
-                      </Border>
-                      <Border x:Name="ServerChip" Classes="chip" Margin="0,0,8,6">
-                        <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse /><TextBlock x:Name="ServerChipText" /></StackPanel>
-                      </Border>
-                    </WrapPanel>
-                  </StackPanel>
-                </Panel>
-              </Border>
+                </Grid>
 
-              <!-- bottom: game folder + steps on the left, the big PLAY on the right -->
-              <Grid Grid.Row="1" ColumnDefinitions="*,16,290" Margin="0,16,0,0">
-                <Border Classes="card" Padding="18,14">
-                  <StackPanel Spacing="12">
-                    <Border Classes="inset" Padding="12,8">
-                      <Grid ColumnDefinitions="*,Auto">
-                        <TextBlock x:Name="PlayGameStatus" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="13" />
-                        <Button Grid.Column="1" x:Name="PlayBrowseButton" Content="Browse..." Margin="10,0,0,0" VerticalAlignment="Center" />
-                      </Grid>
-                    </Border>
-                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
-                      <TextBlock Classes="num" Text="01" Margin="0,0,12,6" />
-                      <TextBlock Grid.Column="1" Classes="step" Margin="0,0,0,6" Text="PLAY opens Subnautica with the mod installed and up to date." />
-                      <TextBlock Grid.Row="1" Classes="num" Text="02" Margin="0,0,12,6" />
-                      <TextBlock Grid.Row="1" Grid.Column="1" Classes="step" Margin="0,0,0,6"
-                                 Text="In the game's menu: Multiplayer › host a world, or add a friend's join code." />
-                      <TextBlock Grid.Row="2" Classes="num" Text="03" Margin="0,0,12,0" />
-                      <TextBlock Grid.Row="2" Grid.Column="1" Classes="step"
-                                 Text="In game: Esc › Multiplayer (or F8) for players and chat. G = emote wheel." />
-                    </Grid>
-                  </StackPanel>
-                </Border>
+                <Grid Grid.Row="3" ColumnDefinitions="*,20,300" Margin="0,14,0,0">
+                  <Border Classes="card">
+                    <StackPanel Spacing="6">
+                      <TextBlock Classes="label" Text="HOW TO PLAY" />
+                      <TextBlock Classes="step" Text="Hit PLAY. The game opens with the mod installed." />
+                      <TextBlock Classes="step" Text="In the main menu click Multiplayer, then host a world or add a friend's join code." />
+                      <TextBlock Classes="step" Text="In game: Esc › Multiplayer or F8 for chat and players. Hold G for emotes." />
+                    </StackPanel>
+                  </Border>
 
-                <Grid Grid.Column="2" RowDefinitions="*,Auto">
-                  <!-- the glow sits behind the button on its own layer so it always shows -->
-                  <Border CornerRadius="10" Margin="2" BoxShadow="0 0 28 2 #663FE0E8" Background="#1FB6C9" />
-                  <Button x:Name="PlayButton" Classes="primary play" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
-                    <TextBlock x:Name="PlayButtonText" Text="PLAY" LetterSpacing="8" Margin="8,0,0,0" />
-                  </Button>
-                  <TextBlock Grid.Row="1" x:Name="PlayCaption" Classes="hint" TextAlignment="Center" Margin="0,10,0,0"
-                             Text="Installs the mod, then starts the game" />
+                  <Grid Grid.Column="2" RowDefinitions="*,Auto">
+                    <Border CornerRadius="16" Margin="3" BoxShadow="0 0 30 2 #992F7BFF" Background="#1767EA" />
+                    <Button x:Name="PlayButton" Classes="primary play" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" MinHeight="96">
+                      <TextBlock x:Name="PlayButtonText" Text="PLAY" LetterSpacing="8" Margin="8,0,0,0" />
+                    </Button>
+                    <TextBlock Grid.Row="1" x:Name="PlayCaption" Classes="hint" TextAlignment="Center" Margin="0,8,0,0"
+                               Text="Installs the mod, then starts the game" />
+                  </Grid>
                 </Grid>
               </Grid>
-            </Grid>
-          </TabItem>
+            </TabItem>
 
           <!-- ================= SERVER ================= -->
           <TabItem>
             <TabItem.Header>
-              <StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
                 <Path Classes="icon" Data="M4,4.5 H20 V10.5 H4 Z M4,13.5 H20 V19.5 H4 Z M7.5,7.5 H8.5 M7.5,16.5 H8.5" />
-                <TextBlock Classes="navlabel" Text="SERVER" />
+                <TextBlock Classes="navlabel" Text="Server" />
               </StackPanel>
             </TabItem.Header>
 
-            <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="22,20,22,20">
-              <StackPanel Spacing="2" Margin="2,0,0,16">
-                <TextBlock Text="Host a server" FontSize="22" FontWeight="Bold" />
-                <TextBlock Classes="hint" Text="Runs the world on this PC. It shows up in the game's Multiplayer list as 'Launcher server'." />
+            <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="6,14,6,4">
+              <StackPanel Spacing="2" Margin="2,0,0,12">
+                <TextBlock Text="Server" Classes="title" />
+                <TextBlock Classes="hint" Text="Runs the world on this PC. In the game it shows up as 'Launcher server'." />
               </StackPanel>
 
               <Border Grid.Row="1" Classes="card">
@@ -296,16 +209,16 @@
           <!-- ================= SETUP ================= -->
           <TabItem>
             <TabItem.Header>
-              <StackPanel>
+              <StackPanel Orientation="Horizontal" Spacing="8">
                 <Path Classes="icon" Data="M4,7 H13 M17,7 H20 M15,4.5 V9.5 M4,17 H7 M11,17 H20 M9,14.5 V19.5" />
-                <TextBlock Classes="navlabel" Text="SETUP" />
+                <TextBlock Classes="navlabel" Text="Setup" />
               </StackPanel>
             </TabItem.Header>
 
             <ScrollViewer AllowAutoHide="False">
-              <StackPanel Spacing="16" Margin="22,20,22,24">
+              <StackPanel Spacing="16" Margin="6,14,10,8">
                 <StackPanel Spacing="2" Margin="2,0,0,0">
-                  <TextBlock Text="Setup" FontSize="22" FontWeight="Bold" />
+                  <TextBlock Text="Setup" Classes="title" />
                   <TextBlock Classes="hint" Text="Where the game is and what's installed. PLAY does all of this for you; these are for fixing things by hand." />
                 </StackPanel>
 
@@ -358,22 +271,214 @@
               </StackPanel>
             </ScrollViewer>
           </TabItem>
-        </TabControl>
+          </TabControl>
 
-        <!-- status line -->
-        <Border Grid.Row="2" Padding="20,9" BorderBrush="#143746" BorderThickness="0,1,0,0" Background="#4D040D15">
-          <Grid ColumnDefinitions="Auto,*">
-            <TextBlock Text="›" Foreground="{StaticResource MutedBrush}" FontWeight="Bold" Margin="0,0,10,0" VerticalAlignment="Center" />
-            <TextBlock Grid.Column="1" x:Name="StatusText" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
-          </Grid>
-        </Border>
-      </Grid>
+          <!-- top bar around the tabs: version on the left (drag area), minimize / close on the right -->
+          <Border Grid.Row="0" x:Name="DragBar" Background="Transparent" HorizontalAlignment="Left" Width="220" Height="52" VerticalAlignment="Top">
+            <TextBlock x:Name="VersionText" Classes="hint" VerticalAlignment="Center" Margin="6,0,0,0" />
+          </Border>
+          <StackPanel Grid.Row="0" Orientation="Horizontal" Spacing="6" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,10,2,0">
+            <Button x:Name="MinButton" Classes="chrome" ToolTip.Tip="Minimize"><Path Data="M2,6 H10" /></Button>
+            <Button x:Name="CloseButton" Classes="chrome close" ToolTip.Tip="Close"><Path Data="M2.5,2.5 L9.5,9.5 M9.5,2.5 L2.5,9.5" /></Button>
+          </StackPanel>
+
+          <!-- status line -->
+          <Border Grid.Row="2" Padding="6,8,6,0" BorderBrush="#2A5A9A" BorderThickness="0,1,0,0" Margin="0,8,0,0">
+            <TextBlock x:Name="StatusText" FontSize="13" TextWrapping="Wrap" />
+          </Border>
+        </Grid>
+      </Border>
     </Border>
 
-    <!-- PDA corner brackets -->
-    <Path Classes="bracket" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-7,-7,0,0" Data="M0,34 L0,23 Q0,0 23,0 L34,0" />
-    <Path Classes="bracket" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-7,-7,0" Data="M0,0 L11,0 Q34,0 34,23 L34,34" />
-    <Path Classes="bracket" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-7,0,0,-7" Data="M0,0 L0,11 Q0,34 23,34 L34,34" />
-    <Path Classes="bracket" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-7,-7" Data="M34,0 L34,11 Q34,34 11,34 L0,34" />
-  </Panel>
+    <!-- the little light on the frame -->
+    <Ellipse Width="22" Height="22" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="196,30,0,0" Stroke="#CFE8FF" StrokeThickness="2">
+      <Ellipse.Fill>
+        <RadialGradientBrush>
+          <GradientStop Offset="0" Color="#FFFFFF" />
+          <GradientStop Offset="0.45" Color="#7FC0FF" />
+          <GradientStop Offset="1" Color="#1767EA" />
+        </RadialGradientBrush>
+      </Ellipse.Fill>
+    </Ellipse>
+
+    <!-- handle (drag to move the window) -->
+    <Viewbox x:Name="Handle" HorizontalAlignment="Left" VerticalAlignment="Stretch" Margin="0,4,0,4" Cursor="SizeAll">
+      <Canvas Width="170" Height="700">
+        <!-- white body with a waist that runs into the blue frame -->
+        <Path Data="M74,6 C134,6 168,32 168,96 C168,170 140,230 140,350 C140,470 168,530 168,604 C168,668 134,694 74,694 C32,694 10,668 10,620 L10,80 C10,32 32,6 74,6 Z" Stroke="#8E99A3" StrokeThickness="1.5">
+          <Path.Fill>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+              <GradientStop Offset="0" Color="#C9D1D8" />
+              <GradientStop Offset="0.45" Color="#FFFFFF" />
+              <GradientStop Offset="0.8" Color="#E6ECF1" />
+              <GradientStop Offset="1" Color="#AEB8C1" />
+            </LinearGradientBrush>
+          </Path.Fill>
+        </Path>
+        <!-- rubber grip with ridges on the outside -->
+        <Ellipse Canvas.Left="1" Canvas.Top="150" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="190" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="230" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="270" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="310" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="350" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="390" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="430" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="470" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="510" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Ellipse Canvas.Left="1" Canvas.Top="550" Width="14" Height="24" Fill="#30353A" Stroke="#15181B" StrokeThickness="1" />
+        <Path Data="M46,96 C80,96 88,180 88,350 C88,520 80,604 46,604 C18,604 8,520 8,350 C8,180 18,96 46,96 Z" Fill="#2A2E33" Stroke="#15181B" StrokeThickness="1.5" />
+        <Ellipse Canvas.Left="44" Canvas.Top="125" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="138" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="138" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="151" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="151" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="151" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="164" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="164" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="164" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="164" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="177" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="177" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="177" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="190" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="190" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="190" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="190" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="203" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="203" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="203" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="203" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="203" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="216" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="216" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="216" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="216" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="229" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="229" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="229" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="229" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="229" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="242" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="242" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="242" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="242" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="255" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="255" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="255" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="255" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="255" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="268" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="268" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="268" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="268" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="281" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="281" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="281" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="281" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="281" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="14" Canvas.Top="294" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="294" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="294" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="294" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="294" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="74" Canvas.Top="294" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="307" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="307" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="307" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="307" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="307" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="14" Canvas.Top="320" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="320" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="320" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="320" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="320" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="74" Canvas.Top="320" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="333" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="333" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="333" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="333" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="333" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="14" Canvas.Top="346" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="346" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="346" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="346" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="346" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="74" Canvas.Top="346" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="359" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="359" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="359" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="359" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="359" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="14" Canvas.Top="372" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="372" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="372" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="372" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="372" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="74" Canvas.Top="372" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="385" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="385" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="385" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="385" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="385" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="14" Canvas.Top="398" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="398" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="398" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="398" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="398" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="74" Canvas.Top="398" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="411" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="411" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="411" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="411" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="411" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="424" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="424" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="424" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="424" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="437" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="437" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="437" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="437" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="437" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="450" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="450" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="450" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="450" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="463" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="463" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="463" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="463" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="463" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="476" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="476" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="476" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="476" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="20" Canvas.Top="489" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="489" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="489" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="489" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="68" Canvas.Top="489" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="502" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="502" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="502" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="502" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="515" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="515" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="515" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="26" Canvas.Top="528" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="528" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="528" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="62" Canvas.Top="528" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="32" Canvas.Top="541" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="541" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="56" Canvas.Top="541" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="38" Canvas.Top="554" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="50" Canvas.Top="554" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <Ellipse Canvas.Left="44" Canvas.Top="567" Width="8" Height="8" Fill="#454B52" Stroke="#1C2024" StrokeThickness="1" />
+        <!-- side button -->
+        <Rectangle Canvas.Left="128" Canvas.Top="318" Width="12" Height="64" RadiusX="6" RadiusY="6" Fill="#EAF3FA" Stroke="#6FB4FF" StrokeThickness="1.5" />
+      </Canvas>
+    </Viewbox>
+  </Grid>
 </Window>

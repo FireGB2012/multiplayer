@@ -30,6 +30,12 @@ namespace SubnauticaMP.Launcher
             PortBox.Text = _settings.Port.ToString();
             GameDirBox.Text = GameFolder.IsGameDir(_settings.GameDir) ? _settings.GameDir : GameFinder.Detect() ?? _settings.GameDir;
 
+            // no OS title bar (the window is shaped like the PDA): drag it by the handle or the top bar
+            Handle.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
+            DragBar.PointerPressed += (_, e) => { if (e.GetCurrentPoint(this).Properties.IsLeftButtonPressed) BeginMoveDrag(e); };
+            MinButton.Click += (_, _) => WindowState = WindowState.Minimized;
+            CloseButton.Click += (_, _) => Close();
+
             // PLAY, or FIND GAME while the game folder isn't known yet (one main button, never two)
             PlayButton.Click += (_, _) => Run(GameFolder.IsGameDir(GameDir) && _search == null ? PlayGame : SearchPc);
             ServerButton.Click += (_, _) => Run(ToggleServer);
