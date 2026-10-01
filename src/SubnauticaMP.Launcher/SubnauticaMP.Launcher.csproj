@@ -13,7 +13,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>SubnauticaMP-Launcher</AssemblyName>
     <RootNamespace>SubnauticaMP.Launcher</RootNamespace>
-    <Version>0.23.0</Version>
+    <Version>0.24.0</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
@@ -54,16 +54,25 @@
                       ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true"
                       SetTargetFramework="TargetFramework=net472"
                       GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained;PublishSingleFile" />
+    <ProjectReference Include="..\SubnauticaMP.Optimizer\SubnauticaMP.Optimizer.csproj"
+                      ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true"
+                      SetTargetFramework="TargetFramework=net472"
+                      GlobalPropertiesToRemove="RuntimeIdentifier;SelfContained;PublishSingleFile" />
   </ItemGroup>
 
   <Target Name="EmbedMod" AfterTargets="ResolveProjectReferences">
     <PropertyGroup>
       <ModDll>$(MSBuildThisFileDirectory)..\SubnauticaMP.Plugin\bin\$(Configuration)\SubnauticaMP.dll</ModDll>
     </PropertyGroup>
+    <PropertyGroup>
+      <OptimizerDll>$(MSBuildThisFileDirectory)..\SubnauticaMP.Optimizer\bin\$(Configuration)\SubnauticaOptimizer.dll</OptimizerDll>
+    </PropertyGroup>
     <Error Condition="!Exists('$(ModDll)')" Text="Mod DLL not built: $(ModDll)" />
+    <Error Condition="!Exists('$(OptimizerDll)')" Text="Optimizer DLL not built: $(OptimizerDll)" />
     <ItemGroup>
       <EmbeddedResource Include="$(ModDll)" LogicalName="SubnauticaMP.dll" />
       <EmbeddedResource Include="$([System.IO.Path]::GetDirectoryName($(ModDll)))\Mono.Nat.dll" LogicalName="Mono.Nat.dll" />
+      <EmbeddedResource Include="$(OptimizerDll)" LogicalName="SubnauticaOptimizer.dll" />
     </ItemGroup>
   </Target>
 

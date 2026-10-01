@@ -90,6 +90,15 @@ Multiplayer saves are kept out of the normal single-player Load list. The launch
 The host is whoever plays on the server's PC (otherwise whoever joined first).
 Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.
 
+## Optimizer (installed with the mod)
+PLAY also installs **Subnautica Optimizer** (`BepInEx/plugins/SubnauticaOptimizer`), a small separate mod with safe speed-ups:
+the game's error reporting and analytics off (the error reporter runs on every log message), the game log keeps only
+warnings and errors, smaller garbage-collector steps per frame, and 1 queued frame (less input lag). **Performance mode**
+(off by default: shorter shadows, nearer LOD switch, optional FPS cap) is in `BepInEx/config/com.subnauticamp.optimizer.cfg`.
+The log says which tweaks are on (`Subnautica Optimizer 1.0.0: ...`).
+
+PLAY and Setup > Install BepInEx also download **Nautilus** (the library most Subnautica mods need) into `BepInEx/plugins/Nautilus`.
+
 ## Other mods (Nautilus)
 Works alongside mods built on [Nautilus](https://github.com/SubnauticaModding/Nautilus) (custom items, creatures, blueprints...):
 - When you join, the server checks everyone has the **same content mods as the host** (the host's mods define the world).

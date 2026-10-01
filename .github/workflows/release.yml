@@ -39,6 +39,7 @@ jobs:
       - name: Build
         run: |
           dotnet build src/SubnauticaMP.Plugin -c Release
+          dotnet build src/SubnauticaMP.Optimizer -c Release
           dotnet publish src/SubnauticaMP.Launcher -c Release -r win-x64 -o publish
           dotnet publish src/SubnauticaMP.Launcher -c Release -r linux-x64 -o publish-linux
 
@@ -46,9 +47,10 @@ jobs:
         run: |
           v=${{ steps.version.outputs.version }}
           d="SubnauticaMP-v$v"
-          mkdir -p "$d/manual-install/BepInEx/plugins/SubnauticaMP"
+          mkdir -p "$d/manual-install/BepInEx/plugins/SubnauticaMP" "$d/manual-install/BepInEx/plugins/SubnauticaOptimizer"
           cp publish/SubnauticaMP-Launcher.exe publish/*.dll "$d/"  # the launcher + the graphics DLLs it needs next to it
           cp src/SubnauticaMP.Plugin/bin/Release/SubnauticaMP.dll src/SubnauticaMP.Plugin/bin/Release/Mono.Nat.dll "$d/manual-install/BepInEx/plugins/SubnauticaMP/"
+          cp src/SubnauticaMP.Optimizer/bin/Release/SubnauticaOptimizer.dll "$d/manual-install/BepInEx/plugins/SubnauticaOptimizer/"
           cp docs/READ_ME.txt "$d/READ ME.txt"
           sed -i "s/{VERSION}/$v/" "$d/READ ME.txt"
           zip -qr9 "$d-Windows.zip" "$d"

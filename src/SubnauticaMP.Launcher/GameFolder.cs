@@ -25,6 +25,9 @@ namespace SubnauticaMP.Launcher
         public static bool HasBepInEx(string dir) =>
             File.Exists(Path.Combine(dir, "BepInEx", "core", "BepInEx.dll")) && File.Exists(Path.Combine(dir, "winhttp.dll"));
         public static string PluginDir(string dir) => Path.Combine(dir, "BepInEx", "plugins", "SubnauticaMP");
+        public static string OptimizerDir(string dir) => Path.Combine(dir, "BepInEx", "plugins", "SubnauticaOptimizer");
+        public static bool HasOptimizer(string dir) => File.Exists(Path.Combine(OptimizerDir(dir), "SubnauticaOptimizer.dll"));
+        public static bool HasNautilus(string dir) => File.Exists(Path.Combine(dir, "BepInEx", "plugins", "Nautilus", "Nautilus.dll"));
         static string ModPath(string dir) => Path.Combine(PluginDir(dir), "SubnauticaMP.dll");
 
         // ---------- mod ----------
@@ -57,17 +60,18 @@ namespace SubnauticaMP.Launcher
             catch { }
         }
 
-        // Copies the mod DLLs packed inside this exe into BepInEx\plugins.
+        // Copies the mods packed inside this exe into BepInEx\plugins: the multiplayer mod and the optimizer.
         public static void InstallMod(string dir)
         {
             Directory.CreateDirectory(PluginDir(dir));
-            foreach (var name in new[] { "SubnauticaMP.dll", "Mono.Nat.dll" })
+            Directory.CreateDirectory(OptimizerDir(dir));
+            foreach (var (name, folder) in new[] { ("SubnauticaMP.dll", PluginDir(dir)), ("Mono.Nat.dll", PluginDir(dir)), ("SubnauticaOptimizer.dll", OptimizerDir(dir)) })
             {
                 using var res = typeof(GameFolder).Assembly.GetManifestResourceStream(name)
                                 ?? throw new InvalidOperationException(name + " is missing from this launcher build");
                 try
                 {
-                    using var file = File.Create(Path.Combine(PluginDir(dir), name));
+                    using var file = File.Create(Path.Combine(folder, name));
                     res.CopyTo(file);
                 }
                 catch (IOException)
@@ -135,6 +139,66 @@ namespace SubnauticaMP.Launcher
                 catch (Exception e) { last = e; }
             }
             throw new Exception("Couldn't download BepInEx: " + last?.Message);
+        }
+
+        // ---------- Nautilus (the modding library most Subnautica mods need) ----------
+
+        const string NautilusReleases = "https://api.github.com/repos/SubnauticaModding/Nautilus/releases?per_page=10";
+        const string NautilusFallback = "https://github.com/SubnauticaModding/Nautilus/releases/download/1.0.0-pre.54/Nautilus_SN.STABLE_1.0.0.54.zip";
+
+        // Puts the newest Subnautica (not Below Zero) build of Nautilus into BepInEx\plugins\Nautilus.
+        public static async Task InstallNautilus(string dir, IProgress<string> progress)
+        {
+            using var http = new HttpClient { Timeout = TimeSpan.FromMinutes(2) };
+            http.DefaultRequestHeaders.UserAgent.ParseAdd("SubnauticaMP-Launcher");
+            var urls = new System.Collections.Generic.List<string>();
+            try
+            {
+                progress.Report("Looking up the newest Nautilus...");
+                var json = await http.GetStringAsync(NautilusReleases);
+                foreach (System.Text.RegularExpressions.Match m in System.Text.RegularExpressions.Regex.Matches(json,
+                             "\"browser_download_url\"\\s*:\\s*\"([^\"]*Nautilus_SN\\.STABLE[^\"]*\\.zip)\""))
+                    urls.Add(m.Groups[1].Value);
+            }
+            catch { } // GitHub API down / rate limited: use the known build
+            if (urls.Count > 1) urls.RemoveRange(1, urls.Count - 1); // newest only
+            urls.Add(NautilusFallback);
+
+            Exception last = null;
+            foreach (var url in urls)
+            {
+                try
+                {
+                    progress.Report("Downloading Nautilus...");
+                    var bytes = await http.GetByteArrayAsync(url);
+                    progress.Report("Unpacking Nautilus...");
+                    ExtractNautilus(bytes, dir);
+                    return;
+                }
+                catch (Exception e) { last = e; }
+            }
+            throw new Exception("Couldn't download Nautilus: " + last?.Message);
+        }
+
+        // The zip holds "plugins/Nautilus/Nautilus.dll" (and friends): everything goes under BepInEx.
+        internal static void ExtractNautilus(byte[] zipBytes, string dir)
+        {
+            var bepinex = Path.GetFullPath(Path.Combine(dir, "BepInEx"));
+            using var zip = new ZipArchive(new MemoryStream(zipBytes));
+            bool any = false;
+            foreach (var entry in zip.Entries)
+            {
+                var name = entry.FullName.Replace('\\', '/');
+                if (name.StartsWith("BepInEx/", StringComparison.OrdinalIgnoreCase)) name = name.Substring(8);
+                if (!name.StartsWith("plugins/", StringComparison.OrdinalIgnoreCase)) continue;
+                var target = Path.GetFullPath(Path.Combine(bepinex, name));
+                if (!target.StartsWith(bepinex, StringComparison.OrdinalIgnoreCase)) continue; // zip-slip guard
+                if (string.IsNullOrEmpty(entry.Name)) { Directory.CreateDirectory(target); continue; }
+                Directory.CreateDirectory(Path.GetDirectoryName(target));
+                entry.ExtractToFile(target, overwrite: true);
+                any = true;
+            }
+            if (!any) throw new InvalidDataException("That zip doesn't have Nautilus in it");
         }
     }
 }

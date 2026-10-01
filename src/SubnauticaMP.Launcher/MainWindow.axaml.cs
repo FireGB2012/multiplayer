@@ -160,7 +160,8 @@ namespace SubnauticaMP.Launcher
                 throw new Exception("BepInEx isn't installed yet. Hit 'Install BepInEx for me' in Setup (or install it yourself).");
             }
 
-            GameFolder.InstallMod(dir);
+            GameFolder.InstallMod(dir); // multiplayer + optimizer
+            if (!GameFolder.HasNautilus(dir)) await TryInstallNautilus(dir);
             GameFolder.ClearLaunchInfo(dir); // no auto-join: you pick a server in the game's menu
             SaveSettings();
             RefreshSetup();
@@ -511,12 +512,15 @@ namespace SubnauticaMP.Launcher
                 installed == null ? "Mod not installed yet (Play installs it for you)"
                 : installed >= bundled ? $"Mod v{installed.ToString(3)} installed"
                 : $"Mod v{installed.ToString(3)} is old, Play will update it to v{bundled.ToString(3)}");
+            bool optimizer = game && GameFolder.HasOptimizer(dir), nautilus = game && GameFolder.HasNautilus(dir);
+            Mark(OptimizerStatus, optimizer, optimizer ? "Optimizer installed" : "Optimizer not installed yet (Play installs it)");
+            Mark(NautilusStatus, nautilus, nautilus ? "Nautilus installed (the library other mods use)" : "Nautilus not installed yet (Play downloads it)");
 
             Chip(GameChip, GameChipText, game ? "ok" : "warn", game ? "Game found" : "Game not found yet");
             if (!game) Chip(ModChip, ModChipText, "off", "Mod waiting for the game");
             else if (!bep) Chip(ModChip, ModChipText, "warn", "BepInEx missing (Setup)");
-            else if (installed == null || installed < bundled) Chip(ModChip, ModChipText, "warn", "Mod installs on PLAY");
-            else Chip(ModChip, ModChipText, "ok", "Mod ready");
+            else if (installed == null || installed < bundled || !optimizer || !nautilus) Chip(ModChip, ModChipText, "warn", "Mods install on PLAY");
+            else Chip(ModChip, ModChipText, "ok", "Mods ready");
 
             InstallBepButton.IsEnabled = game;
             InstallModButton.IsEnabled = game;
@@ -610,16 +614,36 @@ namespace SubnauticaMP.Launcher
             try
             {
                 await GameFolder.InstallBepInEx(GameDir, new Progress<string>(s => Status(s)));
-                Status("BepInEx installed. Start the game once so it finishes setting itself up.");
+                GameFolder.InstallMod(GameDir);
+                var nautilus = await TryInstallNautilus(GameDir);
+                Status("BepInEx, multiplayer mod and optimizer installed" + (nautilus ? ", plus Nautilus" : "") +
+                       ". Start the game once so BepInEx finishes setting itself up.");
             }
             finally { RefreshSetup(); }
         }
 
-        void InstallMod()
+        // Nautilus is nice to have (other mods need it), never a reason not to play: a failed download just says so.
+        async Task<bool> TryInstallNautilus(string dir)
+        {
+            try
+            {
+                await GameFolder.InstallNautilus(dir, new Progress<string>(s => Status(s)));
+                return true;
+            }
+            catch (Exception e)
+            {
+                Status(e.Message + " (the game still works without it; Setup › Install / update mod tries again)", error: true);
+                return false;
+            }
+            finally { RefreshSetup(); }
+        }
+
+        async Task InstallMod()
         {
             GameFolder.InstallMod(GameDir);
             RefreshSetup();
-            Status("Mod installed.");
+            Status("Multiplayer mod and optimizer installed.");
+            if (await TryInstallNautilus(GameDir)) Status("Multiplayer mod, optimizer and Nautilus installed.");
         }
 
         void OpenModFolder()

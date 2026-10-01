@@ -1,0 +1,43 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Subnautica Optimizer: a small separate BepInEx 5 mod, installed next to the multiplayer mod by the launcher
+    (works on its own too). Builds like the multiplayer mod: against the game's DLLs if GameDir is set, else
+    against reference copies.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>SubnauticaOptimizer</AssemblyName>
+    <RootNamespace>SubnauticaOptimizer</RootNamespace>
+    <Version>1.0.0</Version>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Subnautica</GameDir>
+    <ManagedDir>$(GameDir)\Subnautica_Data\Managed</ManagedDir>
+    <UseGameDlls Condition="Exists('$(GameDir)\BepInEx\core\BepInEx.dll')">true</UseGameDlls>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseGameDlls)' == 'true'">
+    <Reference Include="BepInEx" HintPath="$(GameDir)\BepInEx\core\BepInEx.dll" Private="false" />
+    <Reference Include="0Harmony" HintPath="$(GameDir)\BepInEx\core\0Harmony.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(ManagedDir)\UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseGameDlls)' != 'true'">
+    <ProjectReference Include="..\..\lib\BepInEx.Ref\BepInEx.Ref.csproj" Private="false" />
+    <PackageReference Include="HarmonyX" Version="2.9.0" ExcludeAssets="runtime" PrivateAssets="all" />
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <Target Name="CopyToGame" AfterTargets="Build" Condition="'$(UseGameDlls)' == 'true'">
+    <MakeDir Directories="$(GameDir)\BepInEx\plugins\SubnauticaOptimizer" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\SubnauticaOptimizer" />
+  </Target>
+
+</Project>

@@ -60,7 +60,7 @@
                           <Border Classes="bubble"><Path Classes="glyph" Data="M12,3 L20,7.5 V16.5 L12,21 L4,16.5 V7.5 Z M4,7.5 L12,12 L20,7.5 M12,12 V21" /></Border>
                           <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,8,0" Spacing="2">
                             <TextBlock x:Name="ModChipText" Classes="rowtitle" />
-                            <TextBlock Classes="rowdetail" Text="BepInEx and the mod, in the game folder" />
+                            <TextBlock Classes="rowdetail" Text="BepInEx, Nautilus, multiplayer and the optimizer" />
                           </StackPanel>
                           <Ellipse Grid.Column="2" Classes="dot" />
                         </Grid>
@@ -276,6 +276,8 @@
                     <TextBlock x:Name="GameStatus" />
                     <TextBlock x:Name="BepStatus" />
                     <TextBlock x:Name="ModStatus" />
+                    <TextBlock x:Name="OptimizerStatus" />
+                    <TextBlock x:Name="NautilusStatus" />
                     <TextBlock x:Name="InstallHint" Classes="hint" Text="Set the game folder first." />
                     <WrapPanel Margin="0,4,0,0">
                       <Button x:Name="InstallBepButton" Content="Install BepInEx for me" Margin="0,0,8,8" />
