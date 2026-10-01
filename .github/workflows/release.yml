@@ -5,6 +5,11 @@ name: Release
 # Run it from the Actions tab (Run workflow) or push a tag like v0.5.6.
 on:
   workflow_dispatch:
+    inputs:
+      test:
+        description: "Test build: publish as a pre-release (vX-test), not the latest version"
+        type: boolean
+        default: false
   push:
     tags: ["v*"]
 
@@ -26,6 +31,7 @@ jobs:
         run: |
           v=$(grep -oP '(?<=<Version>)[^<]+' src/SubnauticaMP.Plugin/SubnauticaMP.Plugin.csproj)
           echo "version=$v" >> "$GITHUB_OUTPUT"
+          if [ "${{ inputs.test }}" = "true" ]; then echo "tag=v$v-test" >> "$GITHUB_OUTPUT"; else echo "tag=v$v" >> "$GITHUB_OUTPUT"; fi
 
       - name: Test
         run: dotnet test -c Release
@@ -51,10 +57,11 @@ jobs:
       - name: Publish release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ steps.version.outputs.version }}
-          name: Subnautica Multiplayer v${{ steps.version.outputs.version }}
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Subnautica Multiplayer ${{ steps.version.outputs.tag }}
           target_commitish: ${{ github.sha }}
-          make_latest: true
+          make_latest: ${{ inputs.test != true }}
+          prerelease: ${{ inputs.test == true }}
           files: |
             SubnauticaMP-v${{ steps.version.outputs.version }}-Windows.zip
             SubnauticaMP-v${{ steps.version.outputs.version }}-Linux-x86_64.AppImage
