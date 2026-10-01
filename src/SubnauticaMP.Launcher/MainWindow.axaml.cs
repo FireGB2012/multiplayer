@@ -30,14 +30,14 @@ namespace SubnauticaMP.Launcher
             PortBox.Text = _settings.Port.ToString();
             GameDirBox.Text = GameFolder.IsGameDir(_settings.GameDir) ? _settings.GameDir : GameFinder.Detect() ?? _settings.GameDir;
 
-            PlayButton.Click += (_, _) => Run(PlayGame);
+            // PLAY, or FIND GAME while the game folder isn't known yet (one main button, never two)
+            PlayButton.Click += (_, _) => Run(GameFolder.IsGameDir(GameDir) && _search == null ? PlayGame : SearchPc);
             ServerButton.Click += (_, _) => Run(ToggleServer);
             KickButton.Click += (_, _) => Run(() => KickSelected(false));
             BanButton.Click += (_, _) => Run(() => KickSelected(true));
             BrowseButton.Click += (_, _) => Run(Browse);
             PlayBrowseButton.Click += (_, _) => Run(Browse);
             SearchButton.Click += (_, _) => Run(SearchPc);
-            PlaySearchButton.Click += (_, _) => Run(SearchPc);
             GameDirBox.LostFocus += (_, _) => NormalizeGameDir();
 
             // Not found yet? Keep an eye out for the game being started.
@@ -51,19 +51,27 @@ namespace SubnauticaMP.Launcher
             CopyLanButton.Click += (_, _) => Run(() => Copy(_host.LanCode));
             FirewallButton.Click += (_, _) => Run(AllowFirewall);
             TestReachButton.Click += (_, _) => Run(() => _host.CheckReachable());
+            CopyLaunchOptionButton.Click += (_, _) => Run(() => Copy(LinuxLaunchOption, "Copied. Paste it in Steam: Subnautica › Properties › Launch options."));
+
+            // Linux / Steam Deck: the game runs in Proton (Steam starts it), Windows firewall rules don't apply
+            bool linux = !OperatingSystem.IsWindows();
+            LinuxCard.IsVisible = linux;
+            LaunchOptionBox.Text = LinuxLaunchOption;
+            FirewallButton.IsVisible = !linux;
             GameDirBox.TextChanged += (_, _) => RefreshSetup();
             WorldBox.TextChanged += (_, _) => RefreshWorld();
             ModeBox.SelectionChanged += (_, _) => RefreshWorld();
 
             _host.Log += line => Dispatcher.UIThread.Post(() => AppendLog(line));
             _host.Changed += () => Dispatcher.UIThread.Post(RefreshServer);
+            PlayersList.SelectionChanged += (_, _) => RefreshKickButtons();
 
             RefreshSetup();
             RefreshWorld();
             RefreshServer();
             Status(GameFolder.IsGameDir(GameDir)
-                ? "Ready. Pick Join or Host."
-                : "Couldn't find Subnautica automatically. Hit 'Search my PC' at the top.");
+                ? "Ready. Hit PLAY."
+                : "Subnautica isn't found yet: hit FIND GAME on the Home page.");
         }
 
         string GameDir
@@ -108,7 +116,23 @@ namespace SubnauticaMP.Launcher
         void Status(string text, bool error = false)
         {
             StatusText.Text = text;
-            StatusText.Foreground = error ? Avalonia.Media.Brush.Parse("#FF8A7A") : Avalonia.Media.Brush.Parse("#8FB3C4");
+            StatusText.Foreground = Avalonia.Media.Brush.Parse(error ? Bad : Seafoam);
+        }
+
+        // theme colors used from code (same as App.axaml)
+        const string Ok = "#5BD68B", Warn = "#F2C14E", Bad = "#FF7A6B", Seafoam = "#A8DADC", Scanner = "#3FE0E8";
+
+        // Proton (Linux / Steam Deck) only loads BepInEx's winhttp.dll when told to.
+        const string LinuxLaunchOption = "WINEDLLOVERRIDES=\"winhttp=n,b\" %command%";
+
+        static bool GameRunning() =>
+            Process.GetProcessesByName("Subnautica").Any() || Process.GetProcessesByName("Subnautica.exe").Any();
+
+        // A status pill on the Play banner: a dot (ok / warn / bad / off) and a word.
+        static void Chip(Border chip, TextBlock text, string state, string label)
+        {
+            text.Text = label;
+            foreach (var c in new[] { "ok", "warn", "bad" }) chip.Classes.Set(c, c == state);
         }
 
         // ---------- play ----------
@@ -118,7 +142,7 @@ namespace SubnauticaMP.Launcher
         {
             var dir = GameDir;
             if (!GameFolder.IsGameDir(dir))
-                throw new Exception("Can't find Subnautica yet. Hit 'Search my PC' at the top of the Play tab first.");
+                throw new Exception("Can't find Subnautica yet. Hit FIND GAME on the Home page first.");
             if (!GameFolder.HasBepInEx(dir))
             {
                 Tabs.SelectedIndex = 2;
@@ -130,9 +154,18 @@ namespace SubnauticaMP.Launcher
             SaveSettings();
             RefreshSetup();
 
-            if (Process.GetProcessesByName("Subnautica").Any())
+            if (GameRunning())
             {
                 Status("Subnautica is already running: use the Multiplayer button in its main menu.");
+                return;
+            }
+
+            if (!OperatingSystem.IsWindows())
+            {
+                // Linux: Subnautica.exe can't start by itself, Steam starts it in Proton
+                try { Process.Start(new ProcessStartInfo("xdg-open", "steam://rungameid/264710") { UseShellExecute = false }); }
+                catch { Process.Start(new ProcessStartInfo("steam", "-applaunch 264710") { UseShellExecute = false }); }
+                Status("Starting Subnautica through Steam... No Multiplayer button in the game? Set the launch option in Setup › Linux once.");
                 return;
             }
 
@@ -216,21 +249,31 @@ namespace SubnauticaMP.Launcher
                 LobbyText.Text = world.Started
                     ? "Game started. Friends can still join any time."
                     : "Lobby: new world. Everyone waits on a black screen until the host presses ENTER in game.";
-                LobbyText.Foreground = Avalonia.Media.Brush.Parse(world.Started ? "#5BD68B" : "#5FD4E0");
+                LobbyText.Foreground = Avalonia.Media.Brush.Parse(world.Started ? Ok : Scanner);
             }
             CodesCard.IsVisible = running;
+            ServerIdleCard.IsVisible = !running;
+            int online = _host.Players.Count;
+            Chip(ServerChip, ServerChipText, running ? "ok" : "off",
+                 running ? $"Server on  ·  {online} player{(online == 1 ? "" : "s")}" : "Server off");
             InternetCodeText.Text = _host.InternetCode ?? "finding...";
             LanCodeText.Text = _host.LanCode ?? "-";
             CopyInternetButton.IsEnabled = _host.InternetCode != null;
             CopyLanButton.IsEnabled = _host.LanCode != null;
             RouterText.Text = _host.RouterStatus ?? "";
-            RouterText.Foreground = Avalonia.Media.Brush.Parse(_host.RouterOk ? "#5BD68B" : "#E8C27A");
+            RouterText.Foreground = Avalonia.Media.Brush.Parse(_host.RouterOk ? Ok : Warn);
             ReachText.Text = _host.ReachStatus ?? "";
-            ReachText.Foreground = Avalonia.Media.Brush.Parse(_host.Reachable == true ? "#5BD68B" : _host.Reachable == false ? "#FF8A7A" : "#8FB3C4");
+            ReachText.Foreground = Avalonia.Media.Brush.Parse(_host.Reachable == true ? Ok : _host.Reachable == false ? Bad : Seafoam);
             int hostId = _host.HostId;
-            PlayersList.ItemsSource = _host.Players.Select(p => new PlayerRow(p.Id, p.Id == hostId ? p.Name + "  (host)" : p.Name)).ToList();
-            KickButton.IsEnabled = BanButton.IsEnabled = running;
+            var rows = _host.Players.Select(p => new PlayerRow(p.Id, p.Id == hostId ? p.Name + "  (host)" : p.Name)).ToList();
+            PlayersList.ItemsSource = rows;
+            NoPlayersText.Text = running ? "No one online yet" : "Server is off";
+            NoPlayersText.IsVisible = rows.Count == 0;
+            RefreshKickButtons();
         }
+
+        // Kick / Ban only show up once there's someone selected to kick.
+        void RefreshKickButtons() => KickButton.IsVisible = BanButton.IsVisible = _host.Running && PlayersList.SelectedItem != null;
 
         sealed record PlayerRow(int Id, string Label)
         {
@@ -253,11 +296,11 @@ namespace SubnauticaMP.Launcher
             LogBox.CaretIndex = text.Length;
         }
 
-        async Task Copy(string text)
+        async Task Copy(string text, string done = null)
         {
             if (string.IsNullOrEmpty(text) || Clipboard == null) return;
             await Clipboard.SetTextAsync(text);
-            Status("Copied " + text + ". Send it to your friends!");
+            Status(done ?? "Copied " + text + ". Send it to your friends!");
         }
 
         // Existing worlds keep the mode they were made with.
@@ -336,25 +379,43 @@ namespace SubnauticaMP.Launcher
             var bundled = GameFolder.BundledModVersion;
 
             Mark(GameStatus, game, game ? "Subnautica found" : "Subnautica.exe not found in this folder");
-            Mark(PlayGameStatus, game, game ? "Subnautica: " + dir : "Subnautica not found yet. Hit Search my PC, or Browse to it.");
-            PlaySearchButton.IsVisible = !game;
+            Mark(PlayGameStatus, game, game ? "Subnautica: " + dir : "Subnautica isn't found yet. FIND GAME searches this PC, or Browse to it.");
             PlayBrowseButton.Content = game ? "Change" : "Browse...";
+            RefreshPlayButton();
+            InstallHint.IsVisible = !game;
             Mark(BepStatus, bep, bep ? "BepInEx installed" : "BepInEx not installed (needed to load mods)");
             Mark(ModStatus, installed != null && installed >= bundled,
                 installed == null ? "Mod not installed yet (Play installs it for you)"
                 : installed >= bundled ? $"Mod v{installed.ToString(3)} installed"
                 : $"Mod v{installed.ToString(3)} is old, Play will update it to v{bundled.ToString(3)}");
 
+            Chip(GameChip, GameChipText, game ? "ok" : "warn", game ? "Game found" : "Game not found yet");
+            if (!game) Chip(ModChip, ModChipText, "off", "Mod waiting for the game");
+            else if (!bep) Chip(ModChip, ModChipText, "warn", "BepInEx missing (Setup)");
+            else if (installed == null || installed < bundled) Chip(ModChip, ModChipText, "warn", "Mod installs on PLAY");
+            else Chip(ModChip, ModChipText, "ok", "Mod ready");
+
             InstallBepButton.IsEnabled = game;
             InstallModButton.IsEnabled = game;
             OpenFolderButton.IsEnabled = game;
         }
 
+        // Green tick when done, amber dot when it's just not set up yet (red is for real errors only).
         static void Mark(TextBlock block, bool ok, string text)
         {
-            block.Text = (ok ? "✔  " : "✖  ") + text;
+            block.Text = (ok ? "✔  " : "●  ") + text;
             block.Classes.Set("ok", ok);
-            block.Classes.Set("bad", !ok);
+            block.Classes.Set("warn", !ok);
+        }
+
+        void RefreshPlayButton()
+        {
+            bool game = GameFolder.IsGameDir(GameDir);
+            PlayButtonText.Text = _search != null ? "STOP" : game ? "PLAY" : "FIND GAME";
+            PlayButtonText.LetterSpacing = game || _search != null ? 8 : 4;
+            PlayCaption.Text = _search != null ? "Searching this PC for Subnautica..."
+                : game ? "Installs the mod, then starts the game"
+                : "Searches this PC for Subnautica";
         }
 
         async Task Browse()
@@ -373,7 +434,8 @@ namespace SubnauticaMP.Launcher
         {
             if (_search != null) { _search.Cancel(); return; } // second click = stop
             _search = new System.Threading.CancellationTokenSource();
-            SearchButton.Content = PlaySearchButton.Content = "Stop searching";
+            SearchButton.Content = "Stop searching";
+            RefreshPlayButton();
             try
             {
                 var quick = GameFinder.Detect();
@@ -388,7 +450,8 @@ namespace SubnauticaMP.Launcher
             finally
             {
                 _search = null;
-                SearchButton.Content = PlaySearchButton.Content = "Search my PC";
+                SearchButton.Content = "Search my PC";
+                RefreshPlayButton();
             }
         }
 

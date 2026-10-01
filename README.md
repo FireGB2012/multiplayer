@@ -1,6 +1,8 @@
 # Subnautica Multiplayer
 
-Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app.
+Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app for Windows and Linux / Steam Deck.
+
+<p align="center"><img src="docs/launcher/home.png" width="720" alt="The launcher's Home page"></p>
 
 ## What syncs
 | Thing | Status |
@@ -63,14 +65,19 @@ Like Nitrox: the main menu gets a **Multiplayer** button next to Play. It lists 
 Multiplayer saves are kept out of the normal single-player Load list. The launcher is optional.
 
 ## Quick start (players)
-1. Download `SubnauticaMP-Launcher.exe` and run it.
-2. **Setup tab**: check it found your Subnautica folder. If BepInEx is missing, hit **Install BepInEx for me**
-   (or install BepInEx 5 x64 yourself). Start the game once after installing BepInEx, then close it.
-3. **Play tab**: hit **PLAY**. The game opens on its main menu with the mod installed.
+1. From the [latest release](../../releases/latest):
+   - **Windows**: `SubnauticaMP-vX-Windows.zip`, extract it, run `SubnauticaMP-Launcher.exe`.
+   - **Linux / Steam Deck** (any distro): `SubnauticaMP-vX-Linux-x86_64.AppImage`, make it executable
+     (`chmod +x` or right-click > Properties > Allow executing) and run it. Subnautica runs in Proton: set its Steam
+     launch option once to `WINEDLLOVERRIDES="winhttp=n,b" %command%` (Setup page has a Copy button) so BepInEx loads.
+2. **Home**: the chips under the title show whether the game was found and the mod is ready. Not found? Hit
+   **FIND GAME** (or Browse). If BepInEx is missing, **Setup > Install BepInEx for me** (or install BepInEx 5 x64
+   yourself), start the game once, then close it.
+3. **Home**: hit **PLAY**. The game opens on its main menu with the mod installed and up to date.
 4. Click **Multiplayer** in the game's main menu:
    - **Host a world**: world name, password (optional), then click a game mode.
    - **Add a server**: your friend's join code (like `KQ7MX-3HD2P`) or IP, a name, and the password if they set one.
-   - Server running in the launcher (**Server** tab)? It shows up as **Launcher server**: click it to join.
+   - Server running in the launcher (**Server** page)? It shows up as **Launcher server**: click it to join.
    - **New world**: everyone meets in the **party lobby**: type your name, click to change your suit color,
      and the host clicks **Start the game**. **Existing world**: it loads your save for that world.
 5. In game, **Esc > Multiplayer** or **F8** (or the Multiplayer button in the pause menu) opens the multiplayer page: chat, join code, players, kick/ban if you host, leave. **Enter** jumps straight to chat.

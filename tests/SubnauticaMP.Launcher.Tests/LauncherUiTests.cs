@@ -67,16 +67,28 @@ public class LauncherUiTests
     }
 
     [AvaloniaFact]
-    public void PlayWithoutGameFolderExplainsWhy()
+    public void PlayButtonTurnsIntoFindGameWithoutAGameFolder()
     {
         var w = new MainWindow();
         w.Show();
+        var label = w.FindControl<TextBlock>("PlayButtonText");
         w.FindControl<TextBox>("GameDirBox").Text = "/nope";
-        w.FindControl<Button>("PlayButton").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-        Assert.Contains("Search my PC", w.FindControl<TextBlock>("StatusText").Text);
-        Assert.Contains("not found", w.FindControl<TextBlock>("PlayGameStatus").Text);
-        Assert.True(w.FindControl<Button>("PlaySearchButton").IsVisible);
-        w.Close();
+        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        Assert.Equal("FIND GAME", label.Text); // one main button: it searches instead of failing
+        Assert.Contains("isn't found", w.FindControl<TextBlock>("PlayGameStatus").Text);
+        Assert.Contains("Searches", w.FindControl<TextBlock>("PlayCaption").Text);
+
+        var dir = Path.Combine(Path.GetTempPath(), "snmp-fakegame-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(dir);
+        try
+        {
+            File.WriteAllText(Path.Combine(dir, "Subnautica.exe"), "");
+            w.FindControl<TextBox>("GameDirBox").Text = dir;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            Assert.Equal("PLAY", label.Text);
+            Assert.Contains("Game found", w.FindControl<TextBlock>("GameChipText").Text);
+        }
+        finally { w.Close(); Directory.Delete(dir, true); }
     }
 
     [AvaloniaFact]

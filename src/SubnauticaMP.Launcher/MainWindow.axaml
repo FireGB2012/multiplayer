@@ -2,178 +2,378 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         x:Class="SubnauticaMP.Launcher.MainWindow"
         Title="Subnautica Multiplayer"
-        Width="800" Height="680" MinWidth="560" MinHeight="520"
-        Background="#07131F"
+        Icon="/Assets/icon.ico"
+        Width="1000" Height="720" MinWidth="820" MinHeight="620"
+        Background="{StaticResource AbyssBrush}"
         WindowStartupLocation="CenterScreen">
 
-  <Grid RowDefinitions="Auto,*,Auto">
+  <!-- The PDA: a glass device with glowing edges and corner brackets. Inside it, a game-launcher layout. -->
+  <Panel Margin="14">
+    <!-- soft glow around the device (the shell itself clips, so the glow lives on its own layer) -->
+    <Border CornerRadius="16" Background="#0A1A27" BoxShadow="0 0 26 0 #383FE0E8" />
+    <Border Classes="shell">
+      <Grid RowDefinitions="Auto,*,Auto">
 
-    <!-- header -->
-    <Border Grid.Row="0" Padding="26,20,26,18">
-      <Border.Background>
-        <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,100%">
-          <GradientStop Offset="0" Color="#0E4A6A" />
-          <GradientStop Offset="0.6" Color="#0A2A40" />
-          <GradientStop Offset="1" Color="#07131F" />
-        </LinearGradientBrush>
-      </Border.Background>
-      <Grid ColumnDefinitions="*,Auto">
-        <StackPanel>
-          <TextBlock Text="SUBNAUTICA" FontSize="30" FontWeight="Bold" Foreground="White" LetterSpacing="5" />
-          <TextBlock Text="MULTIPLAYER" FontSize="13" Foreground="#5FD4E0" LetterSpacing="9" />
-        </StackPanel>
-        <TextBlock Grid.Column="1" x:Name="VersionText" VerticalAlignment="Top" Foreground="#5A8AA0" FontSize="12" />
+        <!-- top strip -->
+        <Border Grid.Row="0" Padding="22,11" BorderBrush="#143746" BorderThickness="0,0,0,1" Background="#4D040D15">
+          <Grid ColumnDefinitions="Auto,*,Auto">
+            <Path Data="M0,10 L10,0 L10,10 Z" Fill="{StaticResource ScannerBrush}" Width="10" Height="10" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" Classes="eyebrow" Margin="10,0,0,0" VerticalAlignment="Center"
+                       Text="PDA  //  ALTERRA SURVIVAL NETWORK" />
+            <Border Grid.Column="2" CornerRadius="999" Padding="10,3" BorderBrush="#2A5566" BorderThickness="1">
+              <TextBlock x:Name="VersionText" FontSize="11" FontWeight="SemiBold" Foreground="{StaticResource SeafoamBrush}" />
+            </Border>
+          </Grid>
+        </Border>
+
+        <!-- sidebar + pages -->
+        <TabControl Grid.Row="1" x:Name="Tabs" Classes="nav">
+
+          <!-- ================= PLAY ================= -->
+          <TabItem>
+            <TabItem.Header>
+              <StackPanel>
+                <Path Classes="icon" Data="M4,11 L12,4 L20,11 V20 H4 Z M10,20 V14.5 H14 V20" />
+                <TextBlock Classes="navlabel" Text="HOME" />
+              </StackPanel>
+            </TabItem.Header>
+
+            <Grid RowDefinitions="*,Auto" Margin="22,20,22,20">
+
+              <!-- hero banner: the ocean, drawn (no pictures to ship) -->
+              <Border CornerRadius="12" ClipToBounds="True" MinHeight="250" BorderBrush="#1E5A6E" BorderThickness="1">
+                <Panel>
+                  <Panel.Background>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="35%,100%">
+                      <GradientStop Offset="0" Color="#11607F" />
+                      <GradientStop Offset="0.45" Color="#0A3550" />
+                      <GradientStop Offset="1" Color="#06111B" />
+                    </LinearGradientBrush>
+                  </Panel.Background>
+
+                  <Viewbox Stretch="UniformToFill" HorizontalAlignment="Right" VerticalAlignment="Bottom">
+                    <Canvas Width="840" Height="400">
+                      <!-- sun glow at the surface -->
+                      <Ellipse Canvas.Left="340" Canvas.Top="-190" Width="460" Height="300">
+                        <Ellipse.Fill>
+                          <RadialGradientBrush>
+                            <GradientStop Offset="0" Color="#553FE0E8" />
+                            <GradientStop Offset="1" Color="#003FE0E8" />
+                          </RadialGradientBrush>
+                        </Ellipse.Fill>
+                      </Ellipse>
+                      <!-- light rays -->
+                      <Polygon Points="470,0 510,0 420,400 340,400" Opacity="0.55">
+                        <Polygon.Fill>
+                          <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                            <GradientStop Offset="0" Color="#663FE0E8" /><GradientStop Offset="1" Color="#003FE0E8" />
+                          </LinearGradientBrush>
+                        </Polygon.Fill>
+                      </Polygon>
+                      <Polygon Points="550,0 570,0 560,400 510,400" Opacity="0.45">
+                        <Polygon.Fill>
+                          <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                            <GradientStop Offset="0" Color="#663FE0E8" /><GradientStop Offset="1" Color="#003FE0E8" />
+                          </LinearGradientBrush>
+                        </Polygon.Fill>
+                      </Polygon>
+                      <Polygon Points="620,0 680,0 760,400 650,400" Opacity="0.4">
+                        <Polygon.Fill>
+                          <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                            <GradientStop Offset="0" Color="#553FE0E8" /><GradientStop Offset="1" Color="#003FE0E8" />
+                          </LinearGradientBrush>
+                        </Polygon.Fill>
+                      </Polygon>
+                      <Polygon Points="720,0 740,0 840,293.333 840,400 810,400" Opacity="0.3">
+                        <Polygon.Fill>
+                          <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                            <GradientStop Offset="0" Color="#553FE0E8" /><GradientStop Offset="1" Color="#003FE0E8" />
+                          </LinearGradientBrush>
+                        </Polygon.Fill>
+                      </Polygon>
+                      <!-- the seabed scene sits along the bottom -->
+                      <Canvas Canvas.Left="40" Canvas.Top="100" Width="800" Height="300">
+                        <!-- far rocks -->
+                      <Path Fill="#0A2C3E" Data="M0,236 C70,214 120,232 190,222 C260,212 300,190 360,204 C420,218 470,196 540,206 C610,216 660,190 720,200 C760,207 785,198 800,200 L800,300 L0,300 Z" />
+                      <!-- kelp -->
+                      <Path Stroke="#0F5A55" StrokeThickness="5" StrokeLineCap="Round" Opacity="0.9"
+                            Data="M640,262 C630,230 652,206 640,176 C630,150 648,128 640,104 M664,264 C676,238 656,214 668,188 C678,166 662,146 672,126 M612,266 C604,246 618,228 610,206" />
+                      <Path Stroke="#0C4744" StrokeThickness="4" StrokeLineCap="Round" Opacity="0.85"
+                            Data="M742,262 C734,238 750,218 742,194 C736,176 748,160 742,144 M764,266 C772,246 760,230 768,210" />
+                      <!-- near seabed -->
+                      <Path Fill="#05111A" Data="M0,262 C90,246 150,270 240,258 C330,246 380,272 470,260 C560,248 610,270 700,256 C740,250 780,258 800,254 L800,300 L0,300 Z" />
+                      <!-- coral tufts -->
+                      <Path Fill="#123F4A" Data="M520,262 C516,250 524,244 528,252 C530,240 540,240 540,252 C546,244 554,250 550,262 Z" />
+                      <Path Fill="#2A2342" Data="M690,258 C686,246 694,240 698,248 C700,236 710,236 710,248 C716,240 724,246 720,258 Z" />
+
+                      <!-- bubbles -->
+                      <Ellipse Canvas.Left="560" Canvas.Top="150" Width="10" Height="10" Stroke="#803FE0E8" StrokeThickness="1.2" Fill="#143FE0E8" />
+                      <Ellipse Canvas.Left="574" Canvas.Top="122" Width="6" Height="6" Stroke="#803FE0E8" StrokeThickness="1" Fill="#143FE0E8" />
+                      <Ellipse Canvas.Left="566" Canvas.Top="96" Width="4" Height="4" Stroke="#663FE0E8" StrokeThickness="1" />
+                      <Ellipse Canvas.Left="700" Canvas.Top="170" Width="8" Height="8" Stroke="#663FE0E8" StrokeThickness="1.2" Fill="#103FE0E8" />
+                      <Ellipse Canvas.Left="712" Canvas.Top="140" Width="5" Height="5" Stroke="#663FE0E8" StrokeThickness="1" />
+                      <Ellipse Canvas.Left="430" Canvas.Top="190" Width="7" Height="7" Stroke="#4D3FE0E8" StrokeThickness="1" />
+                      <Ellipse Canvas.Left="440" Canvas.Top="166" Width="4" Height="4" Stroke="#4D3FE0E8" StrokeThickness="1" />
+
+                      <!-- a little peeper in the distance -->
+                      <Path Fill="#1A6B7E" Opacity="0.8" Data="M610,92 C618,84 632,84 640,92 C632,100 618,100 610,92 Z M640,92 L650,85 L650,99 Z" />
+                      <Path Fill="#155A6B" Opacity="0.6" Data="M676,72 C681,67 690,67 695,72 C690,77 681,77 676,72 Z M695,72 L701,68 L701,76 Z" />
+                      </Canvas>
+                    </Canvas>
+                  </Viewbox>
+
+                  <!-- darken the left so the title reads -->
+                  <Border>
+                    <Border.Background>
+                      <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                        <GradientStop Offset="0" Color="#D906111B" />
+                        <GradientStop Offset="0.5" Color="#4006111B" />
+                        <GradientStop Offset="1" Color="#0006111B" />
+                      </LinearGradientBrush>
+                    </Border.Background>
+                  </Border>
+
+                  <StackPanel Margin="34,0,34,30" VerticalAlignment="Bottom" Spacing="2">
+                    <TextBlock Classes="eyebrow" Text="CO-OP SURVIVAL  //  PLANET 4546B" Margin="0,0,0,8" />
+                    <TextBlock Text="SUBNAUTICA" FontSize="46" FontWeight="Bold" LetterSpacing="7" Foreground="White" />
+                    <TextBlock Text="MULTIPLAYER" FontSize="15" FontWeight="SemiBold" LetterSpacing="14" Foreground="{StaticResource ScannerBrush}" Margin="3,0,0,0" />
+                    <TextBlock Text="Explore the ocean together. Build, dive, survive." FontSize="13" Foreground="{StaticResource SeafoamBrush}" Margin="3,10,0,16" />
+                    <WrapPanel>
+                      <Border x:Name="GameChip" Classes="chip" Margin="0,0,8,6">
+                        <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse /><TextBlock x:Name="GameChipText" /></StackPanel>
+                      </Border>
+                      <Border x:Name="ModChip" Classes="chip" Margin="0,0,8,6">
+                        <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse /><TextBlock x:Name="ModChipText" /></StackPanel>
+                      </Border>
+                      <Border x:Name="ServerChip" Classes="chip" Margin="0,0,8,6">
+                        <StackPanel Orientation="Horizontal" Spacing="8"><Ellipse /><TextBlock x:Name="ServerChipText" /></StackPanel>
+                      </Border>
+                    </WrapPanel>
+                  </StackPanel>
+                </Panel>
+              </Border>
+
+              <!-- bottom: game folder + steps on the left, the big PLAY on the right -->
+              <Grid Grid.Row="1" ColumnDefinitions="*,16,290" Margin="0,16,0,0">
+                <Border Classes="card" Padding="18,14">
+                  <StackPanel Spacing="12">
+                    <Border Classes="inset" Padding="12,8">
+                      <Grid ColumnDefinitions="*,Auto">
+                        <TextBlock x:Name="PlayGameStatus" VerticalAlignment="Center" TextWrapping="Wrap" FontSize="13" />
+                        <Button Grid.Column="1" x:Name="PlayBrowseButton" Content="Browse..." Margin="10,0,0,0" VerticalAlignment="Center" />
+                      </Grid>
+                    </Border>
+                    <Grid ColumnDefinitions="Auto,*" RowDefinitions="Auto,Auto,Auto">
+                      <TextBlock Classes="num" Text="01" Margin="0,0,12,6" />
+                      <TextBlock Grid.Column="1" Classes="step" Margin="0,0,0,6" Text="PLAY opens Subnautica with the mod installed and up to date." />
+                      <TextBlock Grid.Row="1" Classes="num" Text="02" Margin="0,0,12,6" />
+                      <TextBlock Grid.Row="1" Grid.Column="1" Classes="step" Margin="0,0,0,6"
+                                 Text="In the game's menu: Multiplayer › host a world, or add a friend's join code." />
+                      <TextBlock Grid.Row="2" Classes="num" Text="03" Margin="0,0,12,0" />
+                      <TextBlock Grid.Row="2" Grid.Column="1" Classes="step"
+                                 Text="In game: Esc › Multiplayer (or F8) for players and chat. G = emote wheel." />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+
+                <Grid Grid.Column="2" RowDefinitions="*,Auto">
+                  <!-- the glow sits behind the button on its own layer so it always shows -->
+                  <Border CornerRadius="10" Margin="2" BoxShadow="0 0 28 2 #663FE0E8" Background="#1FB6C9" />
+                  <Button x:Name="PlayButton" Classes="primary play" HorizontalAlignment="Stretch" VerticalAlignment="Stretch">
+                    <TextBlock x:Name="PlayButtonText" Text="PLAY" LetterSpacing="8" Margin="8,0,0,0" />
+                  </Button>
+                  <TextBlock Grid.Row="1" x:Name="PlayCaption" Classes="hint" TextAlignment="Center" Margin="0,10,0,0"
+                             Text="Installs the mod, then starts the game" />
+                </Grid>
+              </Grid>
+            </Grid>
+          </TabItem>
+
+          <!-- ================= SERVER ================= -->
+          <TabItem>
+            <TabItem.Header>
+              <StackPanel>
+                <Path Classes="icon" Data="M4,4.5 H20 V10.5 H4 Z M4,13.5 H20 V19.5 H4 Z M7.5,7.5 H8.5 M7.5,16.5 H8.5" />
+                <TextBlock Classes="navlabel" Text="SERVER" />
+              </StackPanel>
+            </TabItem.Header>
+
+            <Grid RowDefinitions="Auto,Auto,Auto,*" Margin="22,20,22,20">
+              <StackPanel Spacing="2" Margin="2,0,0,16">
+                <TextBlock Text="Host a server" FontSize="22" FontWeight="Bold" />
+                <TextBlock Classes="hint" Text="Runs the world on this PC. It shows up in the game's Multiplayer list as 'Launcher server'." />
+              </StackPanel>
+
+              <Border Grid.Row="1" Classes="card">
+                <Grid RowDefinitions="Auto,Auto" ColumnDefinitions="2*,14,*,14,*,14,96">
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="label" Text="WORLD NAME" />
+                    <TextBox x:Name="WorldBox" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="2" Spacing="6">
+                    <TextBlock Classes="label" Text="GAME MODE" />
+                    <ComboBox x:Name="ModeBox" HorizontalAlignment="Stretch" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="4" Spacing="6">
+                    <TextBlock Classes="label" Text="PASSWORD" />
+                    <TextBox x:Name="HostPasswordBox" PasswordChar="•" Watermark="optional" />
+                  </StackPanel>
+                  <StackPanel Grid.Column="6" Spacing="6">
+                    <TextBlock Classes="label" Text="PORT" />
+                    <TextBox x:Name="PortBox" />
+                  </StackPanel>
+
+                  <Grid Grid.Row="1" Grid.ColumnSpan="7" ColumnDefinitions="*,18,Auto" Margin="0,16,0,0">
+                    <StackPanel Spacing="4" VerticalAlignment="Center">
+                      <TextBlock x:Name="WorldSummary" FontSize="15" FontWeight="SemiBold" />
+                      <TextBlock x:Name="ModeHint" Classes="hint" />
+                    </StackPanel>
+                    <Button Grid.Column="2" x:Name="ServerButton" Classes="primary" Content="START SERVER" MinWidth="200" Height="48" FontSize="15" />
+                  </Grid>
+                </Grid>
+              </Border>
+
+              <!-- not running: what happens next -->
+              <Border Grid.Row="2" x:Name="ServerIdleCard" Classes="card" Margin="0,16,0,0" Padding="18,12">
+                <TextBlock Classes="hint" Text="Start the server to get join codes for your friends. They paste one in the game's Multiplayer › Add server." />
+              </Border>
+
+              <!-- running: the join codes -->
+              <Border Grid.Row="2" Classes="card" Margin="0,16,0,0" x:Name="CodesCard" IsVisible="False">
+                <StackPanel Spacing="12">
+                  <Grid ColumnDefinitions="*,Auto,28,*,Auto">
+                    <StackPanel>
+                      <TextBlock Classes="label" Text="JOIN CODE  ·  INTERNET" />
+                      <TextBlock x:Name="InternetCodeText" Classes="code" Text="..." />
+                    </StackPanel>
+                    <Button Grid.Column="1" x:Name="CopyInternetButton" Content="Copy" VerticalAlignment="Center" />
+                    <Border Grid.Column="2" Width="1" Background="#1E5A6E" Margin="13,4" />
+                    <StackPanel Grid.Column="3">
+                      <TextBlock Classes="label" Text="JOIN CODE  ·  SAME WIFI" />
+                      <TextBlock x:Name="LanCodeText" Classes="code" FontSize="22" Margin="0,5,0,0" Text="..." />
+                    </StackPanel>
+                    <Button Grid.Column="4" x:Name="CopyLanButton" Content="Copy" VerticalAlignment="Center" />
+                  </Grid>
+                  <Border Classes="inset">
+                    <StackPanel Spacing="5">
+                      <TextBlock x:Name="LobbyText" FontWeight="SemiBold" FontSize="12.5" TextWrapping="Wrap" />
+                      <TextBlock x:Name="RouterText" FontSize="12" TextWrapping="Wrap" />
+                      <TextBlock x:Name="ReachText" FontWeight="SemiBold" FontSize="12" TextWrapping="Wrap" />
+                    </StackPanel>
+                  </Border>
+                  <WrapPanel>
+                    <Button x:Name="FirewallButton" Content="Allow through firewall" Margin="0,0,8,0" />
+                    <Button x:Name="TestReachButton" Content="Test again" />
+                  </WrapPanel>
+                </StackPanel>
+              </Border>
+
+              <Grid Grid.Row="3" ColumnDefinitions="230,16,*" Margin="0,16,0,0">
+                <Border Classes="card" Padding="12">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Classes="label" Text="PLAYERS ONLINE" Margin="6,0,0,8" />
+                    <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
+                      <Button x:Name="KickButton" Content="Kick" Classes="danger" />
+                      <Button x:Name="BanButton" Content="Ban" Classes="danger" />
+                    </StackPanel>
+                    <Panel>
+                      <ListBox x:Name="PlayersList" />
+                      <TextBlock x:Name="NoPlayersText" Classes="hint" Text="No one online yet" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Panel>
+                  </DockPanel>
+                </Border>
+                <Border Grid.Column="2" Classes="card" Padding="12">
+                  <DockPanel>
+                    <TextBlock DockPanel.Dock="Top" Classes="label" Text="SERVER LOG" Margin="6,0,0,8" />
+                    <TextBox x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap" Watermark="Start the server to see its log here."
+                             FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" FontSize="12" BorderThickness="0" />
+                  </DockPanel>
+                </Border>
+              </Grid>
+            </Grid>
+          </TabItem>
+
+          <!-- ================= SETUP ================= -->
+          <TabItem>
+            <TabItem.Header>
+              <StackPanel>
+                <Path Classes="icon" Data="M4,7 H13 M17,7 H20 M15,4.5 V9.5 M4,17 H7 M11,17 H20 M9,14.5 V19.5" />
+                <TextBlock Classes="navlabel" Text="SETUP" />
+              </StackPanel>
+            </TabItem.Header>
+
+            <ScrollViewer AllowAutoHide="False">
+              <StackPanel Spacing="16" Margin="22,20,22,24">
+                <StackPanel Spacing="2" Margin="2,0,0,0">
+                  <TextBlock Text="Setup" FontSize="22" FontWeight="Bold" />
+                  <TextBlock Classes="hint" Text="Where the game is and what's installed. PLAY does all of this for you; these are for fixing things by hand." />
+                </StackPanel>
+
+                <Border Classes="card">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="label" Text="SUBNAUTICA FOLDER" />
+                    <Grid ColumnDefinitions="*,8,Auto,8,Auto">
+                      <TextBox x:Name="GameDirBox" Watermark="Not set yet: Search my PC or Browse" />
+                      <Button Grid.Column="2" x:Name="SearchButton" Content="Search my PC" />
+                      <Button Grid.Column="4" x:Name="BrowseButton" Content="Browse..." />
+                    </Grid>
+                    <TextBlock Classes="hint" Text="Tip: in Steam, right-click Subnautica › Manage › Browse local files, and copy that folder's address here. Or start the game once while this window is open and it finds it by itself." />
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="label" Text="INSTALLED" />
+                    <TextBlock x:Name="GameStatus" />
+                    <TextBlock x:Name="BepStatus" />
+                    <TextBlock x:Name="ModStatus" />
+                    <TextBlock x:Name="InstallHint" Classes="hint" Text="Set the game folder first." />
+                    <WrapPanel Margin="0,4,0,0">
+                      <Button x:Name="InstallBepButton" Content="Install BepInEx for me" Margin="0,0,8,8" />
+                      <Button x:Name="InstallModButton" Content="Install / update mod" Margin="0,0,8,8" />
+                      <Button x:Name="OpenFolderButton" Content="Open mod folder" Margin="0,0,8,8" />
+                    </WrapPanel>
+                  </StackPanel>
+                </Border>
+
+                <!-- Linux / Steam Deck only: the game runs in Proton, which needs one launch option for mods -->
+                <Border Classes="card" x:Name="LinuxCard" IsVisible="False">
+                  <StackPanel Spacing="10">
+                    <TextBlock Classes="label" Text="LINUX / STEAM DECK" />
+                    <TextBlock Classes="hint" Text="Subnautica runs through Proton here. For mods to load, set this once in Steam: right-click Subnautica › Properties › Launch options." />
+                    <Grid ColumnDefinitions="*,8,Auto">
+                      <TextBox x:Name="LaunchOptionBox" IsReadOnly="True" FontFamily="Consolas,Menlo,DejaVu Sans Mono,monospace" />
+                      <Button Grid.Column="2" x:Name="CopyLaunchOptionButton" Content="Copy" />
+                    </Grid>
+                  </StackPanel>
+                </Border>
+
+                <Border Classes="card">
+                  <StackPanel Spacing="6">
+                    <TextBlock Classes="label" Text="FRIENDS ON DIFFERENT WIFI" />
+                    <TextBlock Classes="hint" Text="The host's launcher asks the router to open the port by itself (UPnP). Most home routers allow it." />
+                    <TextBlock Classes="hint" Text="If the Server page says it couldn't: turn on UPnP in the router, forward the port by hand, or have everyone install Radmin VPN / Tailscale and join with the host's VPN IP." />
+                  </StackPanel>
+                </Border>
+              </StackPanel>
+            </ScrollViewer>
+          </TabItem>
+        </TabControl>
+
+        <!-- status line -->
+        <Border Grid.Row="2" Padding="20,9" BorderBrush="#143746" BorderThickness="0,1,0,0" Background="#4D040D15">
+          <Grid ColumnDefinitions="Auto,*">
+            <TextBlock Text="›" Foreground="{StaticResource MutedBrush}" FontWeight="Bold" Margin="0,0,10,0" VerticalAlignment="Center" />
+            <TextBlock Grid.Column="1" x:Name="StatusText" FontSize="13" TextWrapping="Wrap" VerticalAlignment="Center" />
+          </Grid>
+        </Border>
       </Grid>
     </Border>
 
-    <TabControl Grid.Row="1" x:Name="Tabs" Margin="14,4,14,0">
-
-      <!-- PLAY -->
-      <TabItem Header="Play">
-        <ScrollViewer>
-          <StackPanel Spacing="14" Margin="4,12,4,12">
-            <Border Classes="card" Padding="12,10">
-              <Grid ColumnDefinitions="*,Auto,Auto">
-                <TextBlock x:Name="PlayGameStatus" VerticalAlignment="Center" TextWrapping="Wrap" />
-                <Button Grid.Column="1" x:Name="PlaySearchButton" Content="Search my PC" Margin="10,0,0,0" VerticalAlignment="Center" />
-                <Button Grid.Column="2" x:Name="PlayBrowseButton" Content="Browse..." Margin="8,0,0,0" VerticalAlignment="Center" />
-              </Grid>
-            </Border>
-
-            <Button x:Name="PlayButton" Classes="primary" Content="PLAY" HorizontalAlignment="Stretch"
-                    HorizontalContentAlignment="Center" FontSize="22" Padding="0,16" />
-
-            <Border Classes="card">
-              <StackPanel Spacing="4">
-                <TextBlock Classes="h2" Text="How it works" FontSize="14" />
-                <TextBlock Classes="hint" TextWrapping="Wrap" Text="1. Hit PLAY. The game opens on its main menu, with the mod installed and up to date." />
-                <TextBlock Classes="hint" TextWrapping="Wrap" Text="2. Click Multiplayer in the game's menu. Host a world, or Add a server with your friend's join code (and password if they set one)." />
-                <TextBlock Classes="hint" TextWrapping="Wrap" Text="3. New world: everyone meets in the party lobby, picks a name and suit color, and the host clicks Start." />
-                <TextBlock Classes="hint" TextWrapping="Wrap" Text="4. Want the server to run here instead? Start it on the Server tab: it shows up in the game's Multiplayer list as 'Launcher server'." />
-                <TextBlock Classes="hint" TextWrapping="Wrap" Text="5. In game: Esc > Multiplayer (or F8) for players, chat, join code. Enter = chat." />
-              </StackPanel>
-            </Border>
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-
-      <!-- SERVER -->
-      <TabItem Header="Server">
-        <Grid RowDefinitions="Auto,Auto,*" Margin="4,12,4,12">
-          <Grid ColumnDefinitions="*,10,110,10,Auto">
-            <StackPanel Spacing="8">
-              <TextBlock Classes="label" Text="WORLD NAME" />
-              <TextBox x:Name="WorldBox" />
-              <Grid ColumnDefinitions="*,10,*">
-                <StackPanel Spacing="6">
-                  <TextBlock Classes="label" Text="GAME MODE" />
-                  <ComboBox x:Name="ModeBox" HorizontalAlignment="Stretch" />
-                </StackPanel>
-                <StackPanel Grid.Column="2" Spacing="6">
-                  <TextBlock Classes="label" Text="PASSWORD (OPTIONAL)" />
-                  <TextBox x:Name="HostPasswordBox" PasswordChar="*" Watermark="Empty = no password" />
-                </StackPanel>
-              </Grid>
-              <TextBlock x:Name="ModeHint" Classes="hint" TextWrapping="Wrap" />
-              <TextBlock x:Name="WorldSummary" FontSize="15" Foreground="White" />
-            </StackPanel>
-            <StackPanel Grid.Column="2" Spacing="10">
-              <TextBlock Classes="label" Text="PORT" />
-              <TextBox x:Name="PortBox" />
-            </StackPanel>
-            <Button Grid.Column="4" x:Name="ServerButton" Classes="primary" Content="START SERVER"
-                    VerticalAlignment="Bottom" MinWidth="170" />
-          </Grid>
-
-          <Border Grid.Row="1" Classes="card" Margin="0,14,0,0" x:Name="CodesCard" IsVisible="False">
-            <StackPanel Spacing="8">
-              <Grid ColumnDefinitions="*,Auto">
-                <StackPanel>
-                  <TextBlock Classes="label" Text="JOIN CODE (INTERNET)" Margin="0" />
-                  <TextBlock x:Name="InternetCodeText" Classes="code" Text="..." />
-                </StackPanel>
-                <Button Grid.Column="1" x:Name="CopyInternetButton" Content="Copy" VerticalAlignment="Center" />
-              </Grid>
-              <Grid ColumnDefinitions="*,Auto">
-                <StackPanel>
-                  <TextBlock Classes="label" Text="JOIN CODE (SAME WIFI)" Margin="0" />
-                  <TextBlock x:Name="LanCodeText" Classes="code" FontSize="18" Text="..." />
-                </StackPanel>
-                <Button Grid.Column="1" x:Name="CopyLanButton" Content="Copy" VerticalAlignment="Center" />
-              </Grid>
-              <TextBlock x:Name="LobbyText" FontWeight="SemiBold" />
-              <TextBlock x:Name="RouterText" Classes="hint" />
-              <TextBlock x:Name="ReachText" FontWeight="SemiBold" TextWrapping="Wrap" />
-              <WrapPanel>
-                <Button x:Name="FirewallButton" Content="Allow through firewall" Margin="0,0,8,0" />
-                <Button x:Name="TestReachButton" Content="Test again" />
-              </WrapPanel>
-            </StackPanel>
-          </Border>
-
-          <Grid Grid.Row="2" ColumnDefinitions="200,14,*" Margin="0,14,0,0">
-            <Border Classes="card" Padding="10">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Classes="label" Text="PLAYERS ONLINE" Margin="4,0,0,8" />
-                <StackPanel DockPanel.Dock="Bottom" Orientation="Horizontal" Spacing="6" Margin="0,8,0,0">
-                  <Button x:Name="KickButton" Content="Kick" />
-                  <Button x:Name="BanButton" Content="Ban" />
-                </StackPanel>
-                <ListBox x:Name="PlayersList" Background="Transparent" />
-              </DockPanel>
-            </Border>
-            <Border Grid.Column="2" Classes="card" Padding="10">
-              <DockPanel>
-                <TextBlock DockPanel.Dock="Top" Classes="label" Text="SERVER LOG" Margin="4,0,0,8" />
-                <TextBox x:Name="LogBox" IsReadOnly="True" AcceptsReturn="True" TextWrapping="Wrap"
-                         FontFamily="Consolas,Menlo,monospace" FontSize="12" Background="#081826" BorderThickness="0" />
-              </DockPanel>
-            </Border>
-          </Grid>
-        </Grid>
-      </TabItem>
-
-      <!-- SETUP -->
-      <TabItem Header="Setup">
-        <ScrollViewer>
-          <StackPanel Spacing="14" Margin="4,12,4,12">
-            <StackPanel Spacing="10">
-              <TextBlock Classes="label" Text="SUBNAUTICA FOLDER" />
-              <Grid ColumnDefinitions="*,8,Auto,8,Auto">
-                <TextBox x:Name="GameDirBox" Watermark="C:\Program Files (x86)\Steam\steamapps\common\Subnautica" />
-                <Button Grid.Column="2" x:Name="SearchButton" Content="Search my PC" />
-                <Button Grid.Column="4" x:Name="BrowseButton" Content="Browse..." />
-              </Grid>
-              <TextBlock Classes="hint" Text="Tip: in Steam, right-click Subnautica &gt; Manage &gt; Browse local files, then copy that folder's address and paste it here. Or just start the game once while this window is open and it finds it by itself." />
-            </StackPanel>
-
-            <Border Classes="card">
-              <StackPanel Spacing="10">
-                <TextBlock x:Name="GameStatus" />
-                <TextBlock x:Name="BepStatus" />
-                <TextBlock x:Name="ModStatus" />
-                <WrapPanel>
-                  <Button x:Name="InstallBepButton" Content="Install BepInEx for me" Margin="0,0,8,8" />
-                  <Button x:Name="InstallModButton" Content="Install / update mod" Margin="0,0,8,8" />
-                  <Button x:Name="OpenFolderButton" Content="Open mod folder" Margin="0,0,8,8" />
-                </WrapPanel>
-              </StackPanel>
-            </Border>
-
-            <Border Classes="card">
-              <StackPanel Spacing="4">
-                <TextBlock Classes="h2" Text="Friends on different wifi" FontSize="14" />
-                <TextBlock Classes="hint" Text="The host's launcher asks the router to open the port by itself (UPnP). Most home routers allow it." />
-                <TextBlock Classes="hint" Text="If the Server tab says it couldn't: turn on UPnP in the router, forward the port by hand, or have everyone install Radmin VPN / Tailscale and join with the host's VPN IP." />
-              </StackPanel>
-            </Border>
-          </StackPanel>
-        </ScrollViewer>
-      </TabItem>
-    </TabControl>
-
-    <Border Grid.Row="2" Background="#0A1C2B" Padding="16,9">
-      <TextBlock x:Name="StatusText" Foreground="#8FB3C4" FontSize="12" TextWrapping="Wrap" />
-    </Border>
-  </Grid>
+    <!-- PDA corner brackets -->
+    <Path Classes="bracket" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="-7,-7,0,0" Data="M0,34 L0,23 Q0,0 23,0 L34,0" />
+    <Path Classes="bracket" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,-7,-7,0" Data="M0,0 L11,0 Q34,0 34,23 L34,34" />
+    <Path Classes="bracket" HorizontalAlignment="Left" VerticalAlignment="Bottom" Margin="-7,0,0,-7" Data="M0,0 L0,11 Q0,34 23,34 L34,34" />
+    <Path Classes="bracket" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,-7,-7" Data="M34,0 L34,11 Q34,34 11,34 L0,34" />
+  </Panel>
 </Window>

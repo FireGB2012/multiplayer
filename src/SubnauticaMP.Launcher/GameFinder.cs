@@ -246,8 +246,19 @@ namespace SubnauticaMP.Launcher
                 }
                 catch { }
             }
-            roots.Add(@"C:\Program Files (x86)\Steam");
-            return roots.Distinct(StringComparer.OrdinalIgnoreCase);
+            if (OperatingSystem.IsWindows()) roots.Add(@"C:\Program Files (x86)\Steam");
+            else
+            {
+                // Linux / Steam Deck: native, Flatpak and Snap Steam (Subnautica itself runs in Proton)
+                var home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+                foreach (var rel in new[] { ".steam/steam", ".local/share/Steam", ".steam/root",
+                                            ".var/app/com.valvesoftware.Steam/.local/share/Steam", "snap/steam/common/.local/share/Steam" })
+                {
+                    var dir = Path.Combine(home, rel);
+                    if (Directory.Exists(dir)) roots.Add(dir);
+                }
+            }
+            return roots.Distinct(OperatingSystem.IsWindows() ? StringComparer.OrdinalIgnoreCase : StringComparer.Ordinal);
         }
     }
 }

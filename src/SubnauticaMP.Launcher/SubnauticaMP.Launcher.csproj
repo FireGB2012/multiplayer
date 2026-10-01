@@ -1,9 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <!--
-    The launcher app (Windows .exe): installs the mod, hosts servers, launches the game.
+    The launcher app (Windows .exe, Linux AppImage): installs the mod, hosts servers, launches the game.
     Build the single-file exe with:
       dotnet publish src/SubnauticaMP.Launcher -c Release -r win-x64
+    Linux: dotnet publish ... -r linux-x64, then tools/appimage/build.sh packs it into an AppImage.
   -->
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
@@ -15,6 +16,7 @@
     <Version>0.22.0</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(RuntimeIdentifier)' != ''">
@@ -35,6 +37,10 @@
     <PackageReference Include="Avalonia.Desktop" Version="11.3.22" />
     <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.22" />
     <PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.22" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <AvaloniaResource Include="Assets\icon.ico" />
   </ItemGroup>
 
   <ItemGroup>

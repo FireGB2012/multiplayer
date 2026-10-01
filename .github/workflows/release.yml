@@ -1,6 +1,7 @@
 name: Release
 
-# Builds the launcher + mod, runs the tests, and publishes a GitHub release with the zip.
+# Builds the launcher + mod, runs the tests, and publishes a GitHub release with
+# the Windows zip (launcher .exe + manual install) and the Linux AppImage (any distro / Steam Deck).
 # Run it from the Actions tab (Run workflow) or push a tag like v0.5.6.
 on:
   workflow_dispatch:
@@ -33,6 +34,7 @@ jobs:
         run: |
           dotnet build src/SubnauticaMP.Plugin -c Release
           dotnet publish src/SubnauticaMP.Launcher -c Release -r win-x64 -o publish
+          dotnet publish src/SubnauticaMP.Launcher -c Release -r linux-x64 -o publish-linux
 
       - name: Package
         run: |
@@ -43,7 +45,8 @@ jobs:
           cp src/SubnauticaMP.Plugin/bin/Release/SubnauticaMP.dll src/SubnauticaMP.Plugin/bin/Release/Mono.Nat.dll "$d/manual-install/BepInEx/plugins/SubnauticaMP/"
           cp docs/READ_ME.txt "$d/READ ME.txt"
           sed -i "s/{VERSION}/$v/" "$d/READ ME.txt"
-          zip -qr9 "$d.zip" "$d"
+          zip -qr9 "$d-Windows.zip" "$d"
+          tools/appimage/build.sh publish-linux "$v" "$d-Linux-x86_64.AppImage"
 
       - name: Publish release
         uses: softprops/action-gh-release@v2
@@ -52,8 +55,15 @@ jobs:
           name: Subnautica Multiplayer v${{ steps.version.outputs.version }}
           target_commitish: ${{ github.sha }}
           make_latest: true
-          files: SubnauticaMP-v${{ steps.version.outputs.version }}.zip
+          files: |
+            SubnauticaMP-v${{ steps.version.outputs.version }}-Windows.zip
+            SubnauticaMP-v${{ steps.version.outputs.version }}-Linux-x86_64.AppImage
           body: |
-            **Download `SubnauticaMP-v${{ steps.version.outputs.version }}.zip` below**, extract it, run `SubnauticaMP-Launcher.exe`.
-            The top-right of the launcher should say v${{ steps.version.outputs.version }}.
-            Then Setup > Install / update mod (with the game closed). Everyone playing together needs the same version.
+            **Windows:** download `SubnauticaMP-v${{ steps.version.outputs.version }}-Windows.zip` below, extract it, run `SubnauticaMP-Launcher.exe`.
+
+            **Linux / Steam Deck:** download `SubnauticaMP-v${{ steps.version.outputs.version }}-Linux-x86_64.AppImage`, make it executable
+            (right-click > Properties > Allow executing, or `chmod +x`), run it. Works on any distro. In Steam set Subnautica's launch option once:
+            `WINEDLLOVERRIDES="winhttp=n,b" %command%` (the launcher's Setup page has a Copy button for it).
+
+            The top-right of the launcher should say v${{ steps.version.outputs.version }}. Hit PLAY: it installs / updates the mod and starts the game.
+            Everyone playing together needs the same version.
