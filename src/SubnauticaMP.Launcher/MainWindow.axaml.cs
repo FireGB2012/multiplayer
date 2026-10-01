@@ -39,6 +39,9 @@ namespace SubnauticaMP.Launcher
             // PLAY, or FIND GAME while the game folder isn't known yet (one main button, never two)
             PlayButton.Click += (_, _) => Run(GameFolder.IsGameDir(GameDir) && _search == null ? PlayGame : SearchPc);
             ServerButton.Click += (_, _) => Run(ToggleServer);
+            NewServerButton.Click += (_, _) => Run(OpenCreateServer);
+            CreateBackButton.Click += (_, _) => ShowServerView(ServerListView);
+            CreateServerButton.Click += (_, _) => Run(CreateServer);
             KickButton.Click += (_, _) => Run(() => KickSelected(false));
             BanButton.Click += (_, _) => Run(() => KickSelected(true));
             BrowseButton.Click += (_, _) => Run(Browse);
@@ -75,6 +78,8 @@ namespace SubnauticaMP.Launcher
             RefreshSetup();
             RefreshWorld();
             RefreshServer();
+            RefreshServerList();
+            ServerListView.Classes.Add("shown");
             Status(GameFolder.IsGameDir(GameDir)
                 ? "Ready. Hit PLAY."
                 : "Subnautica isn't found yet: hit FIND GAME on the Home page.");
@@ -213,6 +218,8 @@ namespace SubnauticaMP.Launcher
                 _host.Stop();
                 GameFolder.ClearLocalServer(GameDir);
                 RefreshServer();
+                RefreshServerList();
+                ShowServerView(ServerListView);
                 Status("Server stopped. World saved.");
             }
             else
@@ -245,7 +252,6 @@ namespace SubnauticaMP.Launcher
         void RefreshServer()
         {
             bool running = _host.Running;
-            ServerButton.Content = running ? "STOP SERVER" : "START SERVER";
             WorldBox.IsEnabled = PortBox.IsEnabled = HostPasswordBox.IsEnabled = !running;
             ModeBox.IsEnabled = !running && HostedServer.TryLoadWorld(WorldName) == null;
             var world = running ? _host.World : HostedServer.TryLoadWorld(WorldName);
@@ -258,7 +264,12 @@ namespace SubnauticaMP.Launcher
                 LobbyText.Foreground = Avalonia.Media.Brush.Parse(world.Started ? Ok : Scanner);
             }
             CodesCard.IsVisible = running;
-            ServerIdleCard.IsVisible = !running;
+            if (running)
+            {
+                RunTitle.Text = WorldName;
+                RunSubtitle.Text = $"{world?.GameMode ?? Mode}  ·  port {_host.Port}  ·  {(world?.Started == true ? "in progress" : "lobby")}";
+                if (!ServerRunView.IsVisible) ShowServerView(ServerRunView);
+            }
             int online = _host.Players.Count;
             Chip(ServerChip, ServerChipText, running ? "ok" : "off",
                  running ? $"Server on  ·  {online} player{(online == 1 ? "" : "s")}" : "Server off");
@@ -276,6 +287,112 @@ namespace SubnauticaMP.Launcher
             NoPlayersText.Text = running ? "No one online yet" : "Server is off";
             NoPlayersText.IsVisible = rows.Count == 0;
             RefreshKickButtons();
+        }
+
+        // ---------- server list (like Nitrox: your worlds, create one, open one) ----------
+
+        // Shows one of the three server views (list / create / running) with a short fade + slide in.
+        void ShowServerView(Control view)
+        {
+            foreach (var v in new Control[] { ServerListView, ServerCreateView, ServerRunView })
+            {
+                if (v == view) continue;
+                v.Classes.Remove("shown");
+                v.IsVisible = false;
+            }
+            view.Classes.Remove("shown");
+            view.IsVisible = true;
+            Dispatcher.UIThread.Post(() => view.Classes.Add("shown"), DispatcherPriority.Background);
+        }
+
+        static string WorldsFolder => Path.GetDirectoryName(HostedServer.WorldPath("x"));
+
+        void RefreshServerList()
+        {
+            var files = Directory.Exists(WorldsFolder)
+                ? new DirectoryInfo(WorldsFolder).GetFiles("*.dat").Where(f => f.Extension == ".dat").OrderByDescending(f => f.LastWriteTime).ToList()
+                : new System.Collections.Generic.List<FileInfo>();
+            ServerItems.Items.Clear();
+            foreach (var f in files)
+            {
+                var name = Path.GetFileNameWithoutExtension(f.Name);
+                WorldState world = null;
+                try { world = WorldState.LoadFromFile(f.FullName); } catch { }
+                ServerItems.Items.Add(ServerRow(name, world, f.LastWriteTime));
+            }
+            NoServersCard.IsVisible = files.Count == 0;
+        }
+
+        Control ServerRow(string name, WorldState world, DateTime saved)
+        {
+            var start = new Button { Content = "Start", Classes = { "primary" }, Padding = new Avalonia.Thickness(22, 9), VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center };
+            start.Click += (_, _) => Run(() => StartWorld(name));
+            var delete = new Button { Content = "Delete", Classes = { "danger" }, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Avalonia.Thickness(0, 0, 8, 0) };
+            bool armed = false;
+            delete.Click += (_, _) => Run(() =>
+            {
+                if (!armed) { armed = true; delete.Content = "Sure?"; return; } // second click deletes
+                DeleteWorld(name);
+            });
+            delete.PointerExited += (_, _) => { armed = false; delete.Content = "Delete"; };
+
+            var details = world == null ? "can't read this save"
+                : $"{world.GameMode}  ·  {(world.Started ? "in progress" : "lobby")}  ·  last saved {saved:d MMM, HH:mm}";
+            var text = new StackPanel { Spacing = 3, VerticalAlignment = Avalonia.Layout.VerticalAlignment.Center, Margin = new Avalonia.Thickness(12, 0, 8, 0) };
+            text.Children.Add(new TextBlock { Text = name, Classes = { "rowtitle" } });
+            text.Children.Add(new TextBlock { Text = details, Classes = { "rowdetail" } });
+
+            var icon = new Border { Classes = { "bubble" }, Child = new Avalonia.Controls.Shapes.Path
+            {
+                Classes = { "glyph" },
+                Data = Avalonia.Media.Geometry.Parse("M12,3 C17,3 21,7 21,12 C21,17 17,21 12,21 C7,21 3,17 3,12 C3,7 7,3 12,3 Z M3,12 H21 M12,3 C9,6 9,18 12,21 M12,3 C15,6 15,18 12,21"),
+            } };
+            var grid = new Grid { ColumnDefinitions = new ColumnDefinitions("Auto,*,Auto,Auto") };
+            grid.Children.Add(icon);
+            Grid.SetColumn(text, 1); grid.Children.Add(text);
+            Grid.SetColumn(delete, 2); grid.Children.Add(delete);
+            Grid.SetColumn(start, 3); grid.Children.Add(start);
+            return new Border { Classes = { "card", "server" }, Padding = new Avalonia.Thickness(10, 10, 12, 10), Child = grid };
+        }
+
+        void OpenCreateServer()
+        {
+            if (_host.Running) throw new Exception("Stop the running server first.");
+            var name = "My World";
+            for (int i = 2; HostedServer.TryLoadWorld(name) != null || File.Exists(HostedServer.WorldPath(name)); i++) name = "My World " + i;
+            WorldBox.Text = name;
+            ShowServerView(ServerCreateView);
+            WorldBox.Focus();
+        }
+
+        void CreateServer()
+        {
+            if (string.IsNullOrWhiteSpace(WorldBox.Text)) throw new Exception("Give the server a name first.");
+            if (File.Exists(HostedServer.WorldPath(WorldName)))
+                throw new Exception($"There's already a server called '{WorldName}'. Pick another name, or start it from the list.");
+            StartServer();
+            Status("Server running. Hit PLAY and pick 'Launcher server' in the game's Multiplayer menu to jump in yourself.");
+        }
+
+        void StartWorld(string name)
+        {
+            if (_host.Running) throw new Exception("Another server is already running.");
+            WorldBox.Text = name;
+            RefreshWorld(); // existing worlds keep their game mode
+            StartServer();
+            Status($"'{name}' is running. Hit PLAY and pick 'Launcher server' in the game's Multiplayer menu to jump in yourself.");
+        }
+
+        // Deleted worlds go to worlds/deleted (not gone for good, in case of a misclick).
+        void DeleteWorld(string name)
+        {
+            var path = HostedServer.WorldPath(name);
+            if (!File.Exists(path)) { RefreshServerList(); return; }
+            var bin = Path.Combine(WorldsFolder, "deleted");
+            Directory.CreateDirectory(bin);
+            File.Move(path, Path.Combine(bin, $"{Path.GetFileNameWithoutExtension(path)}-{DateTime.Now:yyyyMMdd-HHmmss}.dat"));
+            RefreshServerList();
+            Status($"Deleted '{name}' (a copy is kept in {bin}).");
         }
 
         // Kick / Ban only show up once there's someone selected to kick.

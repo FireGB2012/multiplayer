@@ -16,6 +16,14 @@
     <SolidColorBrush x:Key="WarnBrush" Color="#FFC857" />
     <SolidColorBrush x:Key="BadBrush" Color="#FF7A6B" />
 
+    <!-- one rubber rib on the handle's grip: lit on top, dark underneath -->
+    <LinearGradientBrush x:Key="RibBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+      <GradientStop Offset="0" Color="#5B636C" />
+      <GradientStop Offset="0.3" Color="#474E56" />
+      <GradientStop Offset="0.7" Color="#2A2F34" />
+      <GradientStop Offset="1" Color="#121417" />
+    </LinearGradientBrush>
+
     <!-- Fluent controls in PDA colors -->
     <SolidColorBrush x:Key="ButtonBackground" Color="#1C4A82" />
     <SolidColorBrush x:Key="ButtonBackgroundPointerOver" Color="#2862A8" />
@@ -80,6 +88,53 @@
     <Style Selector="Window">
       <Setter Property="FontFamily" Value="fonts:Inter#Inter" />
       <Setter Property="Foreground" Value="{StaticResource WhiteBrush}" />
+    </Style>
+
+    <!-- ===== animations ===== -->
+    <!-- the screen powers on with a flicker when the launcher opens -->
+    <Style Selector="Border.screen">
+      <Style.Animations>
+        <Animation Duration="0:0:0.9" FillMode="Forward">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0" /></KeyFrame>
+          <KeyFrame Cue="12%"><Setter Property="Opacity" Value="0.75" /></KeyFrame>
+          <KeyFrame Cue="22%"><Setter Property="Opacity" Value="0.15" /></KeyFrame>
+          <KeyFrame Cue="40%"><Setter Property="Opacity" Value="0.9" /></KeyFrame>
+          <KeyFrame Cue="50%"><Setter Property="Opacity" Value="0.6" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- PLAY breathes a soft glow; the light on the shell blinks slowly -->
+    <Style Selector="Border.glow">
+      <Style.Animations>
+        <Animation Duration="0:0:2.4" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.45" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <Style Selector="Ellipse.light">
+      <Style.Animations>
+        <Animation Duration="0:0:3" IterationCount="INFINITE" PlaybackDirection="Alternate" Easing="SineEaseInOut">
+          <KeyFrame Cue="0%"><Setter Property="Opacity" Value="0.55" /></KeyFrame>
+          <KeyFrame Cue="100%"><Setter Property="Opacity" Value="1" /></KeyFrame>
+        </Animation>
+      </Style.Animations>
+    </Style>
+    <!-- server views (list / create / running) fade and slide in -->
+    <Style Selector="Grid.view">
+      <Setter Property="Opacity" Value="0" />
+      <Setter Property="RenderTransform" Value="translateY(14px)" />
+      <Setter Property="Transitions">
+        <Transitions>
+          <DoubleTransition Property="Opacity" Duration="0:0:0.22" />
+          <TransformOperationsTransition Property="RenderTransform" Duration="0:0:0.26" Easing="CubicEaseOut" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Grid.view.shown">
+      <Setter Property="Opacity" Value="1" />
+      <Setter Property="RenderTransform" Value="none" />
     </Style>
 
     <!-- ===== text ===== -->
@@ -153,6 +208,24 @@
       <Setter Property="Padding" Value="8,8,12,8" />
       <Setter Property="CornerRadius" Value="10" />
       <Setter Property="Background" Value="#33102C55" />
+      <Setter Property="Transitions">
+        <Transitions><BrushTransition Property="Background" Duration="0:0:0.15" /></Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.row:pointerover">
+      <Setter Property="Background" Value="#552A5A9A" />
+    </Style>
+    <Style Selector="Border.card.server">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.15" />
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.15" />
+        </Transitions>
+      </Setter>
+    </Style>
+    <Style Selector="Border.card.server:pointerover">
+      <Setter Property="Background" Value="#E62A5A9A" />
+      <Setter Property="BorderBrush" Value="#9AD0FF" />
     </Style>
     <Style Selector="Border.bubble">
       <Setter Property="Width" Value="40" />
@@ -274,8 +347,12 @@
                     Background="#59214F86" BorderBrush="#3E79BD" BorderThickness="1">
               <ItemsPresenter Name="PART_ItemsPresenter" ItemsPanel="{TemplateBinding ItemsPanel}" />
             </Border>
-            <ContentPresenter Name="PART_SelectedContentHost" Content="{TemplateBinding SelectedContent}"
-                              ContentTemplate="{TemplateBinding SelectedContentTemplate}" />
+            <TransitioningContentControl Content="{TemplateBinding SelectedContent}"
+                                         ContentTemplate="{TemplateBinding SelectedContentTemplate}">
+              <TransitioningContentControl.PageTransition>
+                <CrossFade Duration="0:0:0.2" />
+              </TransitioningContentControl.PageTransition>
+            </TransitioningContentControl>
           </DockPanel>
         </ControlTemplate>
       </Setter>
@@ -286,6 +363,12 @@
       </Setter>
     </Style>
     <Style Selector="TabControl.pda > TabItem">
+      <Setter Property="Transitions">
+        <Transitions>
+          <BrushTransition Property="Background" Duration="0:0:0.18" />
+          <BrushTransition Property="BorderBrush" Duration="0:0:0.18" />
+        </Transitions>
+      </Setter>
       <Setter Property="Foreground" Value="{StaticResource IceBrush}" />
       <Setter Property="Background" Value="Transparent" />
       <Setter Property="Cursor" Value="Hand" />

@@ -1,3 +1,5 @@
+using System.Linq;
+using Avalonia.LogicalTree;
 using Avalonia;
 using Xunit;
 using Avalonia.Controls;
@@ -43,27 +45,44 @@ public class LauncherUiTests
     }
 
     [AvaloniaFact]
-    public void HostingShowsJoinCodes()
+    public void CreatingAServerShowsJoinCodesThenListsIt()
     {
+        var name = "Test World " + Guid.NewGuid().ToString("N").Substring(0, 6);
         var w = new MainWindow();
         w.Show();
-        w.FindControl<TabControl>("Tabs").SelectedIndex = 1;
-        w.FindControl<TextBox>("PortBox").Text = FreePort().ToString();
-        w.FindControl<TextBox>("WorldBox").Text = "My World";
-        DeleteIfThere(HostedServer.WorldPath("My World"));
-        Avalonia.Threading.Dispatcher.UIThread.RunJobs();
-        w.FindControl<ComboBox>("ModeBox").SelectedItem = "Creative";
-        w.FindControl<Button>("ServerButton").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+        void Click(string button)
+        {
+            w.FindControl<Button>(button).RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+        }
+        try
+        {
+            w.FindControl<TabControl>("Tabs").SelectedIndex = 1;
+            Assert.True(w.FindControl<Grid>("ServerListView").IsVisible);
 
-        Assert.True(w.FindControl<Border>("CodesCard").IsVisible);
-        Assert.Contains("Lobby", w.FindControl<TextBlock>("LobbyText").Text);
-        Assert.Equal("STOP SERVER", w.FindControl<Button>("ServerButton").Content);
-        Snap(w, "4-server-running");
+            Click("NewServerButton");
+            Assert.True(w.FindControl<Grid>("ServerCreateView").IsVisible);
+            w.FindControl<TextBox>("PortBox").Text = FreePort().ToString();
+            w.FindControl<TextBox>("WorldBox").Text = name;
+            Avalonia.Threading.Dispatcher.UIThread.RunJobs();
+            w.FindControl<ComboBox>("ModeBox").SelectedItem = "Creative";
+            Click("CreateServerButton");
 
-        w.FindControl<Button>("ServerButton").RaiseEvent(new Avalonia.Interactivity.RoutedEventArgs(Button.ClickEvent));
-        Assert.Equal("START SERVER", w.FindControl<Button>("ServerButton").Content);
-        w.Close();
-        DeleteIfThere(HostedServer.WorldPath("My World"));
+            Assert.True(w.FindControl<Grid>("ServerRunView").IsVisible); // the open server: codes, players, log
+            Assert.Contains("Lobby", w.FindControl<TextBlock>("LobbyText").Text);
+            Assert.Equal(name, w.FindControl<TextBlock>("RunTitle").Text);
+            Snap(w, "4-server-running");
+
+            Click("ServerButton"); // stop: back to the list, which now has it
+            Assert.True(w.FindControl<Grid>("ServerListView").IsVisible);
+            Assert.Contains(w.FindControl<ItemsControl>("ServerItems").Items.OfType<Border>(),
+                b => b.GetLogicalDescendants().OfType<TextBlock>().Any(t => t.Text == name));
+        }
+        finally
+        {
+            w.Close();
+            DeleteIfThere(HostedServer.WorldPath(name));
+        }
     }
 
     [AvaloniaFact]
