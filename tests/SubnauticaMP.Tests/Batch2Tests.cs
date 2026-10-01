@@ -40,6 +40,31 @@ public class Batch2Tests
     }
 
     [Fact]
+    public void RelayedUpdatesKeepTheClockAndTheServerReportsLag()
+    {
+        var path = Path.Combine(Path.GetTempPath(), "snmp-lag-" + Guid.NewGuid() + ".dat");
+        try
+        {
+            var server = new NetServer(path);
+            var log = new System.Collections.Concurrent.ConcurrentQueue<string>();
+            server.Log += log.Enqueue;
+            server.Start(0);
+            var (a, _) = Join(server, "A");
+            var (b, _) = Join(server, "B");
+            a.Send(new PlayerStatePacket { Held = "", SentAt = 42.5f });
+            var got = WaitFor<PlayerStatePacket>(b);
+            Assert.Equal(42.5, (double)got.SentAt);
+            Assert.NotEqual(0L, got.ReceivedTicks); // stamped by the network thread when it arrived
+
+            server.ReportLagNow();
+            Assert.Contains(log, l => l.StartsWith("[lag] last") && l.Contains("2 player(s)") && l.Contains("slowest send"));
+            a.Disconnect(); b.Disconnect();
+            server.Stop();
+        }
+        finally { File.Delete(path); }
+    }
+
+    [Fact]
     public void PlayerStateCarriesTheSendersClock()
     {
         var p = new PlayerStatePacket { Held = "", SentAt = 123.25f };

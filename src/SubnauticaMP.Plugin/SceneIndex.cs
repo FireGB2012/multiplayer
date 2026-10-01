@@ -10,8 +10,10 @@ namespace SubnauticaMP
     // (one type at a time, never two in one frame) catches anything the hooks missed.
     internal static class SceneIndex
     {
-        const float RecheckSeconds = 20f;
-        const float HookedRecheckSeconds = 180f;
+        // A full search of the world (FindObjectsOfType) can take tens of ms in a big world: a hitch. Hooked lists
+        // stay right by themselves, so they're only double-checked very rarely; the others are only searched when
+        // something actually asks for them (All), never in the background.
+        const float HookedRecheckSeconds = 900f;
 
         sealed class Entry
         {
@@ -66,9 +68,7 @@ namespace SubnauticaMP
             if (_lastScanFrame == Time.frameCount) return;
             foreach (var kv in _types)
             {
-                // hooked lists stay right by themselves; only rarely double-check them (a full search can hitch)
-                float every = kv.Value.Hooked ? HookedRecheckSeconds : RecheckSeconds;
-                if (Time.unscaledTime - kv.Value.LastFullScan < every) continue;
+                if (!kv.Value.Hooked || Time.unscaledTime - kv.Value.LastFullScan < HookedRecheckSeconds) continue;
                 FullScan(kv.Key, kv.Value);
                 return;
             }

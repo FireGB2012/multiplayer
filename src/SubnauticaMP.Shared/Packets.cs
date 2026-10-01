@@ -92,6 +92,8 @@ namespace SubnauticaMP.Shared
     public abstract class Packet
     {
         public abstract PacketType Type { get; }
+        // When the reader thread got it (Stopwatch ticks); not sent. Tells "late on the way" from "we were busy".
+        public long ReceivedTicks;
         public abstract void Write(BinaryWriter w);
         public abstract void Read(BinaryReader r);
 

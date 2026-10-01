@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Net.Sockets;
 using System.Threading;
 
@@ -16,14 +17,23 @@ namespace SubnauticaMP.Shared
         readonly TcpClient _tcp;
         readonly NetworkStream _stream;
         readonly object _queueLock = new object();
-        // each entry is a Packet (turned into bytes on the writer thread) or already-made bytes
-        readonly Queue<object> _urgent = new Queue<object>();
-        readonly Queue<object> _normal = new Queue<object>();
+        // each entry is a Packet (turned into bytes on the writer thread) or already-made bytes, plus when it was queued
+        readonly Queue<(object item, long queued)> _urgent = new Queue<(object, long)>();
+        readonly Queue<(object item, long queued)> _normal = new Queue<(object, long)>();
         long _queuedBytes;
         string _closeAfterSend;
         int _closed;
 
         public event Action<Connection, Packet> PacketReceived;
+
+        // Stats for the lag reports: counts since the start, and the longest a packet sat in the queue
+        // before going out (big = this PC is too busy to send in time). TakeMaxWaitMs resets it.
+        long _packetsIn, _packetsOut, _bytesOut;
+        int _maxWaitMs;
+        public long PacketsIn => Interlocked.Read(ref _packetsIn);
+        public long PacketsOut => Interlocked.Read(ref _packetsOut);
+        public long BytesOut => Interlocked.Read(ref _bytesOut);
+        public int TakeMaxWaitMs() => Interlocked.Exchange(ref _maxWaitMs, 0);
         public event Action<Connection, string> Closed;
 
         public bool IsOpen => _closed == 0;
@@ -47,8 +57,10 @@ namespace SubnauticaMP.Shared
 
         public void Start()
         {
-            new Thread(ReadLoop) { IsBackground = true, Name = "SubnauticaMP reader" }.Start();
-            new Thread(WriteLoop) { IsBackground = true, Name = "SubnauticaMP writer" }.Start();
+            // above normal: when the game loads new terrain on every core, the network still gets its turn
+            // (otherwise everyone's updates stall while the host turns and swims)
+            new Thread(ReadLoop) { IsBackground = true, Name = "SubnauticaMP reader", Priority = ThreadPriority.AboveNormal }.Start();
+            new Thread(WriteLoop) { IsBackground = true, Name = "SubnauticaMP writer", Priority = ThreadPriority.AboveNormal }.Start();
         }
 
         // The packet is serialized (and compressed) on the writer thread, so the caller never waits.
@@ -71,7 +83,7 @@ namespace SubnauticaMP.Shared
             lock (_queueLock)
             {
                 if (_closeAfterSend != null) return;
-                (urgent ? _urgent : _normal).Enqueue(item);
+                (urgent ? _urgent : _normal).Enqueue((item, Stopwatch.GetTimestamp()));
                 _queuedBytes += size;
                 tooMuch = _queuedBytes > MaxQueuedBytes;
                 Monitor.Pulse(_queueLock);
@@ -110,14 +122,15 @@ namespace SubnauticaMP.Shared
                 while (IsOpen)
                 {
                     object item = null;
+                    long queued = 0;
                     string closeReason = null;
                     lock (_queueLock)
                     {
                         while (IsOpen && _urgent.Count == 0 && _normal.Count == 0 && _closeAfterSend == null)
                             Monitor.Wait(_queueLock);
                         if (!IsOpen) return;
-                        if (_urgent.Count > 0) item = _urgent.Dequeue();
-                        else if (_normal.Count > 0) item = _normal.Dequeue();
+                        if (_urgent.Count > 0) (item, queued) = _urgent.Dequeue();
+                        else if (_normal.Count > 0) (item, queued) = _normal.Dequeue();
                         else closeReason = _closeAfterSend; // everything sent, now close
                         if (item is byte[] raw) _queuedBytes -= raw.Length;
                     }
@@ -131,6 +144,11 @@ namespace SubnauticaMP.Shared
                     try { data = item as byte[] ?? Protocol.Serialize((Packet)item); }
                     catch (InvalidOperationException) { continue; } // too big to send: drop it, keep the connection
                     _stream.Write(data, 0, data.Length);
+                    Interlocked.Increment(ref _packetsOut);
+                    Interlocked.Add(ref _bytesOut, data.Length);
+                    int waited = (int)((Stopwatch.GetTimestamp() - queued) * 1000 / Stopwatch.Frequency);
+                    int was;
+                    while (waited > (was = Volatile.Read(ref _maxWaitMs)) && Interlocked.CompareExchange(ref _maxWaitMs, waited, was) != was) { }
                 }
             }
             catch (Exception e)
@@ -147,6 +165,8 @@ namespace SubnauticaMP.Shared
                 {
                     var packet = Protocol.ReadPacket(_stream, MaxPacketSize);
                     if (packet == null) { Close("Connection closed"); return; }
+                    packet.ReceivedTicks = Stopwatch.GetTimestamp();
+                    Interlocked.Increment(ref _packetsIn);
                     PacketReceived?.Invoke(this, packet);
                 }
             }

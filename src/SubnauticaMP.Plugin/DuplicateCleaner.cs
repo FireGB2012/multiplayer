@@ -9,7 +9,7 @@ namespace SubnauticaMP
     // This finds those leftovers now and then and removes them, which fixes saves that already have them.
     internal static class DuplicateCleaner
     {
-        const float Every = 45f; // FindObjectsOfType isn't free: not too often
+        const float Every = 45f;
         static float _next;
         static readonly List<string> _ids = new List<string>();
         static readonly Dictionary<Vector3Int, Component> _homes = new Dictionary<Vector3Int, Component>();
@@ -44,9 +44,9 @@ namespace SubnauticaMP
             if (Game.CrashHome == null) return 0;
             _homes.Clear();
             int n = 0;
-            foreach (var o in Object.FindObjectsOfType(Game.CrashHome))
+            foreach (var home in SceneIndex.All(Game.CrashHome)) // kept up to date by hooks: no world search
             {
-                if (!(o is Component home) || home == null) continue;
+                if (home == null) continue;
                 var p = home.transform.position * 2f; // half-meter grid
                 var cell = new Vector3Int(Mathf.RoundToInt(p.x), Mathf.RoundToInt(p.y), Mathf.RoundToInt(p.z));
                 if (_homes.ContainsKey(cell)) { Object.Destroy(home.gameObject); n++; }

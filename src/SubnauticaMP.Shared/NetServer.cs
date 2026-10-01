@@ -169,6 +169,7 @@ namespace SubnauticaMP.Shared
             if (introLate) CheckIntro(true);
 
             double up = _uptime.Elapsed.TotalSeconds;
+            try { LagReport(up); } catch (Exception e) { Log?.Invoke("[lag] report failed: " + e.Message); }
             bool hasTime;
             double worldTime;
             lock (_lock) { hasTime = _world.HasTime; worldTime = CurrentTime(); }
@@ -288,7 +289,71 @@ namespace SubnauticaMP.Shared
             }
         }
 
+        // ---------- lag report ----------
+
+        const double LagReportSeconds = 60;
+        const int BusyMs = 150;   // a packet waiting longer than this to go out = players notice
+        long _statIn;
+        int _statHandleMaxMs;
+        string _statHandleMaxWhat = "";
+        double _lastLagReport, _lastBusyChat = -1e9;
+
+        // Every minute while people play: how much went through and the worst delays, so lag can be pinned on
+        // this PC being too busy (big waits here) vs someone's game or internet (small waits here).
+        void LagReport(double up)
+        {
+            if (up - _lastLagReport < LagReportSeconds) return;
+            double span = _lastLagReport > 0 ? up - _lastLagReport : up;
+            _lastLagReport = up;
+            Connection[] all;
+            lock (_lock) all = _connections.ToArray();
+            int players = all.Count(c => c.Tag is Client cl && cl.Joined);
+            long count = Interlocked.Exchange(ref _statIn, 0);
+            int handle = Interlocked.Exchange(ref _statHandleMaxMs, 0);
+            string handleWhat = _statHandleMaxWhat;
+            int wait = 0;
+            string waitWho = "";
+            foreach (var c in all)
+            {
+                int w = c.TakeMaxWaitMs();
+                if (w > wait) { wait = w; waitWho = c.Tag is Client cl ? cl.Name : "?"; }
+            }
+            if (players == 0 && count == 0) return;
+            Log?.Invoke($"[lag] last {span:0} s: {players} player(s), {count / Math.Max(1, span):0} packets/s in, " +
+                        $"slowest handling {handle} ms ({handleWhat}), slowest send {wait} ms (to {waitWho})");
+            if (wait >= BusyMs || handle >= 50)
+            {
+                Log?.Invoke($"[lag] The server waited up to {Math.Max(wait, handle)} ms: this PC is too busy (or {waitWho}'s internet is slow). " +
+                            "Everyone sees lag when this happens. Closing other programs on the host PC helps.");
+                if (wait >= 250 && up - _lastBusyChat > 300)
+                {
+                    _lastBusyChat = up;
+                    Broadcast(new ChatPacket { SenderId = 0, Text = $"[lag] Server had to wait {wait} ms to send updates (host PC busy or a slow connection)." }, except: null);
+                }
+            }
+        }
+
+        // Writes the lag line right away instead of waiting for the minute (tests).
+        public void ReportLagNow()
+        {
+            double up = _uptime.Elapsed.TotalSeconds;
+            _lastLagReport = up - LagReportSeconds;
+            LagReport(up);
+        }
+
         void OnPacket(Connection conn, Packet packet)
+        {
+            long start = Stopwatch.GetTimestamp();
+            try { HandlePacket(conn, packet); }
+            finally
+            {
+                Interlocked.Increment(ref _statIn);
+                int ms = (int)((Stopwatch.GetTimestamp() - start) * 1000 / Stopwatch.Frequency);
+                if (ms > _statHandleMaxMs) { _statHandleMaxMs = ms; _statHandleMaxWhat = packet.Type.ToString(); }
+            }
+        }
+
+        void HandlePacket(Connection conn, Packet packet)
         {
             var client = (Client)conn.Tag;
 

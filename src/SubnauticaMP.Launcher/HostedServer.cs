@@ -53,10 +53,13 @@ namespace SubnauticaMP.Launcher
         {
             if (Running) return;
             var server = new NetServer(WorldPath(worldName), gameMode) { Password = password ?? "" };
-            server.Log += m => Log?.Invoke(m);
+            StartLogFile();
+            server.Log += m => { Log?.Invoke(m); WriteLogFile(m); };
             server.PlayersChanged += () => Changed?.Invoke();
             server.Start(port); // throws if the port is taken
             _server = server;
+            SetPriority(true);
+            Log?.Invoke("Server log is also saved to " + LogFilePath);
             Port = server.Port;
 
             var lan = LocalIPv4();
@@ -126,11 +129,45 @@ namespace SubnauticaMP.Launcher
             if (!Running) return;
             _server.Stop();
             _server = null;
+            SetPriority(false);
             var port = Port;
             Task.Run(() => Upnp.ClosePort(port));
             InternetCode = LanCode = null;
             RouterStatus = null;
             Changed?.Invoke();
+        }
+
+        // The game on this same PC eats every core when it loads terrain; the server must still get its turn,
+        // or everyone's updates stall while the host turns and swims.
+        static void SetPriority(bool hosting)
+        {
+            try
+            {
+                using (var me = System.Diagnostics.Process.GetCurrentProcess())
+                    me.PriorityClass = hosting ? System.Diagnostics.ProcessPriorityClass.AboveNormal : System.Diagnostics.ProcessPriorityClass.Normal;
+            }
+            catch { }
+        }
+
+        // The server log also goes to a file (server.log next to the launcher settings) so it can be sent along with
+        // the game's LogOutput.log when something's wrong.
+        public static string LogFilePath => Path.Combine(Settings.Folder, "server.log");
+        readonly object _logLock = new object();
+
+        void StartLogFile()
+        {
+            try
+            {
+                Directory.CreateDirectory(Settings.Folder);
+                File.WriteAllText(LogFilePath, $"Subnautica Multiplayer server log, started {DateTime.Now}{Environment.NewLine}");
+            }
+            catch { }
+        }
+
+        void WriteLogFile(string line)
+        {
+            try { lock (_logLock) File.AppendAllText(LogFilePath, $"[{DateTime.Now:HH:mm:ss}] {line}{Environment.NewLine}"); }
+            catch { }
         }
 
         static IPAddress LocalIPv4()

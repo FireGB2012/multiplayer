@@ -91,6 +91,8 @@ namespace SubnauticaMP.Shared
 
         public bool TryDequeue(out Packet packet) => _incoming.TryDequeue(out packet);
         public int QueuedCount => _incoming.Count;
+        // Longest our own packets waited to go out since last asked (big = this PC was too busy to send).
+        public int TakeMaxSendWaitMs() => _conn?.TakeMaxWaitMs() ?? 0;
 
         public void Send(Packet packet)
         {

@@ -142,6 +142,7 @@ namespace SubnauticaMP
             PumpPacketsWithBudget();
             WatchConnection();
             SafeRun("object lists", SceneIndex.Tick);
+            SafeRun("lag report", () => NetLag.Tick(this));
             SafeRun("duplicate cleanup", DuplicateCleaner.Tick);
             RunDue();
             if (Time.unscaledTime >= _optionsSyncAt) { _optionsSyncAt = Time.unscaledTime + 1f; NautilusCompat.SyncOptions(); }
@@ -260,6 +261,7 @@ namespace SubnauticaMP
         // ---------- sending ----------
 
         public void Send(Packet p) => _client.Send(p);
+        public int TakeSendWaitMs() => _client.TakeMaxSendWaitMs();
 
         public void SendUnlock(UnlockKind kind, string key)
         {
@@ -596,6 +598,7 @@ namespace SubnauticaMP
         {
             _lastPassword = string.IsNullOrEmpty(password) ? null : password;
             AddChat($"Joining {host}:{port}...");
+            Performance.ServerOnThisPc(_hostedServer != null || Performance.IsThisPc(host));
             _client.Connect(host, port, Plugin.PlayerName.Value, password: password ?? "", color: Plugin.DiverColor.Value,
                 mods: NautilusCompat.ContentMods(), techTypes: NautilusCompat.ModdedTechTypes());
         }

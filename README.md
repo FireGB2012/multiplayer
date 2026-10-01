@@ -108,6 +108,9 @@ Send `Subnautica\BepInEx\LogOutput.log`. The mod logs which features hooked in
 `/perf` in chat (or Esc > Multiplayer > Lag test) and play normally for 10 s: it writes a report to `LogOutput.log`
 that says whether each stutter came from the mod, from garbage collection, or from the game itself (terrain/world
 streaming while you turn the camera). Send that log. `Performance = false` in the config turns the speed tweaks off.
+Every minute the game log also gets a `[lag] last minute:` line (FPS, stutters, and network: whose game froze vs
+whose updates arrived late), and the host's launcher writes `server.log` (in `%AppData%\SubnauticaMP`) with a
+`[lag]` line per minute showing whether the server PC was too busy to send in time. Send both logs.
 
 **Game closes by itself on the loading screen** and the log ends with `Couldn't initialize Steamworks`?
 That's the Steam version quitting because Steam wasn't running. Open Steam first (the launcher's PLAY

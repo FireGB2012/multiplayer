@@ -22,6 +22,9 @@ string worldFile = plain.Count > 1 ? plain[1] : Path.Combine(AppContext.BaseDire
 
 void Log(string msg) => Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] {msg}");
 
+// above normal: a game running on the same PC can't starve the server while it loads terrain
+try { using (var me = System.Diagnostics.Process.GetCurrentProcess()) me.PriorityClass = System.Diagnostics.ProcessPriorityClass.AboveNormal; } catch { }
+
 var server = new NetServer(worldFile) { Password = password, TrustLocalPlayers = false, AutosaveMinutes = autosave, MaxBackups = backups };
 server.Log += Log;
 server.Start(port);

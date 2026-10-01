@@ -121,6 +121,9 @@ namespace SubnauticaMP
             _targetRot = new Quaternion(state.Rotation.X, state.Rotation.Y, state.Rotation.Z, state.Rotation.W);
 
             float now = Time.unscaledTime;
+            // when it really arrived (the network thread stamps it), not when we got round to it this frame
+            if (state.ReceivedTicks != 0)
+                now -= (float)((System.Diagnostics.Stopwatch.GetTimestamp() - state.ReceivedTicks) / (double)System.Diagnostics.Stopwatch.Frequency);
             float sent = state.SentAt > 0f ? state.SentAt : now; // older versions don't send their clock
             bool teleported = !_hasTarget || Vector3.Distance(_lastTargetPos, _targetPos) > SnapDistance;
             if (teleported || (_snaps.Count > 0 && sent < _snaps[_snaps.Count - 1].T - 1f)) _snaps.Clear(); // jumped / their game restarted
@@ -131,6 +134,11 @@ namespace SubnauticaMP
                 {
                     var last = _snaps[_snaps.Count - 1];
                     _velocity = Vector3.Lerp(_velocity, (_targetPos - last.P) / Mathf.Max(0.02f, sent - last.T), 0.5f);
+                    if (state.SentAt > 0f)
+                    {
+                        NetLag.Froze(PlayerName, sent - last.T);             // long gap on their clock: their game hitched
+                        NetLag.Late(PlayerName, _clockOffset - (sent - now)); // took longer than their best to get here
+                    }
                 }
                 _snaps.Add(new Snap { T = sent, P = _targetPos, R = _targetRot });
                 if (_snaps.Count > MaxSnaps) _snaps.RemoveAt(0);

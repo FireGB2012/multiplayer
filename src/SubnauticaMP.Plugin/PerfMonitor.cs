@@ -91,6 +91,7 @@ namespace SubnauticaMP
             _recordUntil = Time.unscaledTime + seconds;
             _recFrames.Clear(); _recModules.Clear(); _spikes.Clear();
             _recGcs = _recSpikesGc = _recSpikesMod = _recSpikesTurn = _recSpikesNone = 0;
+            NetLag.StartRecording();
             s.AddChat($"Recording performance for {seconds:0} s: play normally (turn the camera, swim around)...");
         }
 
@@ -138,12 +139,15 @@ namespace SubnauticaMP
             if (_spikes.Count > 0) { sb.AppendLine("[perf] stutters:"); foreach (var s in _spikes) sb.AppendLine(s); }
             sb.Append($"[perf] settings: Performance={Plugin.Performance.Value}, upload {QualitySettings.asyncUploadBufferSize} MB / {QualitySettings.asyncUploadTimeSlice} ms, " +
                       $"loading priority {Application.backgroundLoadingPriority}, vSync {QualitySettings.vSyncCount}, target fps {Application.targetFrameRate}");
+            var net = NetLag.StopRecording();
+            sb.Append($"\n[perf] network: {net}");
             Plugin.Log.LogInfo(sb.ToString());
 
             var top = _recModules.OrderByDescending(kv => kv.Value).FirstOrDefault();
             _reportTo?.AddChat($"Perf: {1000f / Math.Max(0.01f, avg):0} fps, worst {worst:0} ms, {spikes} stutters " +
                                $"(mod {_recSpikesMod}, GC {_recSpikesGc}, game {_recSpikesTurn + _recSpikesNone}). Mod uses {modAvg:0.00} ms/frame" +
                                (top.Key != null ? $", most: {top.Key}." : ".") + " Full report is in LogOutput.log.");
+            _reportTo?.AddChat("Network: " + net);
         }
 
         // ---------- F9 overlay ----------
@@ -176,6 +180,7 @@ namespace SubnauticaMP
                 sb.AppendLine($"  {kv.Key}: {kv.Value / Math.Max(1, _shownFrames):0.000} ms");
             sb.AppendLine($"players {s.RemotePlayers.Count() + 1}   creatures synced {s.Creatures.TrackedCount}   " +
                           $"bases building {s.Structures.Waiting}, far {s.Structures.FarCount}");
+            sb.AppendLine(NetLag.Overlay());
             sb.Append("/perf in chat = 10 s report");
             var text = sb.ToString();
             var size = _style.CalcSize(new GUIContent(text));

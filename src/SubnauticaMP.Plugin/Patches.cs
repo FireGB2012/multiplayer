@@ -101,6 +101,7 @@ namespace SubnauticaMP
             Index(Game.SubRoot, "Start", "OnDestroy");
             Index(Game.Base, "Start", null);
             Index(Game.VehicleDockingBay, "Start", "OnDestroy");
+            Index(Game.CrashHome, "Start", "OnDestroy");
 
             // batch 5: beds, power, fabricators, fires, leaks, fruit, containment
             Hook("beds", Game.DayNightCycle, "SkipTime", prefix: nameof(SkipTimeAsked));
