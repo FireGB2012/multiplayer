@@ -77,9 +77,34 @@ namespace SubnauticaMP
             }
 
             if (_recording) RecordFrame(ms, hadGc, turned);
+            if (ms >= SpikeMs && Game.InWorld && Session.Instance?.Loading != true) CountStutter(ms, hadGc, turned);
 
             _thisFrame.Clear();
             _modThisFrame = 0;
+        }
+
+        // ---------- what caused the stutters (for the [lag] line every minute) ----------
+
+        static readonly Dictionary<string, int> _stutterCauses = new Dictionary<string, int>();
+
+        static void CountStutter(float ms, bool gc, float turned)
+        {
+            var top = _thisFrame.OrderByDescending(kv => kv.Value).FirstOrDefault();
+            string why = top.Key != null && top.Value > ms * 0.3f ? "mod: " + top.Key
+                : gc ? "memory cleanup (GC)"
+                : turned > 3f ? "game: loading the world while you turn/swim"
+                : "game";
+            _stutterCauses.TryGetValue(why, out var n);
+            _stutterCauses[why] = n + 1;
+        }
+
+        // "game 9, memory cleanup (GC) 3, mod: emote wheel 1" and clears the counts.
+        public static string TakeStutterCauses()
+        {
+            if (_stutterCauses.Count == 0) return null;
+            var text = string.Join(", ", _stutterCauses.OrderByDescending(kv => kv.Value).Select(kv => $"{kv.Key} {kv.Value}").ToArray());
+            _stutterCauses.Clear();
+            return text;
         }
 
         // ---------- /perf report ----------

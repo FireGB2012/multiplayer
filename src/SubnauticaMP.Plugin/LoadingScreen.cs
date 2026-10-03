@@ -30,6 +30,8 @@ namespace SubnauticaMP
                 return;
             }
             if (_loadingDone) return;
+            // behind the loading / lobby screen: build the emote wheel's heavy parts now, not on its first open (was a 1 s freeze)
+            if (InWorldAndSettled) SafeRun("emote prewarm", () => Wheel.Prewarm());
             if (Lobby.Holding) { UnfreezeStats(); return; } // brand-new world: nothing to load, the lobby screen is up
 
             _loadingTime += Time.unscaledDeltaTime;

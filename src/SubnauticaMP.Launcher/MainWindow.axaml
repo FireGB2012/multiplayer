@@ -348,55 +348,205 @@
         </Path>
         <!-- a soft shine down the shell -->
         <Path Data="M40,40 C30,120 30,580 40,660" Stroke="#FFFFFF" StrokeThickness="3" Opacity="0.7" StrokeLineCap="Round" />
-        <!-- rubber grip: ribbed, the ribs poke out of the shell's edge -->
-        <Ellipse Canvas.Left="2" Canvas.Top="139" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="160" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="181" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="202" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="223" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="244" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="265" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="286" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="307" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="328" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="349" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="370" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="391" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="412" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="433" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="454" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="475" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="496" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="517" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="538" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Ellipse Canvas.Left="2" Canvas.Top="559" Width="16" Height="17" Fill="{StaticResource RibBrush}" Stroke="#101214" StrokeThickness="0.8" />
-        <Path Data="M50,92 C86,92 96,180 96,350 C96,520 86,608 50,608 C20,608 10,520 10,350 C10,180 20,92 50,92 Z" Fill="#1C1F23" Stroke="#0E1012" StrokeThickness="1.5" />
-        <Canvas Width="110" Height="700" Clip="M50,92 C86,92 96,180 96,350 C96,520 86,608 50,608 C20,608 10,520 10,350 C10,180 20,92 50,92 Z">
-          <Rectangle Canvas.Left="0" Canvas.Top="98" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="119" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="140" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="161" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="182" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="203" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="224" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="245" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="266" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="287" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="308" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="329" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="350" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="371" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="392" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="413" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="434" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="455" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="476" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="497" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="518" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="539" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="560" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="581" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
-          <Rectangle Canvas.Left="0" Canvas.Top="602" Width="110" Height="15" RadiusX="7" RadiusY="7" Fill="{StaticResource RibBrush}" />
+        <!-- rubber grip: dimpled like a golf ball, finger bumps on the outside edge -->
+        <Rectangle Canvas.Left="18" Canvas.Top="213" Width="40" Height="26" RadiusX="13" RadiusY="13" Fill="{StaticResource BumpBrush}" Stroke="#0A0C0F" StrokeThickness="1.2" />
+        <Rectangle Canvas.Left="15" Canvas.Top="247" Width="40" Height="26" RadiusX="13" RadiusY="13" Fill="{StaticResource BumpBrush}" Stroke="#0A0C0F" StrokeThickness="1.2" />
+        <Rectangle Canvas.Left="13" Canvas.Top="281" Width="40" Height="26" RadiusX="13" RadiusY="13" Fill="{StaticResource BumpBrush}" Stroke="#0A0C0F" StrokeThickness="1.2" />
+        <Rectangle Canvas.Left="12" Canvas.Top="315" Width="40" Height="26" RadiusX="13" RadiusY="13" Fill="{StaticResource BumpBrush}" Stroke="#0A0C0F" StrokeThickness="1.2" />
+        <Rectangle Canvas.Left="12" Canvas.Top="349" Width="40" Height="26" RadiusX="13" RadiusY="13" Fill="{StaticResource BumpBrush}" Stroke="#0A0C0F" StrokeThickness="1.2" />
+        <Rectangle Canvas.Left="13" Canvas.Top="383" Width="40" Height="26" RadiusX="13" RadiusY="13" Fill="{StaticResource BumpBrush}" Stroke="#0A0C0F" StrokeThickness="1.2" />
+        <Rectangle Canvas.Left="14" Canvas.Top="417" Width="40" Height="26" RadiusX="13" RadiusY="13" Fill="{StaticResource BumpBrush}" Stroke="#0A0C0F" StrokeThickness="1.2" />
+        <Rectangle Canvas.Left="17" Canvas.Top="451" Width="40" Height="26" RadiusX="13" RadiusY="13" Fill="{StaticResource BumpBrush}" Stroke="#0A0C0F" StrokeThickness="1.2" />
+        <Rectangle Canvas.Left="20" Canvas.Top="485" Width="40" Height="26" RadiusX="13" RadiusY="13" Fill="{StaticResource BumpBrush}" Stroke="#0A0C0F" StrokeThickness="1.2" />
+        <Path Data="M70,92 C106,92 118,180 118,350 C118,520 106,608 70,608 C38,608 26,520 26,350 C26,180 38,92 70,92 Z" Stroke="#0A0C0F" StrokeThickness="1.5">
+          <Path.Fill>
+            <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+              <GradientStop Offset="0" Color="#14171B" />
+              <GradientStop Offset="0.4" Color="#2A313A" />
+              <GradientStop Offset="1" Color="#5A6878" />
+            </LinearGradientBrush>
+          </Path.Fill>
+        </Path>
+        <Canvas Width="130" Height="700" Clip="M70,92 C106,92 118,180 118,350 C118,520 106,608 70,608 C38,608 26,520 26,350 C26,180 38,92 70,92 Z">
+          <Ellipse Canvas.Left="57.5" Canvas.Top="110.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="110.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="124.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="124.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="124.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="138.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="138.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="138.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="138.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="152.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="152.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="152.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="152.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="166.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="166.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="166.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="166.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="180.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="180.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="180.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="180.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="180.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="194.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="194.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="194.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="194.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="194.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="208.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="208.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="208.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="208.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="208.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="29.5" Canvas.Top="222.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="222.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="222.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="222.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="222.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="222.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="236.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="236.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="236.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="236.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="236.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="29.5" Canvas.Top="250.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="250.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="250.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="250.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="250.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="250.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="264.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="264.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="264.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="264.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="264.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="106.5" Canvas.Top="264.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="29.5" Canvas.Top="278.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="278.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="278.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="278.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="278.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="278.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="292.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="292.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="292.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="292.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="292.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="106.5" Canvas.Top="292.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="29.5" Canvas.Top="306.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="306.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="306.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="306.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="306.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="306.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="320.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="320.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="320.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="320.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="320.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="106.5" Canvas.Top="320.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="29.5" Canvas.Top="334.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="334.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="334.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="334.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="334.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="334.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="348.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="348.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="348.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="348.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="348.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="106.5" Canvas.Top="348.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="29.5" Canvas.Top="362.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="362.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="362.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="362.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="362.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="362.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="376.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="376.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="376.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="376.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="376.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="106.5" Canvas.Top="376.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="29.5" Canvas.Top="390.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="390.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="390.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="390.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="390.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="390.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="404.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="404.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="404.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="404.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="404.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="106.5" Canvas.Top="404.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="29.5" Canvas.Top="418.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="418.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="418.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="418.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="418.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="418.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="432.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="432.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="432.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="432.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="432.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="106.5" Canvas.Top="432.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="29.5" Canvas.Top="446.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="446.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="446.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="446.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="446.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="446.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="460.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="460.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="460.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="460.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="460.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="474.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="474.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="474.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="474.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="474.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="488.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="488.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="488.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="488.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="488.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="502.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="502.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="502.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="502.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="99.5" Canvas.Top="502.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="36.5" Canvas.Top="516.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="516.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="516.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="516.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="92.5" Canvas.Top="516.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="43.5" Canvas.Top="530.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="530.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="530.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="530.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="50.5" Canvas.Top="544.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="544.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="544.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="57.5" Canvas.Top="558.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="558.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="85.5" Canvas.Top="558.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="64.5" Canvas.Top="572.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="78.5" Canvas.Top="572.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Ellipse Canvas.Left="71.5" Canvas.Top="586.5" Width="11" Height="11" Fill="{StaticResource DimpleBrush}" />
+          <Rectangle Canvas.Left="20" Width="50" Height="700">
+            <Rectangle.Fill>
+              <LinearGradientBrush StartPoint="0%,0%" EndPoint="100%,0%">
+                <GradientStop Offset="0" Color="#A0101317" />
+                <GradientStop Offset="1" Color="#00101317" />
+              </LinearGradientBrush>
+            </Rectangle.Fill>
+          </Rectangle>
         </Canvas>
         <!-- side button -->
         <Rectangle Canvas.Left="140" Canvas.Top="318" Width="12" Height="64" RadiusX="6" RadiusY="6" Fill="#EAF3FA" Stroke="#6FB4FF" StrokeThickness="1.5" />

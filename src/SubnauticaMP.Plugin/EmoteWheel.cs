@@ -120,6 +120,18 @@ namespace SubnauticaMP
 
         bool Typing => GUIUtility.keyboardControl != 0;
 
+        bool _prewarmed;
+
+        // Loads the dance animations and builds the preview diver (needs the diver model), so opening the wheel is instant.
+        public void Prewarm()
+        {
+            if (_prewarmed || !DiverModel.Prepare()) return;
+            _prewarmed = true;
+            int clips = EmoteClips.Count;
+            try { _preview = _preview ?? new EmotePreview(); _preview.Show(true); _preview.Show(false); }
+            catch (Exception e) { Game.WarnOnce("preview", "No emote preview: " + e.GetBaseException().Message); _preview = null; }
+        }
+
         void Open()
         {
             _open = true;

@@ -79,8 +79,11 @@ namespace SubnauticaMP
             _nextReport = Time.unscaledTime + ReportEvery;
             var text = Describe(_window, _sendWaitMax) ?? "updates from everyone on time";
             if (_frames > 0)
+            {
+                var causes = PerfMonitor.TakeStutterCauses();
                 Plugin.Log.LogInfo($"[lag] last minute: {_frames / Mathf.Max(0.01f, _frameTime):0} fps, {_stutters} stutter(s) over 50 ms " +
-                                   $"(worst {_worstFrame * 1000f:0} ms); network: {text}");
+                                   $"(worst {_worstFrame * 1000f:0} ms)" + (causes != null ? $", caused by: {causes}" : "") + $"; network: {text}");
+            }
             _frames = _stutters = 0;
             _frameTime = _worstFrame = 0f;
             _window.Clear();

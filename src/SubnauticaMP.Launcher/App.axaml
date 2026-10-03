@@ -16,12 +16,17 @@
     <SolidColorBrush x:Key="WarnBrush" Color="#FFC857" />
     <SolidColorBrush x:Key="BadBrush" Color="#FF7A6B" />
 
-    <!-- one rubber rib on the handle's grip: lit on top, dark underneath -->
-    <LinearGradientBrush x:Key="RibBrush" StartPoint="0%,0%" EndPoint="0%,100%">
-      <GradientStop Offset="0" Color="#5B636C" />
-      <GradientStop Offset="0.3" Color="#474E56" />
-      <GradientStop Offset="0.7" Color="#2A2F34" />
-      <GradientStop Offset="1" Color="#121417" />
+    <!-- the grip: each dimple is a little hollow (dark middle, lit rim); finger bumps are lit on top -->
+    <RadialGradientBrush x:Key="DimpleBrush" GradientOrigin="35%,30%" Center="50%,50%">
+      <GradientStop Offset="0" Color="#1E242B" />
+      <GradientStop Offset="0.65" Color="#2C343E" />
+      <GradientStop Offset="0.85" Color="#6A7889" />
+      <GradientStop Offset="1" Color="#00000000" />
+    </RadialGradientBrush>
+    <LinearGradientBrush x:Key="BumpBrush" StartPoint="0%,0%" EndPoint="0%,100%">
+      <GradientStop Offset="0" Color="#4A5461" />
+      <GradientStop Offset="0.45" Color="#2A3038" />
+      <GradientStop Offset="1" Color="#0F1114" />
     </LinearGradientBrush>
 
     <!-- Fluent controls in PDA colors -->

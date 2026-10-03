@@ -13,7 +13,7 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>SubnauticaMP-Launcher</AssemblyName>
     <RootNamespace>SubnauticaMP.Launcher</RootNamespace>
-    <Version>0.24.0</Version>
+    <Version>0.24.1</Version>
     <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon>Assets\icon.ico</ApplicationIcon>
