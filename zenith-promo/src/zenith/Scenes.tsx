@@ -43,12 +43,35 @@ const headline: React.CSSProperties = {
   textAlign: "center",
 };
 
-const gradientText = (from: string, to: string): React.CSSProperties => ({
-  background: `linear-gradient(100deg, ${from}, ${to})`,
-  WebkitBackgroundClip: "text",
-  backgroundClip: "text",
-  color: "transparent",
-});
+/**
+ * One line of gradient-filled headline text. Drawn as SVG because CSS
+ * `background-clip: text` glitches into solid boxes while the glass blur behind it animates.
+ */
+const GradientLine: React.FC<{ text: string; from: string; to: string; fontSize: number; id: string }> = ({
+  text,
+  from,
+  to,
+  fontSize,
+  id,
+}) => (
+  <svg width="100%" height={fontSize * 1.18} style={{ display: "block", overflow: "visible" }}>
+    <defs>
+      <linearGradient id={id} x1="0" y1="0" x2="1" y2="0.35">
+        <stop offset="0%" stopColor={from} />
+        <stop offset="100%" stopColor={to} />
+      </linearGradient>
+    </defs>
+    <text
+      x="50%"
+      y={fontSize * 0.93}
+      textAnchor="middle"
+      fill={`url(#${id})`}
+      style={{ fontFamily: "Inter", fontWeight: 800, fontSize, letterSpacing: headline.letterSpacing }}
+    >
+      {text}
+    </text>
+  </svg>
+);
 
 /** A line that fades up out of a blur. */
 const BlurIn: React.FC<{ t: number; at: number; out?: number; style?: React.CSSProperties; children: React.ReactNode }> = ({
@@ -85,8 +108,8 @@ export const Intro: React.FC<{ t: number; pal: Palette }> = ({ t, pal }) => {
       <BlurIn t={t} at={T.yourHomeScreen - 0.1} out={T.introOut + 0.05} style={headline}>
         Your home screen.
       </BlurIn>
-      <BlurIn t={t} at={T.yourRules - 0.1} out={T.introOut + 0.1} style={{ ...headline, fontSize: 132, ...gradientText(pal.accent, "#c86bff") }}>
-        Your rules.
+      <BlurIn t={t} at={T.yourRules - 0.1} out={T.introOut + 0.1} style={{ width: "100%" }}>
+        <GradientLine id="g-rules" text="Your rules." from={pal.accent} to="#c86bff" fontSize={132} />
       </BlurIn>
     </div>
   );
@@ -167,6 +190,7 @@ export const Captions: React.FC<{ t: number; pal: Palette }> = ({ t, pal }) => (
       const v = window01(t, c.at, c.out, 0.45, 0.3);
       const p = prog(t, c.at, c.at + 0.6, springy);
       const isPlus = c.l1 === "Zenith";
+      const twoLines = c.l2 !== undefined && c.l1.length + c.l2.length > 12;
       return (
         <div
           key={c.at}
@@ -181,7 +205,7 @@ export const Captions: React.FC<{ t: number; pal: Palette }> = ({ t, pal }) => (
             alignItems: "center",
             justifyContent: "center",
             opacity: v,
-            filter: `blur(${(1 - v) * 14}px)`,
+            filter: v < 0.999 ? `blur(${(1 - v) * 14}px)` : undefined,
             translate: `0px ${interpolate(p, [0, 1], [40, 0])}px`,
           }}
         >
@@ -190,13 +214,9 @@ export const Captions: React.FC<{ t: number; pal: Palette }> = ({ t, pal }) => (
           ) : null}
           <div style={{ ...headline, fontSize: 92 }}>
             {c.l1}
-            {c.l2 ? (
-              <span style={isPlus ? gradientText("#ffd36b", "#ff9a3c") : gradientText(pal.accent, "#c86bff")}>
-                {c.l1.length + c.l2.length > 12 ? <br /> : " "}
-                {c.l2}
-              </span>
-            ) : null}
+            {c.l2 && !twoLines ? <span style={{ color: isPlus ? "#ffb547" : pal.accent }}> {c.l2}</span> : null}
           </div>
+          {c.l2 && twoLines ? <GradientLine id={`g-cap-${c.at}`.replace(".", "-")} text={c.l2} from={pal.accent} to="#c86bff" fontSize={92} /> : null}
         </div>
       );
     })}
@@ -221,7 +241,9 @@ export const Outro: React.FC<{ t: number; pal: Palette }> = ({ t, pal }) => {
       <div style={{ ...headline, fontSize: 150, marginTop: 50, opacity: word, letterSpacing: interpolate(word, [0, 1], [24, -4]), filter: `blur(${(1 - word) * 12}px)` }}>
         Zenith
       </div>
-      <div style={{ ...headline, fontSize: 84, marginTop: 14, opacity: tag, translate: `0px ${(1 - tag) * 30}px`, ...gradientText(pal.accent, "#c86bff") }}>Make it yours.</div>
+      <div style={{ width: "100%", marginTop: 14, opacity: tag, translate: `0px ${(1 - tag) * 30}px` }}>
+        <GradientLine id="g-yours" text="Make it yours." from={pal.accent} to="#c86bff" fontSize={84} />
+      </div>
       <div style={{ fontFamily: "Inter", fontSize: 44, fontWeight: 500, color: "rgba(255,255,255,0.7)", marginTop: 40, opacity: small }}>
         Liquid glass launcher for Android
       </div>
