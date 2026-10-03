@@ -35,6 +35,7 @@ namespace SubnauticaMP
         internal EmoteSync Emoting;
         internal EmoteWheel Wheel;
         internal PushSync Pushing;
+        internal AutoSave Saving;
         internal IEnumerable<RemotePlayer> Remotes => _remotes.Values;
 
         NetServer _hostedServer;
@@ -84,6 +85,7 @@ namespace SubnauticaMP
             Emoting = new EmoteSync(this);
             Wheel = new EmoteWheel(this);
             Pushing = new PushSync(this);
+            Saving = new AutoSave(this);
 
             if (!_launchRead)
             {
@@ -103,6 +105,7 @@ namespace SubnauticaMP
         void Update()
         {
             PerfMonitor.EndFrame();
+            DrainPendingChat(); // the UI may not draw at all this frame
             if (Input.GetKeyDown(Plugin.PerfKey.Value) && !UiKit.Typing()) PerfMonitor.Overlay = !PerfMonitor.Overlay;
             if (Input.GetKeyDown(Plugin.MenuKey.Value)) ToggleMultiplayerWindow();
             if (Plugin.EnterForChat.Value && Joined && Game.InWorld && !Lobby.Holding && !Loading && !_menuOpen && !PausePageShowing &&
@@ -184,6 +187,7 @@ namespace SubnauticaMP
             SafeRun("build holograms", Ghosts.Update);
             SafeRun("emotes", Emoting.Update);
             SafeRun("push", Pushing.Update);
+            SafeRun("autosave", Saving.Update);
 
             _sendTimer += Time.unscaledDeltaTime;
             if (_sendTimer >= SendInterval)

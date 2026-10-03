@@ -20,7 +20,7 @@ namespace SubnauticaOptimizer
     //  * the incremental garbage collector takes smaller bites per frame (fewer frame spikes)
     //  * at most 1 frame queued ahead of the GPU (less input lag)
     // Optional "performance mode" (visible): shorter shadows, 2 shadow cascades, nearer LOD switch, FPS cap.
-    [BepInPlugin(Guid, "Subnautica Optimizer", "1.0.0")]
+    [BepInPlugin(Guid, "Subnautica Optimizer", "1.0.1")]
     public sealed class OptimizerPlugin : BaseUnityPlugin
     {
         public const string Guid = "com.subnauticamp.optimizer";
@@ -42,8 +42,9 @@ namespace SubnauticaOptimizer
                 "The incremental garbage collector does smaller steps per frame: fewer frame-time spikes.");
             _gcSliceMs = Config.Bind("General", "GcStepMilliseconds", 1.5f,
                 "Time per frame the garbage collector may use when SmallGcSteps is on (Unity's default is 3).");
-            _lowInputLag = Config.Bind("General", "LowInputLag", true,
-                "At most 1 frame queued ahead of the graphics card (default 2): mouse and keys feel snappier.");
+            // new key (was LowInputLag, on by default): 1 queued frame can cost FPS when the graphics card is the limit
+            _lowInputLag = Config.Bind("General", "LowInputLagMode", false,
+                "At most 1 frame queued ahead of the graphics card (default 2): snappier mouse, but can lower FPS. Off by default.");
             _perfMode = Config.Bind("Performance mode", "Enabled", false,
                 "Trade a little visual quality for FPS (shadows, LOD). Off by default because you can see it.");
             _shadowDistance = Config.Bind("Performance mode", "MaxShadowDistance", 60f, "Shadows stop at this distance (meters).");
@@ -82,7 +83,7 @@ namespace SubnauticaOptimizer
             });
             Try("input lag", () =>
             {
-                if (!_lowInputLag.Value) return;
+                if (!_lowInputLag.Value) { if (QualitySettings.maxQueuedFrames == 1) QualitySettings.maxQueuedFrames = 2; return; } // undo 1.0.0's setting
                 if (QualitySettings.maxQueuedFrames != 1) QualitySettings.maxQueuedFrames = 1;
                 on.Add("1 queued frame");
             });
@@ -96,7 +97,7 @@ namespace SubnauticaOptimizer
                 on.Add($"performance mode (shadows {QualitySettings.shadowDistance:0} m, LOD {QualitySettings.lodBias:0.##}" +
                        (_fpsCap.Value > 0 ? $", {_fpsCap.Value} fps cap" : "") + ")");
             });
-            if (log) Logger.LogInfo("Subnautica Optimizer 1.0.0: " + (on.Count > 0 ? string.Join(", ", on.ToArray()) : "everything off in the config"));
+            if (log) Logger.LogInfo("Subnautica Optimizer 1.0.1: " + (on.Count > 0 ? string.Join(", ", on.ToArray()) : "everything off in the config"));
         }
 
         void Try(string what, Action action)

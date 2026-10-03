@@ -57,6 +57,8 @@ namespace SubnauticaMP
             bool interactive = GuiInteractive;
             useGUILayout = interactive;
             if (!interactive && Event.current.type != EventType.Repaint) return;
+            // nothing on screen at all (the usual case while playing): don't even start
+            if (!interactive && !Loading && !PerfMonitor.Overlay && (_gameMessagesWork || !HasRecentChat)) return;
             _guiTimer.Restart();
             try { DrawGui(); }
             finally { PerfMonitor.Record("ui (all)", _guiTimer.Elapsed.TotalMilliseconds); }
@@ -74,8 +76,10 @@ namespace SubnauticaMP
         {
             GUI.depth = -1000; // above the game's own UI
             DrainPendingChat();
+            // switching GUI.skin makes Unity rebuild its style tables (twice per call): only for the real menus/windows
+            bool skinned = GuiInteractive || Loading;
             var old = GUI.skin;
-            GUI.skin = SnSkin.Skin;
+            if (skinned) GUI.skin = SnSkin.Skin;
             try
             {
                 if (Game.MainMenu != null && !Game.InWorld) TimeUi("main menu", DrawMainMenuUi);
@@ -88,17 +92,17 @@ namespace SubnauticaMP
                 if (Wheel != null && Wheel.IsOpen) TimeUi("emote wheel", Wheel.OnGUI);
                 if (PerfMonitor.Overlay) TimeUi("F9 stats", () => PerfMonitor.OnGUI(this));
             }
-            finally { GUI.skin = old; }
+            finally { if (skinned) GUI.skin = old; }
         }
 
         void MakeOverlayStyles()
         {
             if (_tagStyle != null) return;
-            _tagStyle = new GUIStyle(GUI.skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = 16, wordWrap = false };
+            _tagStyle = new GUIStyle(SnSkin.Skin.label) { alignment = TextAnchor.MiddleCenter, fontStyle = FontStyle.Bold, fontSize = 16, wordWrap = false };
             _tagStyle.normal.textColor = SnSkin.Cyan;
             _tagSmall = new GUIStyle(_tagStyle) { fontSize = 13, fontStyle = FontStyle.Normal };
             _tagSmall.normal.textColor = SnSkin.Text;
-            _chatStyle = new GUIStyle(GUI.skin.label) { fontSize = 15, wordWrap = false };
+            _chatStyle = new GUIStyle(SnSkin.Skin.label) { fontSize = 15, wordWrap = false };
             _chatStyle.normal.textColor = SnSkin.Text;
         }
 

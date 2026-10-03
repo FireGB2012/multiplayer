@@ -90,10 +90,13 @@ Multiplayer saves are kept out of the normal single-player Load list. The launch
 The host is whoever plays on the server's PC (otherwise whoever joined first).
 Each player's save for a world is remembered in `BepInEx\plugins\SubnauticaMP\worlds.txt`.
 
+**Autosave:** while playing multiplayer the mod saves your game every 5 minutes with the game's own Save (when the game
+allows it: not during the intro or cutscenes). `AutosaveMinutes` in the config changes it (0 = off).
+
 ## Optimizer (installed with the mod)
 PLAY also installs **Subnautica Optimizer** (`BepInEx/plugins/SubnauticaOptimizer`), a small separate mod with safe speed-ups:
 the game's error reporting and analytics off (the error reporter runs on every log message), the game log keeps only
-warnings and errors, smaller garbage-collector steps per frame, and 1 queued frame (less input lag). **Performance mode**
+warnings and errors, and smaller garbage-collector steps per frame. `LowInputLagMode` (off by default) queues 1 frame instead of 2: snappier mouse, but can cost FPS. **Performance mode**
 (off by default: shorter shadows, nearer LOD switch, optional FPS cap) is in `BepInEx/config/com.subnauticamp.optimizer.cfg`.
 The log says which tweaks are on (`Subnautica Optimizer 1.0.0: ...`).
 
