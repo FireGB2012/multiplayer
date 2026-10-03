@@ -31,6 +31,11 @@ namespace SubnauticaMP
         public static System.Func<(EmoteClips.Clip clip, float time)?> PartyNow;
         readonly Transform[] _bones;
         readonly Quaternion[] _before, _after;
+        // every bone of the body: the ones an emote doesn't move hold the pose they had when it started, so the
+        // normal swim/idle animation doesn't keep playing underneath and mix in
+        readonly Transform[] _skeleton;
+        readonly Quaternion[] _frozenRot;
+        readonly Vector3[] _frozenPos;
         bool _tracking;
 
         Emote _showing = Emote.None; // what's on screen (still fading out after a stop)
@@ -117,6 +122,9 @@ namespace SubnauticaMP
             _bones = new[] { _chest, _head, _headCounter, _upperR, _lowerR, _upperL, _lowerL, _thighL, _kneeL, _thighR, _kneeR }.Where(b => b != null).Distinct().ToArray();
             _before = new Quaternion[_bones.Length];
             _after = new Quaternion[_bones.Length];
+            _skeleton = all.Where(t => t != _body).ToArray();
+            _frozenRot = new Quaternion[_skeleton.Length];
+            _frozenPos = new Vector3[_skeleton.Length];
 
             if (!_dumped)
             {
@@ -188,6 +196,7 @@ namespace SubnauticaMP
             if (info == null) { Stop(); return; }
             if (_active && _showing == emote && info.Seconds <= 0f) return; // looping one: keep going
             if (_showing != emote) _weight = 0f;
+            if (_showing == Emote.None || _weight <= 0f) Freeze(); // starting from the normal animation: hold it here
             _showing = emote;
             _active = true;
             _time = 0f;
@@ -201,6 +210,16 @@ namespace SubnauticaMP
         }
 
         public void Stop() => _active = false;
+
+        void Freeze()
+        {
+            for (int i = 0; i < _skeleton.Length; i++)
+            {
+                if (_skeleton[i] == null) continue;
+                _frozenRot[i] = _skeleton[i].localRotation;
+                _frozenPos[i] = _skeleton[i].localPosition;
+            }
+        }
 
         // Which way a push sent them (world space); they fall that way.
         public void SetKnockDirection(Vector3 world)
@@ -250,6 +269,14 @@ namespace SubnauticaMP
                 return;
             }
 
+            float hold = Smooth(_weight);
+            for (int i = 0; i < _skeleton.Length; i++)
+            {
+                var t = _skeleton[i];
+                if (t == null) continue;
+                t.localRotation = Quaternion.Slerp(t.localRotation, _frozenRot[i], hold);
+                t.localPosition = Vector3.Lerp(t.localPosition, _frozenPos[i], hold);
+            }
             for (int i = 0; i < _bones.Length; i++) _before[i] = _bones[i].localRotation;
             _body.localPosition = _basePos; // emotes that don't move the body leave it where it belongs
             _body.localRotation = _baseRot;

@@ -47,7 +47,7 @@ namespace SubnauticaMP
             float best = float.MaxValue;
             foreach (var r in _s.RemotePlayers)
             {
-                if (r == null || !r.gameObject.activeInHierarchy || !r.Visible) continue;
+                if (r == null || !r.gameObject.activeInHierarchy || !r.Visible || r.KnockedDown) continue; // already on the floor
                 var to = r.Chest - eye;
                 float d = to.magnitude;
                 if (d > Range || d < 0.05f || Vector3.Angle(look, to) > Cone) continue;
@@ -78,7 +78,7 @@ namespace SubnauticaMP
         void KnockMe(Vector3 dir)
         {
             var player = Game.LocalPlayer;
-            if (player == null) return;
+            if (player == null || Knocked) return; // already down: one push at a time
             _knockedUntil = Time.unscaledTime + Emotes.KnockedSeconds;
             _s.Emoting.Stop();
 

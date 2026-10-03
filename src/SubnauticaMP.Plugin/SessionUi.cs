@@ -45,11 +45,29 @@ namespace SubnauticaMP
 
         readonly System.Diagnostics.Stopwatch _guiTimer = new System.Diagnostics.Stopwatch();
 
+        // Something on screen that takes clicks / typing (needs Unity's layout pass and input events).
+        bool GuiInteractive => _menuOpen || _mpMenuOpen || (Wheel != null && Wheel.IsOpen) || Lobby.Holding ||
+                               (Game.MainMenu != null && !Game.InWorld);
+
+        // Unity calls OnGUI several times a frame (a layout pass + one per mouse/key event). In normal play only the
+        // chat lines / stats are drawn, which only need the paint pass: everything else is skipped (this was most of
+        // the mod's frame time).
         void OnGUI()
         {
+            bool interactive = GuiInteractive;
+            useGUILayout = interactive;
+            if (!interactive && Event.current.type != EventType.Repaint) return;
             _guiTimer.Restart();
             try { DrawGui(); }
-            finally { PerfMonitor.Record("menus / overlays", _guiTimer.Elapsed.TotalMilliseconds); }
+            finally { PerfMonitor.Record("ui (all)", _guiTimer.Elapsed.TotalMilliseconds); }
+        }
+
+        readonly System.Diagnostics.Stopwatch _partTimer = new System.Diagnostics.Stopwatch();
+        void TimeUi(string part, System.Action draw)
+        {
+            _partTimer.Restart();
+            try { draw(); }
+            finally { PerfMonitor.RecordDetail("ui: " + part, _partTimer.Elapsed.TotalMilliseconds); }
         }
 
         void DrawGui()
@@ -60,15 +78,15 @@ namespace SubnauticaMP
             GUI.skin = SnSkin.Skin;
             try
             {
-                DrawMainMenuUi();
+                if (Game.MainMenu != null && !Game.InWorld) TimeUi("main menu", DrawMainMenuUi);
                 // the lobby/loading screens and chat use the game's own UI when it could be built;
                 // these simple versions are only the backup. Teammates show as HUD markers (game pings).
-                if (Lobby.Holding) { if (!OverlayReady) DrawLobby(); }
-                else if (Loading) { if (!OverlayReady) DrawLoading(); }
-                if (!_gameMessagesWork) DrawChatOverlay();
-                if (_menuOpen) _window = GUILayout.Window(0x5B4D50, _window, DrawWindow, "");
-                Wheel?.OnGUI();
-                PerfMonitor.OnGUI(this);
+                if (Lobby.Holding) { if (!OverlayReady) TimeUi("lobby", DrawLobby); }
+                else if (Loading) { if (!OverlayReady) TimeUi("loading", DrawLoading); }
+                if (!_gameMessagesWork && !_menuOpen && HasRecentChat) TimeUi("chat lines", DrawChatOverlay);
+                if (_menuOpen) TimeUi("F8 window", () => _window = GUILayout.Window(0x5B4D50, _window, DrawWindow, ""));
+                if (Wheel != null && Wheel.IsOpen) TimeUi("emote wheel", Wheel.OnGUI);
+                if (PerfMonitor.Overlay) TimeUi("F9 stats", () => PerfMonitor.OnGUI(this));
             }
             finally { GUI.skin = old; }
         }
@@ -118,6 +136,8 @@ namespace SubnauticaMP
                 GUI.Label(new Rect(x, y, w, 30), $"Waiting for {HostName} to start the game...", SnSkin.MidText);
             }
         }
+
+        bool HasRecentChat => _chat.Count > 0 && Time.unscaledTime - _chat[_chat.Count - 1].time <= ChatShowSeconds;
 
         void DrawChatOverlay()
         {

@@ -107,6 +107,29 @@ namespace SubnauticaMP
             }
         }
 
+        // Your real body goes where your ragdoll went, so you stand up where you landed (not back where you were
+        // pushed). While lying it follows sideways (and up/down in water); at the end it takes the exact spot.
+        void FollowRagdoll(bool final)
+        {
+            var player = Game.LocalPlayer;
+            if (player == null || _selfRagdoll == null || _selfRagdollRoot == null) return;
+            var t = player.transform;
+            var rb = Game.TryGet(Game.Player, player, "rigidBody") as Rigidbody ?? player.GetComponent<Rigidbody>();
+            Vector3 target;
+            if (final) target = _selfRagdollRoot.transform.position; // moved to the landing spot when it got up
+            else
+            {
+                var chest = _selfRagdoll.Focus.position;
+                target = Game.Is(player, "IsUnderwater") ? chest - Vector3.up * 0.8f : new Vector3(chest.x, t.position.y, chest.z);
+            }
+            t.position = target;
+            if (rb != null)
+            {
+                rb.position = target;
+                if (!rb.isKinematic) rb.velocity = Vector3.zero;
+            }
+        }
+
         void EndSelfRagdoll()
         {
             _selfRagdoll?.Remove();
@@ -323,11 +346,12 @@ namespace SubnauticaMP
             {
                 if (_selfRagdoll.LateUpdate(Time.unscaledDeltaTime))
                 {
+                    FollowRagdoll(false);
                     _view = Mathf.MoveTowards(_view, 1f, Time.unscaledDeltaTime / CamBlendSeconds);
                     var cam0 = Game.Camera;
                     if (cam0 != null) AimCamera(cam0, _selfRagdoll.Focus.position + Vector3.up * 0.2f, cam0.transform.forward, _selfRagdollRoot != null ? _selfRagdollRoot.transform : null);
                 }
-                else EndSelfRagdoll();
+                else { FollowRagdoll(true); EndSelfRagdoll(); }
                 return;
             }
             if (_self == null) return;

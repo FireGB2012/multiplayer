@@ -25,6 +25,7 @@ namespace SubnauticaMP.Shared
             public bool Admin; // host, or typed /login with the admin password
             public DateTime NextEmote; // spam guard
             public DateTime NextPush;
+            public DateTime KnockedUntil; // lying on the floor from a push: can't be pushed again until up
         }
 
         const double TimeSyncSeconds = 5;
@@ -645,9 +646,13 @@ namespace SubnauticaMP.Shared
                     var now = DateTime.UtcNow;
                     lock (_lock)
                     {
-                        ok = push.TargetId != client.Id && now >= client.NextPush &&
-                             _connections.Any(c => c.Tag is Client t && t.Joined && t.Id == push.TargetId);
-                        if (ok) client.NextPush = now.AddMilliseconds(700);
+                        var target = _connections.Select(c => c.Tag as Client).FirstOrDefault(t => t != null && t.Joined && t.Id == push.TargetId);
+                        ok = push.TargetId != client.Id && now >= client.NextPush && target != null && now >= target.KnockedUntil;
+                        if (ok)
+                        {
+                            client.NextPush = now.AddMilliseconds(700);
+                            target.KnockedUntil = now.AddSeconds(Emotes.KnockedSeconds + 0.5); // + getting back up
+                        }
                     }
                     if (!ok) break;
                     var d = push.Direction;

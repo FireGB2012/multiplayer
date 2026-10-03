@@ -308,6 +308,10 @@ public class EmoteTests
             a.Send(new PushPacket { TargetId = a.LocalId, Direction = new Vec3(1, 0, 0) }); // yourself
             b.Send(new PushPacket { TargetId = 9999, Direction = new Vec3(1, 0, 0) });      // nobody
             Assert.DoesNotContain(Drain(c, 400), p => p is PushPacket);
+
+            Drain(a, 100); // a's copy of the first push
+            c.Send(new PushPacket { TargetId = b.LocalId, Direction = new Vec3(1, 0, 0) }); // b is still on the floor
+            Assert.DoesNotContain(Drain(a, 400), p => p is PushPacket);
         }
         finally { server.Stop(); }
     }

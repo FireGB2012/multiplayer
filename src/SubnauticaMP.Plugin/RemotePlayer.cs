@@ -185,6 +185,7 @@ namespace SubnauticaMP
 
         public Emote CurrentEmote => _emote;
         public bool Visible => _visible;
+        public bool KnockedDown => _ragdoll != null || (_emote == Emote.Knocked && EmoteRunning());
         public Vector3 Chest => transform.position; // what a push aims at
 
         // Returns false when it's just a looping emote (dance...) being sent again to keep it going.

@@ -37,6 +37,15 @@ namespace SubnauticaMP
         static Quaternion _lastCam = Quaternion.identity;
         static Session _reportTo;
 
+        // A part inside something already counted (shown in reports, not added to the mod total twice).
+        public static void RecordDetail(string what, double ms)
+        {
+            _details.TryGetValue(what, out var v);
+            _details[what] = v + ms;
+        }
+        static readonly Dictionary<string, double> _details = new Dictionary<string, double>();
+        static readonly Dictionary<string, double> _recDetails = new Dictionary<string, double>();
+
         public static void Record(string what, double ms)
         {
             _thisFrame.TryGetValue(what, out var v);
@@ -79,6 +88,9 @@ namespace SubnauticaMP
             if (_recording) RecordFrame(ms, hadGc, turned);
             if (ms >= SpikeMs && Game.InWorld && Session.Instance?.Loading != true) CountStutter(ms, hadGc, turned);
 
+            if (_recording)
+                foreach (var kv in _details) { _recDetails.TryGetValue(kv.Key, out var d); _recDetails[kv.Key] = d + kv.Value; }
+            _details.Clear();
             _thisFrame.Clear();
             _modThisFrame = 0;
         }
@@ -90,6 +102,8 @@ namespace SubnauticaMP
         static void CountStutter(float ms, bool gc, float turned)
         {
             var top = _thisFrame.OrderByDescending(kv => kv.Value).FirstOrDefault();
+            var part = _details.OrderByDescending(kv => kv.Value).FirstOrDefault();
+            if (top.Key == "ui (all)" && part.Key != null) top = part; // name the exact window / overlay
             string why = top.Key != null && top.Value > ms * 0.3f ? "mod: " + top.Key
                 : gc ? "memory cleanup (GC)"
                 : turned > 3f ? "game: loading the world while you turn/swim"
@@ -114,7 +128,7 @@ namespace SubnauticaMP
             _reportTo = s;
             _recording = true;
             _recordUntil = Time.unscaledTime + seconds;
-            _recFrames.Clear(); _recModules.Clear(); _spikes.Clear();
+            _recFrames.Clear(); _recModules.Clear(); _spikes.Clear(); _recDetails.Clear();
             _recGcs = _recSpikesGc = _recSpikesMod = _recSpikesTurn = _recSpikesNone = 0;
             NetLag.StartRecording();
             s.AddChat($"Recording performance for {seconds:0} s: play normally (turn the camera, swim around)...");
@@ -161,6 +175,11 @@ namespace SubnauticaMP
             sb.AppendLine("[perf] mod parts, ms per frame:");
             foreach (var kv in _recModules.OrderByDescending(kv => kv.Value).Take(12))
                 sb.AppendLine($"  {kv.Key}: {kv.Value / n:0.000}");
+            if (_recDetails.Count > 0)
+            {
+                sb.AppendLine("[perf] ui parts, ms per frame:");
+                foreach (var kv in _recDetails.OrderByDescending(kv => kv.Value)) sb.AppendLine($"  {kv.Key}: {kv.Value / n:0.000}");
+            }
             if (_spikes.Count > 0) { sb.AppendLine("[perf] stutters:"); foreach (var s in _spikes) sb.AppendLine(s); }
             sb.Append($"[perf] settings: Performance={Plugin.Performance.Value}, upload {QualitySettings.asyncUploadBufferSize} MB / {QualitySettings.asyncUploadTimeSlice} ms, " +
                       $"loading priority {Application.backgroundLoadingPriority}, vSync {QualitySettings.vSyncCount}, target fps {Application.targetFrameRate}");
