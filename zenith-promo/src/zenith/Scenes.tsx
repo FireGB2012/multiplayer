@@ -33,7 +33,7 @@ export const Backdrop: React.FC<{ t: number; pal: Palette }> = ({ t, pal }) => {
   );
 };
 
-const headline: React.CSSProperties = {
+export const headline: React.CSSProperties = {
   fontFamily: "Inter",
   fontWeight: 800,
   fontSize: 104,
@@ -47,7 +47,7 @@ const headline: React.CSSProperties = {
  * One line of gradient-filled headline text. Drawn as SVG because CSS
  * `background-clip: text` glitches into solid boxes while the glass blur behind it animates.
  */
-const GradientLine: React.FC<{ text: string; from: string; to: string; fontSize: number; id: string }> = ({
+export const GradientLine: React.FC<{ text: string; from: string; to: string; fontSize: number; id: string }> = ({
   text,
   from,
   to,
