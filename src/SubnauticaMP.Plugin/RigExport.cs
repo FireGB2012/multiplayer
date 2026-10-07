@@ -21,7 +21,7 @@ namespace SubnauticaMP
     {
         // player = the local Player component, outDir = where the files go, say = shows a message to the user.
         // (Also compiled into the standalone tools/rigdump plugin, so it can't lean on the rest of the mod.)
-        public static void Run(Component player, string outDir, string version, Action<string> say)
+        public static void Run(Component player, string outDir, string version, Action<string> say, Action<string> log = null)
         {
             try
             {
@@ -35,7 +35,7 @@ namespace SubnauticaMP
                 info.AppendLine("Root: " + body.name + " (everything below is relative to it, units = meters)");
                 info.AppendLine();
 
-                var glb = new GlbBuilder(body, info);
+                var glb = new GlbBuilder(body, info, log);
                 glb.AddRenderers();
                 File.WriteAllBytes(Path.Combine(dir, "diver_rig.glb"), glb.ToGlb());
 
@@ -69,6 +69,7 @@ namespace SubnauticaMP
 
             readonly Transform _root;
             readonly StringBuilder _info;
+            readonly Action<string> _log;
             readonly List<Transform> _nodes = new List<Transform>();
             readonly Dictionary<Transform, int> _index = new Dictionary<Transform, int>();
             readonly MemoryStream _bin = new MemoryStream();
@@ -90,10 +91,11 @@ namespace SubnauticaMP
             public int MeshCount => _meshes.Count;
             public int NodeCount => _nodes.Count;
 
-            public GlbBuilder(Transform root, StringBuilder info)
+            public GlbBuilder(Transform root, StringBuilder info, Action<string> log)
             {
                 _root = root;
                 _info = info;
+                _log = log ?? (m => UnityEngine.Debug.LogWarning(m));
                 Collect(root);
             }
 
@@ -119,7 +121,7 @@ namespace SubnauticaMP
                 }
                 if (_skins.Count == 0) AddPlaceholderSkin();
                 _info.AppendLine();
-                UnityEngine.Debug.LogWarning("[RigExport] " + _info.ToString(sectionStart, _info.Length - sectionStart)); // lands in LogOutput.log
+                _log("[RigExport] " + _info.ToString(sectionStart, _info.Length - sectionStart)); // lands in LogOutput.log
             }
 
             // No readable skinned mesh came out (the game strips vertex data from most meshes). Blender only builds an
@@ -162,8 +164,24 @@ namespace SubnauticaMP
                 if (mesh == null) return;
                 if (!mesh.isReadable)
                 {
-                    _info.AppendLine($"SKIPPED  {path}  mesh '{mesh.name}' isn't readable (the game compiled it without Read/Write) - grab this one with AssetRipper");
-                    return;
+                    // The game freed this mesh's vertex data. A skinned one can sometimes still be baked by Unity in its
+                    // current pose: that comes out as a plain mesh (no bone weights) lined up with the skeleton.
+                    Mesh baked = null;
+                    if (smr != null)
+                    {
+                        try { baked = new Mesh(); smr.BakeMesh(baked); }
+                        catch (Exception e) { _info.AppendLine($"Baking {path} failed: {e.Message}"); baked = null; }
+                        if (baked != null && baked.vertexCount == 0) baked = null;
+                    }
+                    if (baked == null)
+                    {
+                        _info.AppendLine($"SKIPPED  {path}  mesh '{mesh.name}' isn't readable (the game compiled it without Read/Write) - grab this one with AssetRipper");
+                        return;
+                    }
+                    _info.AppendLine($"BAKED    {path}  mesh '{mesh.name}' isn't readable, baked in its current pose instead (no weights: in Blender select it, then the armature, Ctrl+P > With Automatic Weights)");
+                    baked.name = mesh.name;
+                    mesh = baked;
+                    smr = null; // exported as a plain mesh on the renderer's node
                 }
                 int vc = mesh.vertexCount;
                 var verts = mesh.vertices;

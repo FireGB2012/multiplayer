@@ -107,7 +107,7 @@ namespace SubnauticaMP
             PerfMonitor.EndFrame();
             DrainPendingChat(); // the UI may not draw at all this frame
             if (Input.GetKeyDown(Plugin.PerfKey.Value) && !UiKit.Typing()) PerfMonitor.Overlay = !PerfMonitor.Overlay;
-            if (Input.GetKeyDown(Plugin.RigExportKey.Value) && Game.InWorld && !UiKit.Typing()) RigExport.Run(Game.LocalPlayer, Path.Combine(Plugin.Folder, "RigExport"), Plugin.Version, m => { Plugin.Log.LogInfo(m); AddChat(m); });
+            if (Input.GetKeyDown(Plugin.RigExportKey.Value) && Game.InWorld && !UiKit.Typing()) RigExport.Run(Game.LocalPlayer, Path.Combine(Plugin.Folder, "RigExport"), Plugin.Version, m => { Plugin.Log.LogInfo(m); AddChat(m); }, m => Plugin.Log.LogInfo(m));
             if (Input.GetKeyDown(Plugin.MenuKey.Value)) ToggleMultiplayerWindow();
             if (Plugin.EnterForChat.Value && Joined && Game.InWorld && !Lobby.Holding && !Loading && !_menuOpen && !PausePageShowing &&
                 Cursor.lockState == CursorLockMode.Locked && !UiKit.Typing() &&

@@ -10,7 +10,7 @@ namespace SubnauticaMP
 {
     // Press F10 in a world: writes the diver (first-person arms + body skeleton, meshes, textures, animations) as
     // .glb files to BepInEx\plugins\SubnauticaRigDump\RigExport\ for Blender. Doesn't touch the game otherwise.
-    [BepInPlugin("com.firegb2012.subnauticarigdump", "Subnautica Rig Dump", "1.0.4")]
+    [BepInPlugin("com.firegb2012.subnauticarigdump", "Subnautica Rig Dump", "1.0.5")]
     public sealed class RigDumpPlugin : BaseUnityPlugin
     {
         internal static BepInEx.Logging.ManualLogSource Log;
@@ -82,12 +82,12 @@ namespace SubnauticaMP
         {
             if (!Input.GetKeyDown(KeyCode.F10)) return;
             RigDumpPlugin.Log.LogInfo("F10 pressed");
-            RigExport.Run(RigDumpPlugin.FindPlayer(), Path.Combine(RigDumpPlugin.Folder, "RigExport"), "RigDump 1.0.4", m =>
+            RigExport.Run(RigDumpPlugin.FindPlayer(), Path.Combine(RigDumpPlugin.Folder, "RigExport"), "RigDump 1.0.5", m =>
             {
                 RigDumpPlugin.Log.LogInfo(m);
                 _message = m;
                 _messageUntil = Time.realtimeSinceStartup + 10f;
-            });
+            }, m => RigDumpPlugin.Log.LogWarning(m));
         }
 
         void OnGUI()
