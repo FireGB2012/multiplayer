@@ -14,7 +14,7 @@ namespace SubnauticaMP
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.firegb2012.subnauticamp";
-        public const string Version = "0.24.3";
+        public const string Version = "0.25.0";
 
         internal static ManualLogSource Log;
         internal static string Folder;

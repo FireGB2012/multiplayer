@@ -56,10 +56,17 @@ CLIPS = [
     ("bow",         "Bow",              "Gestures", "111_02", None, 3.0, False),
     ("biglaugh",    "Big Laugh",        "Gestures", "13_14", None, 4.0, False),
     ("wavehello",   "Big Wave",         "Gestures", "111_37", None, 2.5, False),
+    # Fortnite-style dances, hand-made lookalikes (keep new ones at the end: an emote's number is its place here)
+    ("default",     "Default Dance",    "Dances", "made:default_dance", 0, 0, True),
+    ("takethel",    "Take the L",       "Dances", "made:take_the_l", 0, 0, True),
+    ("orangejustice","Orange Justice",  "Dances", "made:orange_justice", 0, 0, True),
+    ("electroshuffle","Electro Shuffle","Dances", "made:electro_shuffle", 0, 0, True),
+    ("griddy",      "Griddy",           "Dances", "made:griddy", 0, 0, True),
+    ("hype",        "Hype",             "Dances", "made:hype", 0, 0, True),
 ]
 
 LENGTHS = {}
-DID = {'floss': 'is flossing', 'robot': 'is doing the Robot', 'breakdance': 'is breakdancing', 'helicopter': 'does the Helicopter', 'footwork': 'is breakdancing', 'worm': 'is doing the Worm', 'moonwalk': 'is moonwalking', 'macarena': 'is doing the Macarena', 'chickendance': 'is doing the Chicken Dance', 'twist': 'is doing the Twist', 'charleston': 'is doing the Charleston', 'lambada': 'is dancing the Lambada', 'salsa': 'is dancing Salsa', 'russian': 'is doing a Russian dance', 'cartoon': 'is doing a cartoon dance', 'groove': 'is grooving', 'zombie': 'is being a zombie', 'monkey': 'is being a monkey', 'jumpingjacks': 'is doing jumping jacks', 'sit': 'sits down', 'cartwheel': 'does a cartwheel', 'monkeyflip': 'does a monkey backflip', 'handstand': 'does handstand kicks', 'breakflips': 'pulls off a break combo', 'bow': 'bows', 'biglaugh': 'is dying of laughter', 'wavehello': 'waves'}
+DID = {'floss': 'is flossing', 'robot': 'is doing the Robot', 'breakdance': 'is breakdancing', 'helicopter': 'does the Helicopter', 'footwork': 'is breakdancing', 'worm': 'is doing the Worm', 'moonwalk': 'is moonwalking', 'macarena': 'is doing the Macarena', 'chickendance': 'is doing the Chicken Dance', 'twist': 'is doing the Twist', 'charleston': 'is doing the Charleston', 'lambada': 'is dancing the Lambada', 'salsa': 'is dancing Salsa', 'russian': 'is doing a Russian dance', 'cartoon': 'is doing a cartoon dance', 'groove': 'is grooving', 'zombie': 'is being a zombie', 'monkey': 'is being a monkey', 'jumpingjacks': 'is doing jumping jacks', 'sit': 'sits down', 'cartwheel': 'does a cartwheel', 'monkeyflip': 'does a monkey backflip', 'handstand': 'does handstand kicks', 'breakflips': 'pulls off a break combo', 'bow': 'bows', 'biglaugh': 'is dying of laughter', 'wavehello': 'waves', 'default': 'is doing the Default Dance', 'takethel': 'says take the L', 'orangejustice': 'is doing Orange Justice', 'electroshuffle': 'is doing the Electro Shuffle', 'griddy': 'is hitting the Griddy', 'hype': 'is getting hype'}
 
 SEGMENTS = ["armUpL", "armLowL", "armUpR", "armLowR", "legUpL", "legLowL", "legUpR", "legLowR", "head"]
 BONES = {  # segment -> (from joint, to joint) in the CMU skeleton
@@ -334,6 +341,150 @@ def worm(t):
         "legUpR": [0.08, -0.25 + 0.55 * hips, -1], "legLowR": [0.05, 0.1 + 0.6 * max(0, math.sin(ph - 2.6)), -1],
         "head": [0, 0.3 + 0.6 * chest, 1],
     }
+
+
+# ---------------- Fortnite-style dances ----------------
+# Poses are built as dicts of plain tuples (rot = Unity Euler degrees) so they can be blended and mirrored,
+# then turned into what made() wants by done(). Each one loops on a whole number of beats.
+
+REST = dict(rot=(0, 0, 0), off=(0, 0, 0),
+            armUpL=(-0.25, -0.9, 0.2), armLowL=(-0.05, -0.4, 0.9),   # elbows bent, forearms forward: ready to dance
+            armUpR=(0.25, -0.9, 0.2), armLowR=(0.05, -0.4, 0.9),
+            legUpL=(-0.08, -1, 0), legLowL=(-0.03, -1, 0), legUpR=(0.08, -1, 0), legLowR=(0.03, -1, 0),
+            head=(0, 1, 0.08))
+
+
+def pose(base=REST, **kw):
+    p = dict(base); p.update(kw); return p
+
+
+def mix(a, b, w):
+    return {k: tuple(x * (1 - w) + y * w for x, y in zip(a[k], b[k])) for k in a}
+
+
+def mirror(p):
+    """The same move on the other side."""
+    out = {}
+    for k, v in p.items():
+        k2 = k[:-1] + {"L": "R", "R": "L"}[k[-1]] if k[-1] in "LR" else k
+        out[k2] = (v[0], -v[1], -v[2]) if k == "rot" else (-v[0], v[1], v[2])
+    return out
+
+
+def done(p):
+    out = {k: list(v) for k, v in p.items()}
+    out["rot"] = euler_quat(*p["rot"])
+    return out
+
+
+def ease(x):
+    x = max(0.0, min(1.0, x)); return x * x * (3 - 2 * x)
+
+
+def squat(p, depth):
+    """Hips down, knees bent forward to match."""
+    k = depth / 0.1
+    return pose(p, off=(p["off"][0], p["off"][1] - depth, p["off"][2]),
+                legUpL=(p["legUpL"][0], -1, p["legUpL"][2] + 0.35 * k), legLowL=(p["legLowL"][0], -1, p["legLowL"][2] - 0.3 * k),
+                legUpR=(p["legUpR"][0], -1, p["legUpR"][2] + 0.35 * k), legLowR=(p["legLowR"][0], -1, p["legLowR"][2] - 0.3 * k))
+
+
+def default_dance(t):
+    beat = 0.5
+    if t == "period": return beat * 8
+    b, ph = divmod(t / beat, 1.0)
+    base = squat(REST, 0.03)
+    if b < 4:  # step-punch: knee up, opposite arm punches up across the body, every beat the other side
+        punch = pose(base, rot=(0, -12, 4), off=(0.02, 0.03, 0),
+                     armUpR=(-0.1, 0.75, 0.65), armLowR=(-0.25, 0.9, 0.3),
+                     armUpL=(-0.35, -0.85, -0.2), armLowL=(-0.1, -0.3, 0.95),
+                     legUpR=(0.1, -0.25, 1), legLowR=(0.08, -1, 0.2), head=(-0.1, 1, 0.15))
+        if int(b) % 2: punch = mirror(punch)
+        return done(mix(base, punch, math.sin(math.pi * ph)))
+    # swing: both arms swing side to side, hips the other way, knees dip on every beat
+    s = math.sin(math.pi * (t / beat - 4) / 2)
+    swing = pose(base, rot=(0, 10 * s, -5 * s), off=(-0.05 * s, 0, 0),
+                 armUpL=(0.75 * s - 0.15, -0.55, 0.45), armLowL=(0.85 * s - 0.1, -0.35, 0.5),
+                 armUpR=(0.75 * s + 0.15, -0.55, 0.45), armLowR=(0.85 * s + 0.1, -0.35, 0.5),
+                 head=(0.15 * s, 1, 0.1))
+    return done(squat(mix(base, swing, abs(s)), 0.05 * abs(math.sin(math.pi * ph))))
+
+
+def take_the_l(t):
+    beat = 0.375
+    if t == "period": return beat * 8
+    b, ph = divmod(t / beat, 1.0)
+    kick = math.sin(math.pi * ph)              # every beat: hop and kick the left leg out to the side
+    turn = math.sin(2 * math.pi * t / (beat * 8))
+    p = pose(REST, rot=(0, 18 * turn, -6 * kick), off=(0.04 * kick, 0.05 * kick, 0),
+             armUpR=(0.75, 0.45, 0.45), armLowR=(-0.75, 0.35, 0.3),           # the L on the forehead
+             armUpL=(-0.35 - 0.5 * kick, -0.85 + 0.6 * kick, 0.25), armLowL=(-0.2 - 0.7 * kick, -0.4 + 0.5 * kick, 0.6),
+             legUpL=(-0.08 - 0.75 * kick, -1 + 0.35 * kick, 0.1), legLowL=(-0.03 - 0.8 * kick, -1 + 0.4 * kick, 0.05),
+             legUpR=(0.06, -1, 0.15), legLowR=(0.04, -1, -0.1), head=(0.1 * kick, 1, 0.1))
+    return done(p)
+
+
+def orange_justice(t):
+    beat = 0.4
+    if t == "period": return beat * 4
+    s = math.sin(math.pi * t / beat)           # swings to one side and back every two beats
+    right = squat(pose(REST, rot=(6, 0, 10), off=(-0.06, 0, 0),
+                       armUpL=(0.55, -0.15, 0.8), armLowL=(0.7, 0.15, 0.7),       # left arm swings up across
+                       armUpR=(0.5, -0.6, -0.6), armLowR=(0.45, -0.8, -0.4),      # right arm swings back and out
+                       legUpR=(0.6, -0.75, 0.2), legLowR=(0.25, -0.95, -0.2),     # right leg out, knee bent
+                       legUpL=(-0.05, -1, 0.1), head=(-0.15, 1, 0.12)), 0.07)
+    p = mix(mirror(right), right, (s + 1) / 2)
+    return done(squat(p, 0.04 * (1 - abs(s))))  # dips through the middle
+
+
+def electro_shuffle(t):
+    beat = 0.375
+    if t == "period": return beat * 8
+    side = math.sin(math.pi * t / (beat * 4))  # two bars: right, then left
+    pump = abs(math.sin(math.pi * t / beat))   # arm pushes out on every beat
+    right = pose(REST, rot=(0, 12, -4), off=(0.08, 0, 0),
+                 armUpR=(0.55 + 0.4 * pump, 0.05, 0.35 - 0.1 * pump), armLowR=(0.35 + 0.65 * pump, 0.1, 0.8 - 0.65 * pump),
+                 armUpL=(-0.5, -0.3, 0.6), armLowL=(0.6, 0.1, 0.75),                 # other arm across the chest
+                 legUpR=(0.3 + 0.1 * pump, -0.9, 0.2), legLowR=(0.3, -0.9, 0.35 * pump),  # heel taps out
+                 head=(0.2, 1, 0.1))
+    p = mix(mirror(right), right, ease(0.5 + 1.5 * side))  # switches sides quick, then holds
+    return done(squat(p, 0.03 + 0.04 * pump))
+
+
+def griddy(t):
+    beat = 0.3
+    if t == "period": return beat * 8
+    pos = t / beat
+    s = math.sin(math.pi * pos)                # one leg each beat
+    right = squat(pose(REST, rot=(12, -6, 0),
+                       legUpR=(0.08, -0.45, 0.9), legLowR=(0.05, -1, -0.2),          # right knee up, heel tap
+                       armUpL=(-0.15, -0.6, 0.8), armLowL=(0.1, 0.3, 0.95),          # opposite arm forward
+                       armUpR=(0.2, -0.6, -0.8), armLowR=(0.1, -0.9, -0.4),          # same-side arm back
+                       head=(0, 1, 0.3)), 0.06)
+    p = mix(mirror(right), right, (s + 1) / 2)
+    # last two beats: hands around the eyes like goggles
+    g = ease((pos - 5.6) / 0.6) * ease((8 - pos) / 0.4)
+    goggles = pose(p, armUpL=(-0.8, 0.3, 0.45), armLowL=(0.55, 0.5, 0.65), armUpR=(0.8, 0.3, 0.45), armLowR=(-0.55, 0.5, 0.65),
+                   head=(0, 1, 0.05))
+    return done(mix(p, goggles, g))
+
+
+def hype(t):
+    beat = 0.4
+    if t == "period": return beat * 8
+    b, ph = divmod(t / beat, 1.0)
+    hop = math.sin(math.pi * ph)
+    a = 2 * math.pi * 2 * ((t / beat) % 4) / 4     # two big arm circles per half
+    kick_l = int(b) % 2 == 0
+    p = pose(REST, off=(0, 0.04 * hop, 0),
+             armUpR=(0.2 + 0.8 * math.sin(a), -math.cos(a), 0.35), armLowR=(0.2 + 0.8 * math.sin(a), -math.cos(a), 0.45),
+             armUpL=(-0.6, -0.6, 0.1), armLowL=(0.3, 0.2, 0.9),             # other fist pumping at the chest
+             head=(0.2 * math.sin(a), 1, 0.1))
+    side = "L" if kick_l else "R"
+    x = -0.08 if kick_l else 0.08
+    p = pose(p, **{"legUp" + side: (x, -1, -0.15 * hop), "legLow" + side: (x, -1 + 0.8 * hop, -hop)})
+    p = squat(p, 0.03 * (1 - hop))
+    return done(p if b < 4 else mirror(p))
 
 
 # ---------------- output ----------------

@@ -633,7 +633,7 @@ namespace SubnauticaMP.Shared
                     break;
 
                 case EmotePacket emote:
-                    RelayEmote(conn, client, emote.Emote);
+                    RelayEmote(conn, client, emote.Emote, emote.StartTime);
                     break;
 
                 case PartyPacket party:
@@ -727,16 +727,17 @@ namespace SubnauticaMP.Shared
         // ---------- admin commands (typed in chat) ----------
 
         // Emotes go to everyone else (the sender plays their own). Max ~4 a second each, so nobody can flood.
-        void RelayEmote(Connection conn, Client client, Emote emote)
+        void RelayEmote(Connection conn, Client client, Emote emote, double startTime = double.NaN)
         {
             if (!Emotes.IsValid(emote)) return;
+            if (double.IsInfinity(startTime) || startTime < 0) startTime = double.NaN;
             var now = DateTime.UtcNow;
             lock (_lock)
             {
                 if (emote != Emote.None && now < client.NextEmote) return;
                 client.NextEmote = now.AddMilliseconds(250);
             }
-            Broadcast(new EmotePacket { Id = client.Id, Emote = emote }, except: conn);
+            Broadcast(new EmotePacket { Id = client.Id, Emote = emote, StartTime = startTime }, except: conn);
         }
 
         // Everyone who was here at the start has loaded (or waited long enough): roll the intro.

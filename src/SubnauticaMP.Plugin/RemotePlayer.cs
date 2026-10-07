@@ -189,7 +189,8 @@ namespace SubnauticaMP
         public Vector3 Chest => transform.position; // what a push aims at
 
         // Returns false when it's just a looping emote (dance...) being sent again to keep it going.
-        public bool PlayEmote(Emote emote, Vector3? knockDirection = null)
+        // startTime: the game clock when they started it (NaN = just now), so we show the same frame they do.
+        public bool PlayEmote(Emote emote, Vector3? knockDirection = null, double startTime = double.NaN)
         {
             if (knockDirection.HasValue) _knockDir = knockDirection.Value;
             // knocked over: a real physics ragdoll when we can, the animated fall if not
@@ -207,9 +208,13 @@ namespace SubnauticaMP
             }
             if (emote == Emote.None) { StopEmote(); return false; }
             bool repeat = emote == _emote && Emotes.Loops(emote) && EmoteRunning();
-            if (!repeat) _emoteStarted = Time.unscaledTime;
+            // unknown start (old client, no clock yet): a resend keeps going from where we are
+            float elapsed = EmoteSync.Elapsed(startTime) ?? (repeat ? Time.unscaledTime - _emoteStarted : 0f);
+            var info = Emotes.Get(emote);
+            if (info != null && info.Seconds > 0f && elapsed >= info.Seconds) return false; // already over for them
+            _emoteStarted = Time.unscaledTime - elapsed;
             _emote = emote;
-            try { _emoteAnim?.Play(emote); _emoteAnim?.SetKnockDirection(_knockDir); }
+            try { _emoteAnim?.Play(emote, elapsed); _emoteAnim?.SetKnockDirection(_knockDir); }
             catch (Exception e) { Game.WarnOnce("emote", "Couldn't play emote: " + e.GetBaseException().Message); }
             return !repeat;
         }
@@ -299,7 +304,7 @@ namespace SubnauticaMP
                     _anim.SetToolAnims(_anims);
                     try { _emoteAnim = new EmoteAnimator(_diver); }
                     catch (Exception e) { Game.WarnOnce("emote", "No emotes on divers: " + e.GetBaseException().Message); }
-                    if (_emote != Emote.None && EmoteRunning()) _emoteAnim?.Play(_emote);
+                    if (_emote != Emote.None && EmoteRunning()) _emoteAnim?.Play(_emote, Time.unscaledTime - _emoteStarted);
                 }
             }
 
