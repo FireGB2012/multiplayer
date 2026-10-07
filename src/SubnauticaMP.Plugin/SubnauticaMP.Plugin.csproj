@@ -13,7 +13,7 @@
     <Nullable>disable</Nullable>
     <AssemblyName>SubnauticaMP</AssemblyName>
     <RootNamespace>SubnauticaMP</RootNamespace>
-    <Version>0.25.0</Version>
+    <Version>0.26.0</Version>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Subnautica</GameDir>
     <ManagedDir>$(GameDir)\Subnautica_Data\Managed</ManagedDir>
@@ -28,6 +28,8 @@
   <!-- dance / emote animations (tools/emotes/make_emotes.py) -->
   <ItemGroup>
     <EmbeddedResource Include="Emotes.bin" LogicalName="SubnauticaMP.Emotes.bin" />
+    <!-- the Titanium Bat's model + icon (tools/bat/make_bat.py) -->
+    <EmbeddedResource Include="Bat.bin" LogicalName="SubnauticaMP.Bat.bin" />
   </ItemGroup>
 
   <ItemGroup>

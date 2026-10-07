@@ -15,6 +15,7 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app for Windo
 | Emotes: 50+ incl. Floss, Default Dance, Take the L, Orange Justice, Electro Shuffle, Griddy, Hype, Robot, Worm, Moonwalk, cartwheels... | ✔ Fortnite-style emote wheel on **G**, everyone sees your diver do it on the same beat (late joiners jump in mid-dance) |
 | Dance parties | ✔ everyone who joins dances the same dance at the same moment, with disco lights |
 | Pushing | ✔ empty hand + left click on a teammate up close: they get shoved, go limp as a real physics ragdoll, and stand back up after 4 s |
+| Titanium Bat | ✔ craft it (4 Titanium, Fabricator > Personal > Tools), click to swing: a teammate in front of you gets launched far the way you look (look up for a home run), ragdolls and gets back up. No damage. Needs Nautilus (the launcher installs it) |
 | Blueprints (unlocks, fragment scans) | ✔ everyone shares one tech tree |
 | Databank / PDA entries | ✔ |
 | Picked-up items + broken outcrops | ✔ gone for everyone |
@@ -173,4 +174,5 @@ Without `GameDir` it compiles against `lib/BepInEx.Ref` (a compile-only copy of 
 ## Credits
 Dance and emote motions come from the [CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu)
 (BVH conversion by Bruce Hahne / cgspeed), free for any use. The database was created with funding from NSF EIA-0196217.
+The Titanium Bat model is by Gabriel (`tools/bat/`, `make_bat.py` makes the in-game copy and icon, `preview_swing.py` previews the swing).
 Floss, Worm, Default Dance, Take the L, Orange Justice, Electro Shuffle, Griddy and Hype are hand-made lookalikes (no game files from Fortnite). `tools/emotes/make_emotes.py` rebuilds the animation file.

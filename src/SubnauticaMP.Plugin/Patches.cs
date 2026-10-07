@@ -116,6 +116,7 @@ namespace SubnauticaMP
             Hook("hull damage", Game.LiveMixin, "TakeDamage", prefix: nameof(HullBefore), postfix: nameof(HullDamaged));
             Hook("welding", Game.LiveMixin, "AddHealth", prefix: nameof(HullBefore), postfix: nameof(HullRepaired));
             Hook("fruit", Game.PickPrefab, "SetPickedUp", postfix: nameof(Picked));
+            Hook("bat (no stabbing)", Game.Knife, "OnToolUseAnim", prefix: nameof(KnifeUsed));
             Hook("containment breeding", Game.WaterParkCreature, "Born", prefix: nameof(BornHere));
             HookExact("containment", Game.FindMethod(Game.WaterPark, "AddItem", Game.Pickupable ?? typeof(void)), postfix: nameof(ParkAdded));
 
@@ -141,6 +142,13 @@ namespace SubnauticaMP
         }
 
         static Session S => Session.Instance != null && Session.Instance.Joined ? Session.Instance : null;
+
+        // The Titanium Bat is a knife underneath: it doesn't stab (BatSync swings it instead).
+        static bool KnifeUsed(Component __instance)
+        {
+            try { return __instance == null || Game.TechTypeOf(__instance.gameObject) != BatItem.TechName; }
+            catch { return true; }
+        }
 
         static void KnownTechAdded(object[] __args)
         {

@@ -78,17 +78,38 @@ namespace SubnauticaMP
         void KnockMe(Vector3 dir)
         {
             var player = Game.LocalPlayer;
-            if (player == null || Knocked) return; // already down: one push at a time
-            _knockedUntil = Time.unscaledTime + Emotes.KnockedSeconds;
-            _s.Emoting.Stop();
-
+            if (player == null) return;
             bool underwater = Game.Is(player, "IsUnderwater");
             var push = underwater ? dir * Strength : new Vector3(dir.x, 0f, dir.z).normalized * LandStrength + Vector3.up * 2.5f;
-            var rb = Game.TryGet(Game.Player, player, "rigidBody") as Rigidbody ?? player.GetComponent<Rigidbody>();
-            if (rb != null && !rb.isKinematic) rb.velocity = push;
-            else player.transform.position += push * 0.15f; // no physics body to shove: at least move them a bit
+            GoDown(push, dir, Emotes.KnockedSeconds, dir * 5f + Vector3.up * 1.5f, 0f, 3f);
+        }
 
-            _s.Emoting.PlayLocalOnly(Emote.Knocked, dir, dir * 5f + Vector3.up * 1.5f); // you see yourself flop over (camera swings out)
+        // A Titanium Bat hit: you fly off at `velocity` (worked out by Bat.LaunchVelocity), tumbling.
+        public bool LaunchMe(Vector3 velocity)
+        {
+            var player = Game.LocalPlayer;
+            if (player == null || Knocked) return false;
+            bool underwater = Game.Is(player, "IsUnderwater");
+            var dir = velocity.sqrMagnitude > 1e-4f ? velocity.normalized : Vector3.forward;
+            GoDown(velocity, dir, Bat.LaunchedSeconds, velocity, Bat.FlightSeconds(underwater), 9f);
+            return true;
+        }
+
+        // Knocked over: no control for `seconds`, your body thrown at `velocity` while a ragdoll copy of you
+        // (that you watch from behind) flies at `ragdollVelocity`.
+        void GoDown(Vector3 velocity, Vector3 dir, float seconds, Vector3 ragdollVelocity, float flightSeconds, float spin)
+        {
+            var player = Game.LocalPlayer;
+            if (player == null || Knocked) return; // already down: one push at a time
+            _knockedUntil = Time.unscaledTime + seconds;
+            _s.Emoting.Stop();
+
+            var rb = Game.TryGet(Game.Player, player, "rigidBody") as Rigidbody ?? player.GetComponent<Rigidbody>();
+            if (rb != null && !rb.isKinematic) rb.velocity = velocity;
+            else player.transform.position += velocity * 0.15f; // no physics body to shove: at least move them a bit
+
+            // you see yourself flop over (camera swings out)
+            _s.Emoting.PlayLocalOnly(Emote.Knocked, dir, ragdollVelocity, seconds, flightSeconds, spin);
         }
     }
 }

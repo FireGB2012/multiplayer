@@ -26,6 +26,8 @@ namespace SubnauticaMP.Shared
             public DateTime NextEmote; // spam guard
             public DateTime NextPush;
             public DateTime KnockedUntil; // lying on the floor from a push: can't be pushed again until up
+            public DateTime NextSwing, NextBatHit;
+            public string Held = ""; // what's in their hand (from their position updates)
         }
 
         const double TimeSyncSeconds = 5;
@@ -369,6 +371,7 @@ namespace SubnauticaMP.Shared
             {
                 case PlayerStatePacket state:
                     state.Id = client.Id;
+                    client.Held = state.Held ?? "";
                     Broadcast(state, except: conn);
                     break;
 
@@ -662,6 +665,23 @@ namespace SubnauticaMP.Shared
                     break;
                 }
 
+                case BatSwingPacket swing:
+                {
+                    var now = DateTime.UtcNow;
+                    lock (_lock)
+                    {
+                        if (now < client.NextSwing) break;
+                        client.NextSwing = now.AddMilliseconds(250);
+                    }
+                    float pitch = float.IsNaN(swing.Pitch) ? 0f : Math.Max(-90f, Math.Min(90f, swing.Pitch));
+                    Broadcast(new BatSwingPacket { Id = client.Id, Pitch = pitch }, except: conn);
+                    break;
+                }
+
+                case BatHitPacket hit:
+                    HandleBatHit(client, hit);
+                    break;
+
                 case IntroPacket _:
                     bool open;
                     lock (_lock)
@@ -757,6 +777,32 @@ namespace SubnauticaMP.Shared
         }
 
         // Start (or restart) the dance party, or end it (only whoever started it, or an admin, can end it).
+        // A Titanium Bat swing hit some players: launch the ones that can be (joined, not already flying / on
+        // the floor), if the hitter really has the bat out and isn't swinging faster than a bat can.
+        void HandleBatHit(Client client, BatHitPacket hit)
+        {
+            var d = hit.Direction;
+            float len = (float)Math.Sqrt(d.X * d.X + d.Y * d.Y + d.Z * d.Z);
+            if (len < 1e-3f || float.IsNaN(len) || hit.Targets == null) return;
+            var now = DateTime.UtcNow;
+            var targets = new List<int>();
+            lock (_lock)
+            {
+                if (client.Held != Bat.TechName || now < client.NextBatHit) return;
+                foreach (var id in hit.Targets.Distinct())
+                {
+                    if (id == client.Id || targets.Count >= Bat.MaxTargets) continue;
+                    var target = _connections.Select(c => c.Tag as Client).FirstOrDefault(t => t != null && t.Joined && t.Id == id);
+                    if (target == null || now < target.KnockedUntil) continue;
+                    target.KnockedUntil = now.AddSeconds(Bat.LaunchedSeconds + 0.5);
+                    targets.Add(id);
+                }
+                if (targets.Count == 0) return;
+                client.NextBatHit = now.AddMilliseconds(Bat.SwingCooldownMs);
+            }
+            Broadcast(new BatHitPacket { HitterId = client.Id, Targets = targets, Direction = new Vec3(d.X / len, d.Y / len, d.Z / len) }, except: null);
+        }
+
         void HandleParty(Client client, PartyPacket p)
         {
             PartyPacket now;

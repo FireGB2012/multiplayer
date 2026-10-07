@@ -53,6 +53,8 @@ namespace SubnauticaMP.Shared
         Party = 45,           // dance party started / ended
         Push = 47,            // someone shoved someone
         Intro = 46,           // new world: "I've loaded" / "everyone has, go"
+        BatHit = 48,          // a Titanium Bat swing hit players: launch them
+        BatSwing = 49,        // someone swung a Titanium Bat
     }
 
     public struct Vec3
@@ -148,6 +150,8 @@ namespace SubnauticaMP.Shared
                 case PacketType.Party: return new PartyPacket();
                 case PacketType.Intro: return new IntroPacket();
                 case PacketType.Push: return new PushPacket();
+                case PacketType.BatHit: return new BatHitPacket();
+                case PacketType.BatSwing: return new BatSwingPacket();
                 default: throw new InvalidDataException("Unknown packet type " + (byte)type);
             }
         }
