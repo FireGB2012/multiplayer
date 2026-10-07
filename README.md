@@ -123,6 +123,11 @@ If it didn't:
 Send `Subnautica\BepInEx\LogOutput.log`. The mod logs which features hooked in
 (`Synced features: ...`) and anything it couldn't find in the game (`Game member not found: ...`).
 
+**Making your own animations?** Press **F10** in a world: the mod writes your live diver (first-person arms + body skeleton,
+meshes, textures, and every animation clip) as `diver_rig.glb` / `diver_with_anims.glb` into
+`BepInEx\plugins\SubnauticaMP\RigExport\`, ready for Blender. `rig_info.txt` next to them lists the bones and anything
+it had to skip. Key is `RigExportKey` in the config.
+
 **Lag?** Press **F9** in game for live stats (FPS, frame times, how many ms each part of the mod costs), or type
 `/perf` in chat (or Esc > Multiplayer > Lag test) and play normally for 10 s: it writes a report to `LogOutput.log`
 that says whether each stutter came from the mod, from garbage collection, or from the game itself (terrain/world
