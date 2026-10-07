@@ -33,6 +33,12 @@ namespace SubnauticaMP.Shared
             ("bow", "Bow", "Gestures", "bows", false, 2.50f),
             ("biglaugh", "Big Laugh", "Gestures", "is dying of laughter", false, 3.97f),
             ("wavehello", "Big Wave", "Gestures", "waves", false, 1.70f),
+            ("default", "Default Dance", "Dances", "is doing the Default Dance", true, 4.00f),
+            ("takethel", "Take the L", "Dances", "says take the L", true, 3.00f),
+            ("orangejustice", "Orange Justice", "Dances", "is doing Orange Justice", true, 1.60f),
+            ("electroshuffle", "Electro Shuffle", "Dances", "is doing the Electro Shuffle", true, 3.00f),
+            ("griddy", "Griddy", "Dances", "is hitting the Griddy", true, 2.40f),
+            ("hype", "Hype", "Dances", "is getting hype", true, 3.20f),
         };
     }
 }
