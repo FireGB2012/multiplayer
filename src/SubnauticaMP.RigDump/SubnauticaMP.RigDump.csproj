@@ -20,7 +20,7 @@
 
   <ItemGroup>
     <Compile Include="..\SubnauticaMP.Plugin\RigExport.cs" Link="RigExport.cs" />
-    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.4" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(UseGameDlls)' == 'true'">
