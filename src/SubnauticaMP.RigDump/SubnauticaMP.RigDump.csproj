@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Standalone mini plugin: press F10 in a world and it writes the diver (rig, meshes, textures, animations) as .glb.
+    Needs BepInEx 5 only, not the multiplayer mod. Same build rules as the main plugin (GameDir optional).
+      dotnet build -c Release -p:GameDir="D:\SteamLibrary\steamapps\common\Subnautica"
+  -->
+  <PropertyGroup>
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <AssemblyName>SubnauticaRigDump</AssemblyName>
+    <RootNamespace>SubnauticaMP</RootNamespace>
+    <Version>1.0.0</Version>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <GameDir Condition="'$(GameDir)' == ''">C:\Program Files (x86)\Steam\steamapps\common\Subnautica</GameDir>
+    <ManagedDir>$(GameDir)\Subnautica_Data\Managed</ManagedDir>
+    <UseGameDlls Condition="Exists('$(GameDir)\BepInEx\core\BepInEx.dll')">true</UseGameDlls>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\SubnauticaMP.Plugin\RigExport.cs" Link="RigExport.cs" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseGameDlls)' == 'true'">
+    <Reference Include="BepInEx" HintPath="$(GameDir)\BepInEx\core\BepInEx.dll" Private="false" />
+    <Reference Include="UnityEngine" HintPath="$(ManagedDir)\UnityEngine.dll" Private="false" />
+    <Reference Include="UnityEngine.CoreModule" HintPath="$(ManagedDir)\UnityEngine.CoreModule.dll" Private="false" />
+    <Reference Include="UnityEngine.IMGUIModule" HintPath="$(ManagedDir)\UnityEngine.IMGUIModule.dll" Private="false" />
+    <Reference Include="UnityEngine.InputLegacyModule" HintPath="$(ManagedDir)\UnityEngine.InputLegacyModule.dll" Private="false" />
+    <Reference Include="UnityEngine.ImageConversionModule" HintPath="$(ManagedDir)\UnityEngine.ImageConversionModule.dll" Private="false" />
+    <Reference Include="UnityEngine.AnimationModule" HintPath="$(ManagedDir)\UnityEngine.AnimationModule.dll" Private="false" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseGameDlls)' != 'true'">
+    <ProjectReference Include="..\..\lib\BepInEx.Ref\BepInEx.Ref.csproj" Private="false" />
+    <PackageReference Include="UnityEngine.Modules" Version="2021.3.33" ExcludeAssets="runtime" PrivateAssets="all" />
+  </ItemGroup>
+
+  <Target Name="CopyToGame" AfterTargets="Build" Condition="'$(UseGameDlls)' == 'true'">
+    <MakeDir Directories="$(GameDir)\BepInEx\plugins\SubnauticaRigDump" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GameDir)\BepInEx\plugins\SubnauticaRigDump" />
+  </Target>
+
+</Project>

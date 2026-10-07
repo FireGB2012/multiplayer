@@ -19,18 +19,19 @@ namespace SubnauticaMP
     // triangle winding flipped so it shows up the right way round in Blender.
     internal static class RigExport
     {
-        public static void Run(Session s)
+        // player = the local Player component, outDir = where the files go, say = shows a message to the user.
+        // (Also compiled into the standalone tools/rigdump plugin, so it can't lean on the rest of the mod.)
+        public static void Run(Component player, string outDir, string version, Action<string> say)
         {
             try
             {
-                var player = Game.LocalPlayer;
                 var body = player != null ? player.transform.Find("body") : null;
-                if (body == null) { s.AddChat("Rig export: load into a world first (couldn't find the player's body)."); return; }
+                if (body == null) { say("Rig export: load into a world first (couldn't find the player's body)."); return; }
 
-                var dir = Path.Combine(Plugin.Folder, "RigExport");
+                var dir = outDir;
                 Directory.CreateDirectory(dir);
                 var info = new StringBuilder();
-                info.AppendLine("Subnautica Multiplayer rig export " + Plugin.Version);
+                info.AppendLine("Subnautica rig export " + version);
                 info.AppendLine("Root: " + body.name + " (everything below is relative to it, units = meters)");
                 info.AppendLine();
 
@@ -51,13 +52,12 @@ namespace SubnauticaMP
                 glb.WriteBoneList();
                 File.WriteAllText(Path.Combine(dir, "rig_info.txt"), info.ToString());
 
-                Plugin.Log.LogInfo("Rig export written to " + dir);
-                s.AddChat($"Rig exported ({glb.MeshCount} meshes, {glb.NodeCount} bones/nodes, {clips} animations) to: {dir}");
+                say($"Rig exported ({glb.MeshCount} meshes, {glb.NodeCount} bones/nodes, {clips} animations) to: {dir}");
             }
             catch (Exception e)
             {
-                Plugin.Log.LogWarning("Rig export failed: " + e);
-                s.AddChat("Rig export failed: " + e.GetBaseException().Message + " (see the BepInEx log)");
+                say("Rig export failed: " + e.GetBaseException().Message + " (see the BepInEx log)");
+                UnityEngine.Debug.LogError("Rig export failed: " + e);
             }
         }
 
