@@ -128,6 +128,40 @@ public class EmoteTests
     }
 
     [Fact]
+    public void EmoteStartTimeReachesEveryoneSoTheyDanceOnTheSameFrame()
+    {
+        var server = new NetServer();
+        server.Start(0);
+        try
+        {
+            var (a, _) = Join(server, "A");
+            var (b, _) = Join(server, "B");
+            WaitFor<PlayerJoinedPacket>(a, p => p.Name == "B");
+
+            // the resend of a looping dance carries the same start, so it doesn't restart on anyone's screen
+            a.Send(new EmotePacket { Emote = Emote.Dance, StartTime = 1234.5 });
+            Assert.Equal(1234.5, WaitFor<EmotePacket>(b).StartTime);
+            Thread.Sleep(300);
+            a.Send(new EmotePacket { Emote = Emote.Dance, StartTime = 1234.5 });
+            Assert.Equal(1234.5, WaitFor<EmotePacket>(b).StartTime);
+
+            // nonsense times become "just now"
+            Thread.Sleep(300);
+            a.Send(new EmotePacket { Emote = Emote.Wave, StartTime = double.PositiveInfinity });
+            Assert.True(double.IsNaN(WaitFor<EmotePacket>(b).StartTime));
+            Thread.Sleep(300);
+            a.Send(new EmotePacket { Emote = Emote.Wave, StartTime = -5 });
+            Assert.True(double.IsNaN(WaitFor<EmotePacket>(b).StartTime));
+
+            // /e in chat has no clock: also "just now"
+            Thread.Sleep(300);
+            a.Send(new ChatPacket { Text = "/e salute" });
+            Assert.True(double.IsNaN(WaitFor<EmotePacket>(b).StartTime));
+        }
+        finally { server.Stop(); }
+    }
+
+    [Fact]
     public void SlashEInChatBecomesAnEmoteNotAMessage()
     {
         var server = new NetServer();

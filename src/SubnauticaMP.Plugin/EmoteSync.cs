@@ -18,6 +18,7 @@ namespace SubnauticaMP
         readonly Session _s;
         Emote _local = Emote.None;
         float _started, _nextSend, _cooldownUntil;
+        double _clockStarted = double.NaN; // game clock when your emote started: everyone dances on the same frame
         Vector3 _startPos;
 
         public EmoteSync(Session s)
@@ -55,7 +56,8 @@ namespace SubnauticaMP
             _started = Time.unscaledTime;
             _nextSend = _started + ResendSeconds;
             _startPos = PlayerPosition() ?? Vector3.zero;
-            _s.Send(new EmotePacket { Emote = emote });
+            _clockStarted = Game.GetTime() ?? double.NaN;
+            _s.Send(new EmotePacket { Emote = emote, StartTime = _clockStarted });
             StartSelfView(emote);
             _s.AddChat($"* {Plugin.PlayerName.Value} {info.Did}" + (info.Seconds <= 0f ? " (move to stop)" : ""));
         }
@@ -180,7 +182,7 @@ namespace SubnauticaMP
             if (now >= _nextSend)
             {
                 _nextSend = now + ResendSeconds;
-                _s.Send(new EmotePacket { Emote = _local });
+                _s.Send(new EmotePacket { Emote = _local, StartTime = _clockStarted });
             }
         }
 
@@ -191,7 +193,17 @@ namespace SubnauticaMP
             if (packet.Emote == Emote.None) { remote.StopEmote(); return; }
             var info = Emotes.Get(packet.Emote);
             if (info == null) return;
-            if (remote.PlayEmote(packet.Emote)) _s.AddChat($"* {remote.PlayerName} {info.Did}");
+            if (remote.PlayEmote(packet.Emote, startTime: packet.StartTime)) _s.AddChat($"* {remote.PlayerName} {info.Did}");
+        }
+
+        // How long ago (seconds) an emote started at this game-clock time. Null when we can't tell.
+        public static float? Elapsed(double startTime)
+        {
+            var now = Game.GetTime();
+            if (double.IsNaN(startTime) || now == null) return null;
+            double t = now.Value - startTime;
+            if (t < 0) return 0f;                       // clocks a hair apart
+            return t < 3600 ? (float)t : (float?)null;  // way off = the clock got reset (new world)
         }
 
         // ---------- dance party ----------

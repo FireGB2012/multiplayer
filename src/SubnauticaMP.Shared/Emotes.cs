@@ -147,13 +147,15 @@ namespace SubnauticaMP.Shared
 
     // client -> server: I'm doing this emote (None = stopped). server -> everyone else: player Id is doing it.
     // Looping emotes (dance, chill) get sent again every few seconds, so people who join late see them too.
+    // StartTime puts everyone on the same frame: a late joiner (or a slow packet) jumps in where the dance is now.
     public sealed class EmotePacket : Packet
     {
         public int Id;
         public Emote Emote;
+        public double StartTime = double.NaN; // game clock (DayNightCycle.timePassed) when it started; NaN = just now
         public override PacketType Type => PacketType.Emote;
-        public override void Write(BinaryWriter w) { w.Write(Id); w.Write((byte)Emote); }
-        public override void Read(BinaryReader r) { Id = r.ReadInt32(); Emote = (Emote)r.ReadByte(); }
+        public override void Write(BinaryWriter w) { w.Write(Id); w.Write((byte)Emote); w.Write(StartTime); }
+        public override void Read(BinaryReader r) { Id = r.ReadInt32(); Emote = (Emote)r.ReadByte(); StartTime = r.ReadDouble(); }
     }
 
     // A dance party: whoever joins dances, all to the same dance at the same moment (picked from the party's

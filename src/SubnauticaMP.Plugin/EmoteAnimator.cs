@@ -29,6 +29,7 @@ namespace SubnauticaMP
 
         // Party dancing: which clip and how far into it, from the party's shared clock (null = no party).
         public static System.Func<(EmoteClips.Clip clip, float time)?> PartyNow;
+        const float ResyncSeconds = 0.2f; // looping emote this far off everyone else's: jump back in step
         readonly Transform[] _bones;
         readonly Quaternion[] _before, _after;
         // every bone of the body: the ones an emote doesn't move hold the pose they had when it started, so the
@@ -190,16 +191,22 @@ namespace SubnauticaMP
             Vector3.Distance(thigh.position, knee.position) > 0.15f && Vector3.Distance(knee.position, foot.position) > 0.15f &&
             thigh.position.y > knee.position.y - 0.05f;
 
-        public void Play(Emote emote)
+        // startAt: how far into it to start (it started a moment ago on someone else's screen).
+        public void Play(Emote emote, float startAt = 0f)
         {
             var info = Emotes.Get(emote);
             if (info == null) { Stop(); return; }
-            if (_active && _showing == emote && info.Seconds <= 0f) return; // looping one: keep going
+            if (_active && _showing == emote && info.Seconds <= 0f)
+            {
+                // looping one: keep going, but snap back onto the shared beat if we've drifted off it
+                if (Mathf.Abs(_time - startAt) > ResyncSeconds) _time = startAt;
+                return;
+            }
             if (_showing != emote) _weight = 0f;
             if (_showing == Emote.None || _weight <= 0f) Freeze(); // starting from the normal animation: hold it here
             _showing = emote;
             _active = true;
-            _time = 0f;
+            _time = Mathf.Max(0f, startAt);
             _seconds = info.Seconds;
             _clip = info.Clip != null ? EmoteClips.Get(info.Clip) : null;
             if (_clip != null && !_clip.Loops) _seconds = _clip.Seconds;
