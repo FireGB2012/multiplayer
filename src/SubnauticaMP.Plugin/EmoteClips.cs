@@ -21,6 +21,7 @@ namespace SubnauticaMP
             public Quaternion[] Torso;
             public Vector3[] Hips;       // in leg lengths
             public Vector3[][] Dirs;     // [frame][segment]
+            public Vector3 HeadRest;     // which way the head usually points on the torso; its nods and tilts are measured from here
             public float Seconds => Torso.Length / Fps;
         }
 
@@ -74,6 +75,9 @@ namespace SubnauticaMP
                                 for (int k = 0; k < Segments; k++) d[k] = new Vector3(S(r), S(r), S(r)).normalized;
                                 clip.Dirs[i] = d;
                             }
+                            var rest = Vector3.zero;
+                            for (int i = 0; i < n; i++) rest += Quaternion.Inverse(clip.Torso[i]) * clip.Dirs[i][Head];
+                            clip.HeadRest = rest.sqrMagnitude > 1e-6f ? rest.normalized : Vector3.up;
                             _clips[name] = clip;
                         }
                     }

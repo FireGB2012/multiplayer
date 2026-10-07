@@ -443,8 +443,7 @@ namespace SubnauticaMP
                 if (emote == Emote.None) _anim.Stop();
                 else
                 {
-                    _anim.ResetNow();
-                    _anim.Play(emote);
+                    _anim.Play(emote); // blends over from whatever it was showing
                     var info = Emotes.Get(emote);
                     _restartAt = Time.unscaledTime + (info != null && info.Seconds > 0 ? info.Seconds + 0.6f : float.MaxValue);
                 }

@@ -173,4 +173,6 @@ Without `GameDir` it compiles against `lib/BepInEx.Ref` (a compile-only copy of 
 ## Credits
 Dance and emote motions come from the [CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu)
 (BVH conversion by Bruce Hahne / cgspeed), free for any use. The database was created with funding from NSF EIA-0196217.
-Floss, Worm, Default Dance, Take the L, Orange Justice, Electro Shuffle, Griddy and Hype are hand-made lookalikes (no game files from Fortnite). `tools/emotes/make_emotes.py` rebuilds the animation file.
+Floss, Worm, Default Dance, Take the L, Orange Justice, Electro Shuffle, Griddy and Hype are hand-made lookalikes (no game files from Fortnite),
+keyframed on the beat in `tools/emotes/dances.py`. `tools/emotes/make_emotes.py` rebuilds the animation file and `tools/emotes/preview.py`
+draws stick-figure GIFs and checks for sliding feet and loops that don't join up.

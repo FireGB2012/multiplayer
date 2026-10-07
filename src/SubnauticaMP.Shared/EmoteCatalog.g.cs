@@ -6,7 +6,7 @@ namespace SubnauticaMP.Shared
         // name, button text, category, chat text, loops, length (the animation data is in the plugin's Emotes.bin)
         static readonly (string name, string label, string category, string did, bool loops, float seconds)[] Clips =
         {
-            ("floss", "Floss", "Dances", "is flossing", true, 1.67f),
+            ("floss", "Floss", "Dances", "is flossing", true, 1.73f),
             ("robot", "Robot", "Dances", "is doing the Robot", true, 4.83f),
             ("breakdance", "Breakdance", "Dances", "is breakdancing", true, 4.93f),
             ("helicopter", "Helicopter", "Dances", "does the Helicopter", true, 4.93f),
@@ -34,10 +34,10 @@ namespace SubnauticaMP.Shared
             ("biglaugh", "Big Laugh", "Gestures", "is dying of laughter", false, 3.97f),
             ("wavehello", "Big Wave", "Gestures", "waves", false, 1.70f),
             ("default", "Default Dance", "Dances", "is doing the Default Dance", true, 4.00f),
-            ("takethel", "Take the L", "Dances", "says take the L", true, 3.00f),
-            ("orangejustice", "Orange Justice", "Dances", "is doing Orange Justice", true, 1.60f),
-            ("electroshuffle", "Electro Shuffle", "Dances", "is doing the Electro Shuffle", true, 3.00f),
-            ("griddy", "Griddy", "Dances", "is hitting the Griddy", true, 2.40f),
+            ("takethel", "Take the L", "Dances", "says take the L", true, 3.47f),
+            ("orangejustice", "Orange Justice", "Dances", "is doing Orange Justice", true, 3.73f),
+            ("electroshuffle", "Electro Shuffle", "Dances", "is doing the Electro Shuffle", true, 3.47f),
+            ("griddy", "Griddy", "Dances", "is hitting the Griddy", true, 2.93f),
             ("hype", "Hype", "Dances", "is getting hype", true, 3.20f),
         };
     }
