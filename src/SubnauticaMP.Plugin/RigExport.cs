@@ -108,6 +108,7 @@ namespace SubnauticaMP
 
             public void AddRenderers()
             {
+                int sectionStart = _info.Length;
                 _info.AppendLine("== Meshes ==");
                 foreach (var smr in _root.GetComponentsInChildren<SkinnedMeshRenderer>(true))
                     AddMesh(smr, smr.sharedMesh, smr);
@@ -118,6 +119,7 @@ namespace SubnauticaMP
                 }
                 if (_skins.Count == 0) AddPlaceholderSkin();
                 _info.AppendLine();
+                UnityEngine.Debug.Log("[RigExport] " + _info.ToString(sectionStart, _info.Length - sectionStart)); // lands in LogOutput.log
             }
 
             // No readable skinned mesh came out (the game strips vertex data from most meshes). Blender only builds an
