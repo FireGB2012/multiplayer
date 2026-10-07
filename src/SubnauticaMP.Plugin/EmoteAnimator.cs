@@ -12,7 +12,11 @@ namespace SubnauticaMP
     // the head nods / shakes, and the whole body can bob, spin or flip.
     internal sealed class EmoteAnimator
     {
-        const float FadeSeconds = 0.2f;
+        // Easing in and out of an emote is a spring, so starting / stopping halfway through turns around smoothly.
+        // Stopping is a bit quicker than starting.
+        const float FadeIn = 0.25f, FadeOut = 0.18f;
+        const float BlendSeconds = 0.3f; // switching straight from one emote (or party dance) to the next (quick ones: quicker)
+        const float HeadLimit = 30f;     // most a clip turns the head away from its usual angle (degrees)
 
         readonly Transform _body;
         readonly Vector3 _basePos;
@@ -39,9 +43,19 @@ namespace SubnauticaMP
         readonly Vector3[] _frozenPos;
         bool _tracking;
 
+        // What was on screen last frame, to blend from when something switches mid-dance (another emote, the
+        // party's next dance, jumping back onto the shared beat) instead of popping.
+        readonly Quaternion[] _from;
+        Vector3 _fromPos, _shownPos;
+        Quaternion _fromRot, _shownRot;
+        Quaternion _fromHead = Quaternion.identity, _shownHead = Quaternion.identity;
+        float _blend = 1f, _blendTime = BlendSeconds;
+        EmoteClips.Clip _partyClip;
+        Quaternion _headTurn = Quaternion.identity; // this frame's head turn, in the facing space; put on last
+
         Emote _showing = Emote.None; // what's on screen (still fading out after a stop)
         bool _active;
-        float _time, _seconds, _weight;
+        float _time, _seconds, _weight, _weightSpeed;
         Vector3 _pivot; // body-local-to-parent point the flips / spins turn around
 
         static bool _dumped;
@@ -123,6 +137,7 @@ namespace SubnauticaMP
             _bones = new[] { _chest, _head, _headCounter, _upperR, _lowerR, _upperL, _lowerL, _thighL, _kneeL, _thighR, _kneeR }.Where(b => b != null).Distinct().ToArray();
             _before = new Quaternion[_bones.Length];
             _after = new Quaternion[_bones.Length];
+            _from = new Quaternion[_bones.Length];
             _skeleton = all.Where(t => t != _body).ToArray();
             _frozenRot = new Quaternion[_skeleton.Length];
             _frozenPos = new Vector3[_skeleton.Length];
@@ -198,25 +213,41 @@ namespace SubnauticaMP
             if (info == null) { Stop(); return; }
             if (_active && _showing == emote && info.Seconds <= 0f)
             {
-                // looping one: keep going, but snap back onto the shared beat if we've drifted off it
-                if (Mathf.Abs(_time - startAt) > ResyncSeconds) _time = startAt;
+                // looping one: keep going, but get back onto the shared beat if we've drifted off it
+                if (Mathf.Abs(_time - startAt) > ResyncSeconds) { BlendFromShown(BlendSeconds); _time = startAt; }
                 return;
             }
-            if (_showing != emote) _weight = 0f;
-            if (_showing == Emote.None || _weight <= 0f) Freeze(); // starting from the normal animation: hold it here
+            if (_showing == Emote.None || _weight <= 0f)
+            {
+                Freeze(); // starting from the normal animation: hold it here
+                _blend = 1f;
+                // flips / spins turn around the middle of the body, not the feet (measured standing normally)
+                var mid = _chest != null ? _chest.position : _body.position + _body.up * 0.9f;
+                _pivot = _body.parent != null ? _body.parent.InverseTransformPoint(mid) : mid;
+                if (_body.parent != null) _pivot = _basePos + Vector3.Project(_pivot - _basePos, Vector3.up); // straight above the body's origin
+            }
+            else BlendFromShown(info.Seconds > 0f ? Mathf.Min(BlendSeconds, info.Seconds * 0.2f) : BlendSeconds); // mid-emote: blend across from what's on screen
             _showing = emote;
             _active = true;
             _time = Mathf.Max(0f, startAt);
             _seconds = info.Seconds;
             _clip = info.Clip != null ? EmoteClips.Get(info.Clip) : null;
             if (_clip != null && !_clip.Loops) _seconds = _clip.Seconds;
-            // flips / spins turn around the middle of the body, not the feet
-            var mid = _chest != null ? _chest.position : _body.position + _body.up * 0.9f;
-            _pivot = _body.parent != null ? _body.parent.InverseTransformPoint(mid) : mid;
-            if (_body.parent != null) _pivot = _basePos + Vector3.Project(_pivot - _basePos, Vector3.up); // straight above the body's origin
+            _partyClip = null;
         }
 
         public void Stop() => _active = false;
+
+        void BlendFromShown(float seconds)
+        {
+            if (!_tracking) return; // nothing of ours on screen yet
+            _blendTime = seconds;
+            System.Array.Copy(_after, _from, _after.Length);
+            _fromPos = _shownPos;
+            _fromRot = _shownRot;
+            _fromHead = _shownHead;
+            _blend = 0f;
+        }
 
         void Freeze()
         {
@@ -256,6 +287,8 @@ namespace SubnauticaMP
             _showing = Emote.None;
             _active = false;
             _tracking = false;
+            _weight = _weightSpeed = 0f;
+            _blend = 1f;
         }
 
         // Call from LateUpdate, after the animator has posed the diver.
@@ -266,29 +299,50 @@ namespace SubnauticaMP
 
             _time += dt;
             if (_active && _seconds > 0f && _time >= _seconds) _active = false;
-            _weight = Mathf.MoveTowards(_weight, _active ? 1f : 0f, dt / FadeSeconds);
+            float goal = _active ? 1f : 0f;
+            if (dt > 0f && (_weight != goal || _weightSpeed != 0f)) // (SmoothDamp divides by dt once it's there)
+            {
+                _weight = Mathf.Clamp01(Mathf.SmoothDamp(_weight, goal, ref _weightSpeed, (_active ? FadeIn : FadeOut) * 0.3f, Mathf.Infinity, dt));
+                if (Mathf.Abs(_weight - goal) < 0.002f) { _weight = goal; _weightSpeed = 0f; }
+            }
             if (_weight <= 0f && !_active)
             {
                 _showing = Emote.None;
                 _body.localPosition = _basePos;
                 _body.localRotation = _baseRot;
                 _tracking = false;
+                _blend = 1f;
                 return;
             }
 
-            float hold = Smooth(_weight);
+            float w = _weight; // the spring already eases it
             for (int i = 0; i < _skeleton.Length; i++)
             {
                 var t = _skeleton[i];
                 if (t == null) continue;
-                t.localRotation = Quaternion.Slerp(t.localRotation, _frozenRot[i], hold);
-                t.localPosition = Vector3.Lerp(t.localPosition, _frozenPos[i], hold);
+                t.localRotation = Quaternion.Slerp(t.localRotation, _frozenRot[i], w);
+                t.localPosition = Vector3.Lerp(t.localPosition, _frozenPos[i], w);
             }
             for (int i = 0; i < _bones.Length; i++) _before[i] = _bones[i].localRotation;
             _body.localPosition = _basePos; // emotes that don't move the body leave it where it belongs
             _body.localRotation = _baseRot;
-            float w = Smooth(_weight);
+            _headTurn = Quaternion.identity;
             Pose(_showing, _time, w);
+            if (_blend < 1f)
+            {
+                _blend = Mathf.Min(1f, _blend + dt / _blendTime);
+                float k = Smooth(_blend); // ease-in-out: travelling from one pose to the other
+                for (int i = 0; i < _bones.Length; i++)
+                    if (_bones[i] != _head && _bones[i] != _headCounter) // the head blends as its own turn, below
+                        _bones[i].localRotation = Quaternion.Slerp(_from[i], _bones[i].localRotation, k);
+                _body.localPosition = Vector3.Lerp(_fromPos, _body.localPosition, k);
+                _body.localRotation = Quaternion.Slerp(_fromRot, _body.localRotation, k);
+                _headTurn = Quaternion.Slerp(_fromHead, _headTurn, k);
+            }
+            TurnHead(_headTurn);
+            _shownHead = _headTurn;
+            _shownPos = _body.localPosition;
+            _shownRot = _body.localRotation;
             for (int i = 0; i < _bones.Length; i++) _after[i] = _bones[i].localRotation;
             _tracking = true;
         }
@@ -314,6 +368,8 @@ namespace SubnauticaMP
             {
                 var now = PartyNow?.Invoke();
                 if (now == null || now.Value.clip == null) { _active = false; return; }
+                if (_partyClip != null && now.Value.clip != _partyClip) BlendFromShown(BlendSeconds); // the next dance: blend into it
+                _partyClip = now.Value.clip;
                 ClipPose(now.Value.clip, now.Value.time, w);
                 return;
             }
@@ -461,7 +517,7 @@ namespace SubnauticaMP
         }
 
         // A frame of a clip: turn the whole body like the dancer's torso (around the hips), move the hips,
-        // then point every arm and leg bone the way the dancer's were pointing.
+        // then point every arm and leg bone the way the dancer's were pointing, and nod / tilt the head like theirs.
         void ClipPose(EmoteClips.Clip clip, float t, float w)
         {
             EmoteClips.Sample(clip, t, ref _pose);
@@ -479,6 +535,12 @@ namespace SubnauticaMP
             Aim(_kneeL, _footL, Dir(EmoteClips.LegLowL), w);
             Aim(_thighR, _kneeR, Dir(EmoteClips.LegUpR), w);
             Aim(_kneeR, _footR, Dir(EmoteClips.LegLowR), w);
+
+            // the head: only how the dancer's moved away from its usual angle on their torso (the diver's head
+            // sits differently), and not too far
+            var onTorso = Quaternion.Inverse(_pose.Torso) * _pose.Dirs[EmoteClips.Head];
+            var nod = Quaternion.RotateTowards(Quaternion.identity, Quaternion.FromToRotation(clip.HeadRest, onTorso), HeadLimit);
+            _headTurn = turn * Quaternion.Slerp(Quaternion.identity, nod, w) * Quaternion.Inverse(turn) * _headTurn;
         }
 
         // ---------- building blocks ----------
@@ -541,10 +603,22 @@ namespace SubnauticaMP
         }
 
         // Head turn in degrees: pitch (+ = look down), yaw (+ = right), roll (+ = tilt right).
+        // Kept in the facing space and put on last (TurnHead), so it can blend like the rest when emotes switch.
         void Head(float pitch, float yaw, float roll, float w)
         {
             if (_head == null) return;
             var turn = Quaternion.AngleAxis(yaw * w, _body.up) * Quaternion.AngleAxis(pitch * w, _body.right) * Quaternion.AngleAxis(-roll * w, _body.forward);
+            var face = Facing;
+            _headTurn = Quaternion.Inverse(face) * turn * face * _headTurn;
+        }
+
+        Quaternion Facing => _body.parent != null ? _body.parent.rotation : Quaternion.identity;
+
+        void TurnHead(Quaternion facingTurn)
+        {
+            if (_head == null || Quaternion.Angle(facingTurn, Quaternion.identity) < 0.05f) return;
+            var face = Facing;
+            var turn = face * facingTurn * Quaternion.Inverse(face);
             _head.rotation = turn * _head.rotation;
             if (_headCounter != null)
             {
