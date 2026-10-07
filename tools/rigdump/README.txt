@@ -6,7 +6,7 @@ RIG DUMP - get the Subnautica diver rig into Blender (no multiplayer mod needed)
    - Start the game once and quit, so BepInEx creates its folders.
 2. Put SubnauticaRigDump.dll in:  Subnautica\BepInEx\plugins\SubnauticaRigDump\
 3. Start the game, load a world, press F10. A box says where the files went:
-   Subnautica\BepInEx\plugins\SubnauticaRigDump\RigExport\
+   Subnautica\BepInEx\plugins\RigExport\ (next to where the DLL sits)
      diver_rig.glb          mesh + skeleton + textures
      diver_with_anims.glb   same + all animation clips
      textures\*.png, rig_info.txt

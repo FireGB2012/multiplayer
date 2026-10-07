@@ -116,7 +116,42 @@ namespace SubnauticaMP
                     var mf = mr.GetComponent<MeshFilter>();
                     if (mf != null) AddMesh(mr, mf.sharedMesh, null);
                 }
+                if (_skins.Count == 0) AddPlaceholderSkin();
                 _info.AppendLine();
+            }
+
+            // No readable skinned mesh came out (the game strips vertex data from most meshes). Blender only builds an
+            // armature (real bones you can pose / animate) when a skinned mesh uses the skeleton, so add a tiny
+            // one-triangle mesh weighted to the root and a skin that lists every node as a joint.
+            void AddPlaceholderSkin()
+            {
+                _info.AppendLine("No readable skinned mesh: added a tiny placeholder triangle skinned to every bone so Blender builds an armature.");
+                var pos = new float[] { 0, 0, 0, 0.001f, 0, 0, 0, 0.001f, 0 };
+                var attrs = "\"POSITION\":" + Acc(View(Bytes(pos), 34962), 5126, 3, "VEC3", "[0,0,0]", "[0.001,0.001,0]")
+                          + ",\"JOINTS_0\":" + Acc(View(Bytes(new ushort[12]), 34962), 5123, 3, "VEC4")
+                          + ",\"WEIGHTS_0\":" + Acc(View(Bytes(new float[] { 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0 }), 34962), 5126, 3, "VEC4");
+                int indices = Acc(View(Bytes(new uint[] { 0, 1, 2 }), 34963), 5125, 3, "SCALAR");
+                _meshes.Add("{\"name\":\"RigPlaceholder\",\"primitives\":[{\"attributes\":{" + attrs + "},\"indices\":" + indices + "}]}");
+
+                var jointIdx = new List<int>();
+                var ibm = new float[_nodes.Count * 16];
+                for (int n = 0; n < _nodes.Count; n++)
+                {
+                    jointIdx.Add(n);
+                    _joints.Add(n);
+                    var m = (_root.worldToLocalMatrix * _nodes[n].localToWorldMatrix).inverse; // bone -> root space, inverted
+                    for (int c = 0; c < 4; c++)
+                        for (int row = 0; row < 4; row++)
+                        {
+                            float v = m[row, c];
+                            if ((row == 0) != (c == 0)) v = -v; // mirror X: M' = S M S
+                            ibm[n * 16 + c * 4 + row] = v;
+                        }
+                }
+                int ibmAcc = Acc(View(Bytes(ibm)), 5126, _nodes.Count, "MAT4");
+                _skins.Add("{\"name\":\"RigPlaceholder\",\"joints\":[" + string.Join(",", jointIdx.Select(j => j.ToString()).ToArray()) + "],\"inverseBindMatrices\":" + ibmAcc + "}");
+                _meshOfNode[0] = _meshes.Count - 1;
+                _skinOfNode[0] = _skins.Count - 1;
             }
 
             void AddMesh(Renderer r, Mesh mesh, SkinnedMeshRenderer smr)
