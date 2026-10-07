@@ -12,7 +12,7 @@ Co-op mod for Subnautica (the original, BepInEx 5) with a launcher app for Windo
 | Game mode picked in the launcher (Survival / Hardcore / Creative / Freedom) | ✔ |
 | Players (position, facing, name tags) | ✔ |
 | Chat | ✔ |
-| Emotes: 40+ incl. Floss, Robot, Breakdance, Helicopter, Worm, Moonwalk, Macarena, Chicken Dance, cartwheels... | ✔ Fortnite-style emote wheel on **G**, everyone sees your diver do it |
+| Emotes: 50+ incl. Floss, Default Dance, Take the L, Orange Justice, Electro Shuffle, Griddy, Hype, Robot, Worm, Moonwalk, cartwheels... | ✔ Fortnite-style emote wheel on **G**, everyone sees your diver do it on the same beat (late joiners jump in mid-dance) |
 | Dance parties | ✔ everyone who joins dances the same dance at the same moment, with disco lights |
 | Pushing | ✔ empty hand + left click on a teammate up close: they get shoved, go limp as a real physics ragdoll, and stand back up after 4 s |
 | Blueprints (unlocks, fragment scans) | ✔ everyone shares one tech tree |
@@ -173,4 +173,4 @@ Without `GameDir` it compiles against `lib/BepInEx.Ref` (a compile-only copy of 
 ## Credits
 Dance and emote motions come from the [CMU Graphics Lab Motion Capture Database](http://mocap.cs.cmu.edu)
 (BVH conversion by Bruce Hahne / cgspeed), free for any use. The database was created with funding from NSF EIA-0196217.
-Floss and Worm are hand-made. `tools/emotes/make_emotes.py` rebuilds the animation file.
+Floss, Worm, Default Dance, Take the L, Orange Justice, Electro Shuffle, Griddy and Hype are hand-made lookalikes (no game files from Fortnite). `tools/emotes/make_emotes.py` rebuilds the animation file.
