@@ -1,0 +1,31 @@
+# Exported by three-d-stage
+newmtl titanium_dark
+Kd 0.1590 0.2270 0.3185
+Ks 0.2000 0.2000 0.2000
+Ns 152
+d 1.0000
+
+newmtl cyan_glow
+Kd 0.3467 0.9387 1.0000
+Ks 0.2000 0.2000 0.2000
+Ns 140
+d 1.0000
+
+newmtl chrome_trim
+Kd 0.6445 0.7084 0.7758
+Ks 0.2000 0.2000 0.2000
+Ns 172
+d 1.0000
+
+newmtl grip_rubber
+Kd 0.0075 0.0097 0.0123
+Ks 0.2000 0.2000 0.2000
+Ns 28
+d 1.0000
+
+newmtl inlay_blue
+Kd 0.0137 0.0931 0.5520
+Ks 0.2000 0.2000 0.2000
+Ns 168
+d 1.0000
+

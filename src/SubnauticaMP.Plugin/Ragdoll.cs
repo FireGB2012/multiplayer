@@ -12,6 +12,7 @@ namespace SubnauticaMP
     internal sealed class Ragdoll
     {
         const float GetUpSeconds = 0.9f;
+        const float FlightDrag = 0.35f;
 
         // bone, the bone it points to (for the capsule), thickness (m), mass (kg). The diver's rig hangs from the
         // head down: head_rig > neck > chest > spine_3 > spine_2 > spine_1 > hips > thighs.
@@ -38,6 +39,8 @@ namespace SubnauticaMP
         readonly Vector3 _chestOffset; // chest relative to the root while standing
         float _time;
         readonly float _lieSeconds;
+        readonly List<Rigidbody> _bodies = new List<Rigidbody>();
+        float _flightSeconds; // launched by the bat: hardly any water drag until this many seconds in
         bool _gettingUp;
         float _upTime;
 
@@ -56,13 +59,15 @@ namespace SubnauticaMP
         }
 
         // Knocks `body` over with `velocity` (m/s, world). Null if its skeleton isn't one we can ragdoll.
-        public static Ragdoll Start(GameObject body, Transform root, Vector3 velocity, bool underwater, float totalSeconds = Emotes.KnockedSeconds)
+        // flightSeconds: keeps nearly all its speed that long (bat hits fly far), spin: how hard it tumbles.
+        public static Ragdoll Start(GameObject body, Transform root, Vector3 velocity, bool underwater, float totalSeconds = Emotes.KnockedSeconds,
+            float flightSeconds = 0f, float spin = 3f)
         {
             if (body == null) return null;
             var r = new Ragdoll(body, root, totalSeconds);
             try
             {
-                if (!r.Build(velocity, underwater)) { r.Remove(); return null; }
+                if (!r.Build(velocity, underwater, flightSeconds, spin)) { r.Remove(); return null; }
                 return r;
             }
             catch (Exception e)
@@ -73,7 +78,7 @@ namespace SubnauticaMP
             }
         }
 
-        bool Build(Vector3 velocity, bool underwater)
+        bool Build(Vector3 velocity, bool underwater, float flightSeconds, float spinAmount)
         {
             Transform Find(string n) => n == null ? null : _all.FirstOrDefault(t => t.name == n);
             var bodies = new Dictionary<Transform, Rigidbody>();
@@ -109,11 +114,12 @@ namespace SubnauticaMP
                 var rb = bone.gameObject.AddComponent<Rigidbody>();
                 rb.mass = mass;
                 rb.useGravity = !underwater;
-                rb.drag = underwater ? 2.5f : 0.1f;
-                rb.angularDrag = underwater ? 2.5f : 0.3f;
+                rb.drag = underwater ? (flightSeconds > 0f ? FlightDrag : 2.5f) : 0.1f;
+                rb.angularDrag = underwater ? (flightSeconds > 0f ? 0.6f : 2.5f) : 0.3f;
                 rb.interpolation = RigidbodyInterpolation.Interpolate;
                 rb.collisionDetectionMode = CollisionDetectionMode.ContinuousSpeculative;
                 _added.Add(rb);
+                _bodies.Add(rb);
                 bodies[bone] = rb;
             }
             if (bodies.Count < 7) return false; // not enough of a skeleton
@@ -141,7 +147,8 @@ namespace SubnauticaMP
             foreach (var smr in _body.GetComponentsInChildren<SkinnedMeshRenderer>(true)) smr.updateWhenOffscreen = true;
             if (_animator != null) _animator.enabled = false;
 
-            var spin = UnityEngine.Random.insideUnitSphere * 3f;
+            _flightSeconds = underwater ? flightSeconds : 0f;
+            var spin = UnityEngine.Random.insideUnitSphere * spinAmount;
             foreach (var rb in bodies.Values)
             {
                 rb.velocity = velocity;
@@ -155,6 +162,12 @@ namespace SubnauticaMP
         {
             if (_body == null) return false;
             _time += dt;
+            if (_flightSeconds > 0f && _time >= _flightSeconds)
+            {
+                _flightSeconds = 0f; // flight's over: the water slows them down like normal
+                foreach (var rb in _bodies)
+                    if (rb != null) { rb.drag = 2.5f; rb.angularDrag = 2.5f; }
+            }
             if (!_gettingUp)
             {
                 if (_time < _lieSeconds) return true;

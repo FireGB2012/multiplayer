@@ -35,6 +35,7 @@ namespace SubnauticaMP
         internal EmoteSync Emoting;
         internal EmoteWheel Wheel;
         internal PushSync Pushing;
+        internal BatSync Batting;
         internal AutoSave Saving;
         internal IEnumerable<RemotePlayer> Remotes => _remotes.Values;
 
@@ -85,6 +86,7 @@ namespace SubnauticaMP
             Emoting = new EmoteSync(this);
             Wheel = new EmoteWheel(this);
             Pushing = new PushSync(this);
+            Batting = new BatSync(this);
             Saving = new AutoSave(this);
 
             if (!_launchRead)
@@ -153,6 +155,7 @@ namespace SubnauticaMP
             SafeRun("performance", () => { SubnauticaMP.Performance.Apply(); SubnauticaMP.Performance.Update(Loading || Lobby.Holding || (!Game.InWorld && Game.MainMenu == null)); });
             WatchFrameTime();
             Lobby.Update();
+            SafeRun("bat", Batting.Update); // swinging works on your own too
             if (!Joined) return;
 
             if (Lobby.Holding && IsHost &&
@@ -201,6 +204,7 @@ namespace SubnauticaMP
         {
             if (Joined) SafeRun("vehicles", Vehicles.LateUpdate);
             SafeRun("emote camera", Emoting.LateUpdate);
+            SafeRun("bat", Batting.LateUpdate);
             SafeRun("emote preview", Wheel.LateUpdate);
             Game.TryDo("avatar input", () => Game.SetAvatarInput(!Wheel.IsOpen)); // clicks on the wheel mustn't re-lock the mouse
             if (_menuOpen || Lobby.Holding || Wheel.IsOpen)
@@ -443,6 +447,8 @@ namespace SubnauticaMP
                 case EmotePacket emote: Emoting.OnEmote(emote); break;
                 case PartyPacket party: Emoting.OnParty(party); break;
                 case PushPacket push: Pushing.OnPush(push); break;
+                case BatSwingPacket swing: Batting.OnSwing(swing); break;
+                case BatHitPacket hit: Batting.OnHit(hit); break;
                 case IntroPacket intro: if (intro.Go) Lobby.IntroGo = true; break;
                 case DoorPacket door: Items.OnDoor(door); break;
                 case PlayerDiedPacket died:
@@ -483,6 +489,7 @@ namespace SubnauticaMP
                 Ghosts.Reset();
                 Emoting.Reset();
                 Pushing.Reset();
+                Batting.Reset();
             }
             _lastState = state;
         }
@@ -713,6 +720,7 @@ namespace SubnauticaMP
             Ghosts.Reset();
             Emoting.Reset();
             Pushing.Reset();
+            Batting.Reset();
         }
 
         static string SafeFileName(string s)

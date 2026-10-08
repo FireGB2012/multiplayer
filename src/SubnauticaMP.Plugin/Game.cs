@@ -25,7 +25,7 @@ namespace SubnauticaMP
             Creature, EcoTarget, LastTarget, CellManager, EntitySlot, EntitySlotsPlaceholder, VirtualPrefabIdentifier, DeferredSpawner,
             PowerSource, SolarPanel, ThermalPlant, BaseBioReactor, BaseNuclearReactor, Crafter, SubFire, Fire, PrefabSpawnBase,
             PickPrefab, WaterPark, WaterParkCreature, Builder,
-            MainMenuRightSide, MainMenuLoadPanel, MainMenuEmailHandler, MainMenuGroup, IngameMenu, ErrorMessage, CrashHome, AvatarInputHandler, RandomStart;
+            MainMenuRightSide, MainMenuLoadPanel, MainMenuEmailHandler, MainMenuGroup, IngameMenu, ErrorMessage, CrashHome, AvatarInputHandler, RandomStart, Knife;
 
         static readonly HashSet<string> Warned = new HashSet<string>();
         // keyed by (type, name) so looking one up doesn't build a string every call (these run every frame)
@@ -125,6 +125,7 @@ namespace SubnauticaMP
             CrashHome = Find("CrashHome");
             AvatarInputHandler = Find("AvatarInputHandler");
             RandomStart = Find("RandomStart");
+            Knife = Find("Knife");
         }
 
         // ---------- story ----------
@@ -399,7 +400,7 @@ namespace SubnauticaMP
                 go.AddComponent(SceneCleanerPreserve);
         }
 
-        static Type Find(string name)
+        internal static Type Find(string name)
         {
             var t = _gameAssembly?.GetType(name, false) ?? AccessTools.TypeByName(name);
             if (t == null) WarnOnce("type:" + name, "Game type not found: " + name);

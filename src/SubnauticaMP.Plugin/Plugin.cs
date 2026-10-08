@@ -14,7 +14,7 @@ namespace SubnauticaMP
     public sealed class Plugin : BaseUnityPlugin
     {
         public const string Guid = "com.firegb2012.subnauticamp";
-        public const string Version = "0.25.1";
+        public const string Version = "0.26.0";
 
         internal static ManualLogSource Log;
         internal static string Folder;
@@ -77,6 +77,7 @@ namespace SubnauticaMP
             Patches.Apply(new Harmony(Guid));
             NautilusCompat.OnStartup();
             NautilusCompat.RegisterOptions();
+            BatItem.Register();
             var mods = NautilusCompat.ContentMods();
             if (mods.Count > 0) Log.LogInfo("Content mods (must match the host's): " + string.Join(", ", mods.Select(m => m.ToString()).ToArray()));
 

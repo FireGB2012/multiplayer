@@ -50,7 +50,9 @@ namespace SubnauticaMP
         Ragdoll _ragdoll;
         Vector3 _velocity, _lastTargetPos;
         float _lastTargetTime;
-        bool _underwater = true, _visible = true;
+        bool _underwater = true, _visible = true, _inBase;
+        BatPose _bat;           // holding / swinging the Titanium Bat
+        float _batPitch, _batPitchUntil; // where they looked when they swung (held for the swing)
         float _nextModelTry;
 
         public int SuitColor { get; private set; } = DiverColors.Default;
@@ -149,6 +151,7 @@ namespace SubnauticaMP
             _lastTargetPos = _targetPos;
             _lastTargetTime = now;
             _underwater = (state.Flags & PlayerFlags.Underwater) != 0;
+            _inBase = (state.Flags & PlayerFlags.InBase) != 0;
             _subId = state.SubId ?? "";
             if (_subId.Length > 0)
             {
@@ -238,13 +241,68 @@ namespace SubnauticaMP
                 if (!_ragdoll.LateUpdate(Time.unscaledDeltaTime)) _ragdoll = null;
                 return;
             }
-            if (_emoteAnim == null || _diver == null || !_diver.activeSelf) return;
-            try { _emoteAnim.Apply(Time.unscaledDeltaTime); }
+            if (_diver == null || !_diver.activeSelf) return;
+            if (_emoteAnim != null)
+            {
+                try { _emoteAnim.Apply(Time.unscaledDeltaTime); }
+                catch (Exception e)
+                {
+                    Game.WarnOnce("emote", "Emotes turned off for " + PlayerName + ": " + e.GetBaseException().Message);
+                    _emoteAnim = null;
+                }
+            }
+            PoseBat();
+        }
+
+        // ---------- the Titanium Bat ----------
+
+        void PoseBat()
+        {
+            bool holding = BatItem.IsBat(_held) && _visible && _emote == Emote.None && !_anims.Contains("using_pda");
+            if (_bat == null)
+            {
+                if (!holding) return;
+                _bat = new BatPose(_diver);
+            }
+            float pitch = Time.unscaledTime < _batPitchUntil ? _batPitch : 0f;
+            var look = Quaternion.Euler(-pitch, transform.eulerAngles.y, 0f);
+            try { _bat.Apply(Time.unscaledDeltaTime, holding, look); }
             catch (Exception e)
             {
-                Game.WarnOnce("emote", "Emotes turned off for " + PlayerName + ": " + e.GetBaseException().Message);
-                _emoteAnim = null;
+                Game.WarnOnce("batpose", "Bat swings turned off for " + PlayerName + ": " + e.GetBaseException().Message);
+                _bat = null;
             }
+        }
+
+        // They swung (looking `pitch` degrees up).
+        public void SwingBat(float pitch)
+        {
+            _batPitch = Mathf.Clamp(pitch, -80f, 80f);
+            _batPitchUntil = Time.unscaledTime + BatSwing.Seconds;
+            _bat?.Swing();
+        }
+
+        // A bat hit them: they fly off along `look` (where the hitter looked), on everyone's screen alike.
+        public void Launch(Vec3 look)
+        {
+            var v = Bat.LaunchVelocity(look, _underwater, _inBase);
+            var velocity = new Vector3(v.X, v.Y, v.Z);
+            var dir = velocity.sqrMagnitude > 1e-4f ? velocity.normalized : Vector3.forward;
+            _knockDir = dir;
+            _bat?.Cancel();
+            if (Plugin.RealRagdoll.Value && _diver != null && _diver.activeSelf)
+            {
+                _ragdoll?.Remove();
+                _ragdoll = Ragdoll.Start(_diver, transform, velocity, _underwater, Bat.LaunchedSeconds, Bat.FlightSeconds(_underwater), 9f);
+                if (_ragdoll != null)
+                {
+                    _emoteAnim?.ResetNow();
+                    _emote = Emote.Knocked;
+                    _emoteStarted = Time.unscaledTime;
+                    return;
+                }
+            }
+            PlayEmote(Emote.Knocked, dir);
         }
 
         void ApplyVisibility()

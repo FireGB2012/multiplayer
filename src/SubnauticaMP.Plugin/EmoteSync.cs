@@ -29,6 +29,9 @@ namespace SubnauticaMP
 
         public Emote Local => _local;
 
+        // the camera is out behind you (emote / ragdoll): your body isn't yours to pose
+        public bool SelfView => _view > 0f || _selfRagdoll != null || (_self != null && _self.Current != Emote.None);
+
         public void Reset()
         {
             _local = Emote.None;
@@ -63,11 +66,13 @@ namespace SubnauticaMP
         }
 
         // Just on your own screen (a push knocked you over: everyone else already knows from the push).
-        public void PlayLocalOnly(Emote emote, Vector3 knockDirection, Vector3? ragdollVelocity = null)
+        // seconds / flightSeconds / spin: how long you're down, and how a bat hit sends you flying (see Ragdoll.Start)
+        public void PlayLocalOnly(Emote emote, Vector3 knockDirection, Vector3? ragdollVelocity = null,
+            float seconds = Emotes.KnockedSeconds, float flightSeconds = 0f, float spin = 3f)
         {
             _local = emote;
             _started = Time.unscaledTime;
-            if (ragdollVelocity.HasValue && StartSelfRagdoll(ragdollVelocity.Value)) return;
+            if (ragdollVelocity.HasValue && StartSelfRagdoll(ragdollVelocity.Value, seconds, flightSeconds, spin)) return;
             StartSelfView(emote);
             _self?.SetKnockDirection(knockDirection);
         }
@@ -78,7 +83,7 @@ namespace SubnauticaMP
         GameObject _selfRagdollRoot;
         readonly List<Renderer> _hiddenBody = new List<Renderer>();
 
-        bool StartSelfRagdoll(Vector3 velocity)
+        bool StartSelfRagdoll(Vector3 velocity, float seconds, float flightSeconds, float spin)
         {
             if (!Plugin.EmoteCamera.Value || !Plugin.RealRagdoll.Value) return false;
             var player = Game.LocalPlayer;
@@ -94,7 +99,7 @@ namespace SubnauticaMP
                 if (copy == null) { EndSelfRagdoll(); return false; }
                 copy.transform.localPosition = body.localPosition;
                 Game.TryDo("ragdoll color", () => SuitPaint.Apply(copy, Plugin.DiverColor.Value));
-                _selfRagdoll = Ragdoll.Start(copy, _selfRagdollRoot.transform, velocity, Game.Is(player, "IsUnderwater"));
+                _selfRagdoll = Ragdoll.Start(copy, _selfRagdollRoot.transform, velocity, Game.Is(player, "IsUnderwater"), seconds, flightSeconds, spin);
                 if (_selfRagdoll == null) { EndSelfRagdoll(); return false; }
                 foreach (var r in body.GetComponentsInChildren<Renderer>(true))
                     if (r.enabled) { r.enabled = false; _hiddenBody.Add(r); }
