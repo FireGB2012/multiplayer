@@ -605,13 +605,25 @@ namespace SubnauticaMP
 
         // ---------- main menu: new game / load save ----------
 
+        // Asked several times every frame (Update + each OnGUI call). In the world the menu is gone, and the old
+        // fallback searched every object in the scene each time (FindObjectOfType): several ms per call, all game long.
+        // Now: remember the menu once found, never search while in the world, and search at most twice a second.
+        static Component _mainMenu;
+        static float _mainMenuSearchAt;
+
         public static Component MainMenu
         {
             get
             {
+                if (_mainMenu != null) return _mainMenu;
                 var menu = As<Component>(TryGet(MainMenuType, null, "main"));
-                if (menu == null && MainMenuType != null) menu = UnityEngine.Object.FindObjectOfType(MainMenuType) as Component;
-                return menu != null ? menu : null;
+                if (menu == null && MainMenuType != null && !InWorld && Time.unscaledTime >= _mainMenuSearchAt)
+                {
+                    _mainMenuSearchAt = Time.unscaledTime + 0.5f;
+                    menu = UnityEngine.Object.FindObjectOfType(MainMenuType) as Component;
+                }
+                _mainMenu = menu != null ? menu : null;
+                return _mainMenu;
             }
         }
 
