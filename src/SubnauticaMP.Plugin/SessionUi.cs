@@ -47,7 +47,7 @@ namespace SubnauticaMP
 
         // Something on screen that takes clicks / typing (needs Unity's layout pass and input events).
         bool GuiInteractive => _menuOpen || _mpMenuOpen || (Wheel != null && Wheel.IsOpen) || Lobby.Holding ||
-                               (Game.MainMenu != null && !Game.InWorld);
+                               (!Game.InWorld && Game.MainMenu != null);
 
         // Unity calls OnGUI several times a frame (a layout pass + one per mouse/key event). In normal play only the
         // chat lines / stats are drawn, which only need the paint pass: everything else is skipped (this was most of
