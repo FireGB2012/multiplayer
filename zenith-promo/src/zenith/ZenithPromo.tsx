@@ -15,7 +15,7 @@ loadFont({ family: "Inter", url: staticFile("Inter.woff2"), weight: "400 800" })
 // The "Pick your colour" swatches, then the Ember theme once it's unlocked.
 const PALETTE_KEYS: [number, keyof typeof THEMES][] = [...THEME_KEYS, [T.unlockThemes + 0.15, "ember"], [T.outro, "sunset"]];
 
-const paletteAt = (t: number): Palette => {
+export const paletteAt = (t: number): Palette => {
   const pick = (k: keyof Palette) => colorAt(t, PALETTE_KEYS.map(([at, name]) => [at, THEMES[name][k]] as [number, string]));
   return { accent: pick("accent"), a: pick("a"), b: pick("b"), base: pick("base") };
 };
