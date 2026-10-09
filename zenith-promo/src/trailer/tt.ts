@@ -24,5 +24,8 @@ export const TT = {
 
 export const IMPACTS = [TT.crack, TT.icon, TT.hero, TT.date];
 
+/** Frame-pixel centre where the shards converge into the icon. */
+export const ICON_CENTER = { x: 540, y: 960 };
+
 // Iridescent palette pulled from the Zenith icon.
 export const IRIS = ["#9FD7FF", "#C9A8FF", "#FF9FD8"];

@@ -9,8 +9,8 @@ import { Phone2 } from "../zenith2/Phone2";
 import { paletteAt2 } from "../zenith2/theme2";
 import { Phone3 } from "../zenith3/Phone3";
 import { paletteAt3 } from "../zenith3/t3";
-import { Crack, ICON_CENTER, OrbitShards, Shards } from "./Shards";
-import { IMPACTS, IRIS, TT } from "./tt";
+import { IMPACT_FRAME, OrbitCanvas, ShatterCanvas } from "./Glass3D";
+import { ICON_CENTER, IMPACTS, IRIS, TT } from "./tt";
 
 export type TrailerProps = { readonly launch: "date" | "now" };
 
@@ -183,21 +183,9 @@ const IntroLines: React.FC<{ t: number }> = ({ t }) => {
       </div>
     );
   };
-  // a faint clock face; the second hand jumps on every tick of the score
-  const ticks = Math.max(0, Math.floor((t - TT.line1) / 0.5) + 1);
-  const hand = (ticks * 6 - 30) * (Math.PI / 180);
   return (
     <>
-      <svg width={1080} height={1920} style={{ position: "absolute", inset: 0, opacity: 0.12 * prog(t, 0.3, 1.2) * (1 - prog(t, TT.linesOut, TT.crack)) }}>
-        <circle cx={540} cy={960} r={380} fill="none" stroke="#fff" strokeWidth={2} />
-        {new Array(60).fill(0).map((_, i) => {
-          const a = (i / 60) * Math.PI * 2;
-          const r0 = i % 5 === 0 ? 330 : 355;
-          return <line key={i} x1={540 + Math.sin(a) * r0} y1={960 - Math.cos(a) * r0} x2={540 + Math.sin(a) * 372} y2={960 - Math.cos(a) * 372} stroke="#fff" strokeWidth={i % 5 === 0 ? 4 : 1.5} />;
-        })}
-        <line x1={540} y1={960} x2={540 + Math.sin(hand) * 340} y2={960 - Math.cos(hand) * 340} stroke="#fff" strokeWidth={3} strokeLinecap="round" />
-      </svg>
-      <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 120, height: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10 }}>
         {line(TT.line1, "Your home screen", "rgba(255,255,255,0.92)", 0)}
         {line(TT.line2, "hasn't changed in years.", "#8b909b", 0.06)}
       </div>
@@ -270,6 +258,31 @@ const IconForm: React.FC<{ t: number }> = ({ t }) => {
   );
 };
 
+/** A camera-flash pop on impact plus a small hot spark where it hit. */
+const ImpactFlash: React.FC<{ t: number }> = ({ t }) => {
+  if (t < TT.crack || t > TT.crack + 0.3) return null;
+  const k = 1 - prog(t, TT.crack, TT.crack + 0.16, easeOut);
+  const spark = 1 - prog(t, TT.crack, TT.crack + 0.22, easeOut);
+  return (
+    <>
+      <div style={{ position: "absolute", inset: 0, background: "#fff", opacity: 0.28 * k }} />
+      <div
+        style={{
+          position: "absolute",
+          left: IMPACT_FRAME.x - 60,
+          top: IMPACT_FRAME.y - 60,
+          width: 120,
+          height: 120,
+          borderRadius: "50%",
+          background: "radial-gradient(circle, #fff 0%, rgba(210,230,255,0.6) 25%, transparent 70%)",
+          opacity: spark,
+          scale: 0.6 + (1 - spark) * 0.8,
+        }}
+      />
+    </>
+  );
+};
+
 // ---------------------------------------------------------------- hero + end card
 
 const WORD = "ZENITH";
@@ -287,7 +300,7 @@ const Hero: React.FC<{ t: number; launch: TrailerProps["launch"] }> = ({ t, laun
   return (
     <div style={{ position: "absolute", inset: 0, opacity: 1 - fadeOut }}>
       <div style={{ position: "absolute", left: 0, top: iconY - 540, width: 1080, height: 1080, background: `radial-gradient(circle, ${IRIS[1]}55, ${IRIS[2]}1c 38%, transparent 65%)`, opacity: Math.min(1, p) }} />
-      <OrbitShards t={t} cx={540} cy={iconY} vis={prog(t, TT.hero + 0.3, TT.hero + 1.2)} />
+      <OrbitCanvas iconFrameY={iconY} />
       <div
         style={{
           position: "absolute",
@@ -433,9 +446,9 @@ export const ZenithTrailer: React.FC<TrailerProps> = ({ launch }) => {
     <AbsoluteFill style={{ background: "#050508", fontFamily: "Inter" }}>
       <div style={{ position: "absolute", inset: 0, translate: shakeAt(t) }}>
         <Atmosphere t={t} />
+        <ShatterCanvas />
+        <ImpactFlash t={t} />
         <IntroLines t={t} />
-        <Crack t={t} />
-        <Shards t={t} />
         <UntilNow t={t} />
         <IconForm t={t} />
         <Montage t={t} />
