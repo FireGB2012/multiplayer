@@ -1,7 +1,7 @@
 import React from "react";
 import { interpolate } from "remotion";
 import { StatusBar } from "../zenith/HomeScreen";
-import { easeIn, easeInOut, easeOut, prog } from "../zenith/anim";
+import { easeInOut, easeOut, prog } from "../zenith/anim";
 import { HomeScreen2, Nebula, SH, SW, StockScreen } from "./Home2";
 import { BackupToast, ColourOpen, Drawer, Finger, FreePlacement, GlassOpen, HiddenAppsSheet, ThemeMakerSheet } from "./Layers";
 import { T2, type Pal2 } from "./theme2";
@@ -14,7 +14,7 @@ const REVEAL_Y = 380;
 
 export const Phone2: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) => {
   const enter = prog(t, 0, 0.6, easeOut);
-  const exit = prog(t, T2.outro - 0.1, T2.outro + 0.45, easeIn);
+  const exit = prog(t, T2.outro - 0.4, T2.outro + 0.1, easeInOut);
   if (exit >= 1) return null;
   const bounce = Math.sin(Math.PI * prog(t, T2.zenithMoves, T2.zenithMoves + 0.55, easeInOut)) * 0.035;
   const revealR = prog(t, T2.zenithMoves, T2.zenithMoves + 0.7, easeInOut) * 820;
@@ -68,7 +68,7 @@ export const Phone2: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) => {
               <ColourOpen t={t} />
               <GlassOpen t={t} />
               <Drawer t={t} pal={pal} />
-              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.3)", opacity: sheetDim }} />
+              <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.45)", opacity: sheetDim }} />
               <HiddenAppsSheet t={t} pal={pal} />
               <ThemeMakerSheet t={t} pal={pal} />
             </div>

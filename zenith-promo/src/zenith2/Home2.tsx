@@ -2,7 +2,7 @@ import React from "react";
 import { interpolate, random } from "remotion";
 import { CameraGlyph, ChromeGlyph, GmailM, GoogleG, MessagesGlyph, PhoneGlyph, SearchGlyph } from "../zenith/AppIcons";
 import { glass } from "../zenith/ui";
-import { easeInOut, prog, springy } from "../zenith/anim";
+import { easeInOut, easeOut, prog, springy } from "../zenith/anim";
 import { DRAWER_APPS } from "./Glyphs2";
 import { T2, type Pal2 } from "./theme2";
 
@@ -167,6 +167,19 @@ export const HomeScreen2: React.FC<{ t: number; pal: Pal2; appear: number }> = (
     return { opacity: prog(t, at, at + 0.2), translate: `0px ${interpolate(p, [0, 1], [26, 0])}px`, scale: interpolate(p, [0, 1], [0.86, 1]) };
   };
   const g = googleRectAt(t);
+  // Tapped icons dip under the finger; white tiles dim while the liquid-glass card is open over them.
+  const dip = (tapAt: number, openAt: number) => 1 - 0.07 * Math.sin(Math.PI * prog(t, tapAt - 0.05, openAt, easeInOut));
+  const glassK =
+    t < T2.chromeOpen || t > T2.chromeClose + 0.45
+      ? 0
+      : t < T2.chromeClose
+        ? prog(t, T2.chromeOpen, T2.chromeOpen + 0.5, easeOut)
+        : 1 - prog(t, T2.chromeClose, T2.chromeClose + 0.38, easeInOut);
+  const dimmed = (st: React.CSSProperties, scaleK = 1): React.CSSProperties => ({
+    ...st,
+    opacity: (st.opacity as number) * (1 - 0.7 * glassK),
+    scale: (st.scale as number) * scaleK,
+  });
   return (
     <>
       <div style={{ position: "absolute", top: 36, left: 24, color: "rgba(255,255,255,0.88)", fontSize: 9, fontWeight: 600, ...pop(appear) }}>Gabriel</div>
@@ -185,10 +198,10 @@ export const HomeScreen2: React.FC<{ t: number; pal: Pal2; appear: number }> = (
         <div style={{ position: "absolute", left: 0, right: 0, bottom: 14, textAlign: "center", fontSize: 8, color: "rgba(255,255,255,0.8)" }}>Good evening, Gabriel</div>
       </div>
 
-      <Tile rect={g} label="Google" style={pop(appear + 0.14)}>
+      <Tile rect={g} label="Google" style={dimmed(pop(appear + 0.14))}>
         <GoogleG size={interpolate(g.w, [58, 132], [30, 66])} />
       </Tile>
-      <Tile rect={GMAIL_RECT} label="Gmail" style={pop(appear + 0.2)}>
+      <Tile rect={GMAIL_RECT} label="Gmail" style={dimmed(pop(appear + 0.2), dip(T2.gmailTap, T2.gmailOpen))}>
         <GmailM size={34} />
       </Tile>
 
@@ -227,7 +240,7 @@ export const HomeScreen2: React.FC<{ t: number; pal: Pal2; appear: number }> = (
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              ...pop(appear + 0.4 + i * 0.04),
+              ...dimmed(pop(appear + 0.4 + i * 0.04), i === 2 ? dip(T2.chromeTap, T2.chromeOpen) : 1),
             }}
           >
             {ic.g}

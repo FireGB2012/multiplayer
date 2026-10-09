@@ -1,6 +1,6 @@
 import React from "react";
 import { interpolate } from "remotion";
-import { prog, springy, window01 } from "../zenith/anim";
+import { easeIn, easeInOut, prog, springy } from "../zenith/anim";
 import { GlassIcon, GradientLine, headline } from "../zenith/Scenes";
 import { T2, type Pal2 } from "./theme2";
 
@@ -20,12 +20,19 @@ const CAPTIONS: Cap[] = [
   { at: T2.backup + 0.04, out: T2.outro - 0.1, l1: "Back it", l2: "all up." },
 ];
 
+// Each caption finishes fading out just before the next one starts, so two never overlap.
+const FADE_OUT = 0.22;
+const CAPS = CAPTIONS.map((c, i) => ({
+  ...c,
+  out: i < CAPTIONS.length - 1 ? Math.max(c.at + 0.5, CAPTIONS[i + 1].at - FADE_OUT - 0.02) : c.out,
+}));
+
 /** Headline captions above the phone. */
 export const Captions2: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) => (
   <>
-    {CAPTIONS.map((c) => {
-      if (t < c.at - 0.1 || t > c.out + 0.5) return null;
-      const v = window01(t, c.at, c.out, 0.4, 0.28);
+    {CAPS.map((c) => {
+      if (t < c.at - 0.1 || t > c.out + FADE_OUT + 0.05) return null;
+      const v = Math.min(prog(t, c.at, c.at + 0.4), 1 - prog(t, c.out, c.out + FADE_OUT, easeInOut));
       const p = prog(t, c.at, c.at + 0.6, springy);
       return (
         <div
@@ -62,12 +69,12 @@ export const Captions2: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) => (
 /** End card: icon, wordmark, tagline. */
 export const Outro2: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) => {
   if (t < T2.outro - 0.05) return null;
-  const p = prog(t, T2.outro, T2.outro + 0.9, springy);
+  const p = prog(t, T2.outro + 0.15, T2.outro + 1.0, springy);
   const word = prog(t, T2.zenithWord - 0.05, T2.zenithWord + 0.5);
   const tag1 = prog(t, T2.finallyYours - 0.05, T2.finallyYours + 0.5);
-  const tag2 = prog(t, T2.finallyYours + 0.75, T2.finallyYours + 1.25);
-  const small = prog(t, T2.finallyYours + 2.2, T2.finallyYours + 2.8);
-  const fadeOut = prog(t, T2.end - 0.35, T2.end);
+  const tag2 = prog(t, T2.finallyYours + 1.03, T2.finallyYours + 1.5);
+  const small = prog(t, T2.finallyYours + 2.4, T2.finallyYours + 3.0);
+  const fadeOut = prog(t, T2.end - 0.5, T2.end - 0.03, easeIn);
   const float = Math.sin((t - T2.outro) * 1.4) * 10;
   return (
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", opacity: 1 - fadeOut }}>

@@ -51,7 +51,7 @@ export const ColourOpen: React.FC<{ t: number }> = ({ t }) => {
         borderRadius: interpolate(p, [0, 1], [GMAIL_RECT.w * TILE_RADIUS, 39]),
         background: interpolateColors(p, [0, 0.55], ["#ffffff", "#e5483d"]),
         overflow: "hidden",
-        boxShadow: "0 20px 50px rgba(0,0,0,0.45)",
+        boxShadow: `0 20px 50px rgba(0,0,0,${0.45 * p})`,
       }}
     >
       <div style={{ position: "absolute", inset: 0, background: "linear-gradient(160deg, rgba(255,255,255,0.18), transparent 50%, rgba(0,0,0,0.18))", opacity: p }} />
@@ -103,9 +103,9 @@ export const GlassOpen: React.FC<{ t: number }> = ({ t }) => {
         height: r.h,
         borderRadius: interpolate(p, [0, 1], [src.w * TILE_RADIUS, 39]),
         background: `linear-gradient(160deg, rgba(255,255,255,${0.26 + solid * 0.74}), rgba(255,255,255,${0.07 + solid * 0.93}) 55%, rgba(255,255,255,${0.15 + solid * 0.85}))`,
-        backdropFilter: "blur(22px) saturate(180%) brightness(1.08)",
-        border: "1px solid rgba(255,255,255,0.45)",
-        boxShadow: "inset 0 1.5px 0 rgba(255,255,255,0.7), inset 0 -30px 60px rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,0.45)",
+        backdropFilter: "blur(38px) saturate(180%) brightness(1.08)",
+        border: `1px solid rgba(255,255,255,${0.45 * p})`,
+        boxShadow: `inset 0 1.5px 0 rgba(255,255,255,${0.7 * p}), inset 0 -30px 60px rgba(255,255,255,0.06), 0 24px 60px rgba(0,0,0,${0.45 * p})`,
         overflow: "hidden",
       }}
     >
@@ -130,12 +130,12 @@ export const GlassOpen: React.FC<{ t: number }> = ({ t }) => {
         <ChromeGlyph size={interpolate(p, [0, 1], [30, 70])} />
       </div>
       <div style={{ position: "absolute", inset: 0, opacity: content }}>
-        <div style={{ position: "absolute", left: 16, right: 16, top: 40, height: 30, borderRadius: 15, ...glass(1.1), display: "flex", alignItems: "center", gap: 8, padding: "0 12px" }}>
+        <div style={{ position: "absolute", left: 16, right: 16, top: 40, height: 30, borderRadius: 15, ...glass(1.1), backdropFilter: "none", display: "flex", alignItems: "center", gap: 8, padding: "0 12px" }}>
           <SearchGlyph size={10} />
           <div style={{ fontSize: 8.5, color: "rgba(255,255,255,0.75)" }}>Search or type a URL</div>
         </div>
         {[0, 1, 2].map((i) => (
-          <div key={i} style={{ position: "absolute", left: 16, right: 16, top: 90 + i * 150, height: 132, borderRadius: 20, ...glass(1.1) }}>
+          <div key={i} style={{ position: "absolute", left: 16, right: 16, top: 90 + i * 150, height: 132, borderRadius: 20, ...glass(1.1), backdropFilter: "none" }}>
             <div style={{ position: "absolute", left: 14, top: 14, right: 60, height: 7, borderRadius: 4, background: "rgba(255,255,255,0.4)" }} />
             <div style={{ position: "absolute", left: 14, top: 28, right: 110, height: 6, borderRadius: 3, background: "rgba(255,255,255,0.25)" }} />
             <div style={{ position: "absolute", left: 14, right: 14, top: 48, bottom: 14, borderRadius: 12, background: "rgba(255,255,255,0.1)" }} />
@@ -149,14 +149,14 @@ export const GlassOpen: React.FC<{ t: number }> = ({ t }) => {
 // ------------------------------------------------------------ drawer
 
 const COLS = 4;
-const cell = (i: number) => ({ x: 24 + (i % COLS) * 72 + 13, y: 98 + Math.floor(i / COLS) * 76 });
+const cell = (i: number) => ({ x: 24 + (i % COLS) * 72 + 13, y: 112 + Math.floor(i / COLS) * 76 });
 const QUERY = "maps";
 
 const drawerYAt = (t: number) => {
   let y = SH;
   if (t >= T2.drawerUp) y = tw(t, T2.drawerUp, T2.drawerUp + 0.5, SH, 0, softSpring);
   if (t >= T2.drawerDown) y = tw(t, T2.drawerDown, T2.drawerDown + 0.35, 0, SH, easeIn);
-  if (t >= T2.hideDrawer) y = tw(t, T2.hideDrawer, T2.hideDrawer + 0.45, SH, 0, softSpring);
+  if (t >= T2.hideDrawer + 0.15) y = tw(t, T2.hideDrawer + 0.15, T2.hideDrawer + 0.6, SH, 0, softSpring);
   if (t >= T2.hideDrawerDown) y = tw(t, T2.hideDrawerDown, T2.hideDrawerDown + 0.3, 0, SH, easeIn);
   return y;
 };
@@ -177,7 +177,7 @@ const drawerSteps = (t: number): [number, string[]][] => {
   }
   return [
     [0, all],
-    [T2.poof + 0.15, all.filter((n) => n !== "Calendar")],
+    [T2.poof + 0.1, all.filter((n) => n !== "Calendar")],
   ];
 };
 
@@ -193,13 +193,15 @@ const appPlacement = (t: number, name: string) => {
     const [time, list] = steps[k];
     if (t < time) break;
     const target = at(list);
-    const p = prog(t, time, time + 0.28, easeInOut);
+    const nextAt = steps[k + 1]?.[0];
+    const tEval = nextAt !== undefined && t >= nextAt ? nextAt : t; // state when the next step takes over
+    const p = prog(tEval, time, time + 0.28, easeInOut);
     cur = {
       x: interpolate(p, [0, 1], [prev.x, target.shown ? target.x : prev.x]),
       y: interpolate(p, [0, 1], [prev.y, target.shown ? target.y : prev.y]),
       shown: interpolate(p, [0, 1], [prev.shown, target.shown]),
     };
-    prev = { x: target.shown ? target.x : prev.x, y: target.shown ? target.y : prev.y, shown: target.shown };
+    prev = cur;
   }
   return cur;
 };
@@ -215,20 +217,22 @@ export const Drawer: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) => {
   const count = t >= T2.poof + 0.2 ? 19 : 20;
   return (
     <div style={{ position: "absolute", inset: 0 }}>
+      <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.25)", opacity: 1 - y / SH }} />
       <div
         style={{
           position: "absolute",
           inset: 0,
-          background: "rgba(8,8,22,0.5)",
-          backdropFilter: "blur(20px) saturate(140%)",
-          opacity: 1 - y / SH,
+          translate: `0px ${y}px`,
+          borderRadius: "24px 24px 0 0",
+          background: "rgba(8,8,22,0.72)",
+          backdropFilter: "blur(30px) saturate(140%)",
+          boxShadow: "0 -10px 40px rgba(0,0,0,0.4)",
         }}
-      />
-      <div style={{ position: "absolute", inset: 0, translate: `0px ${y}px` }}>
-        <div style={{ width: 30, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.4)", margin: "10px auto 0" }} />
-        <div style={{ position: "absolute", left: 26, top: 40, color: "#fff", fontSize: 17, fontWeight: 800 }}>All apps</div>
-        <div style={{ position: "absolute", left: 26, top: 62, color: "rgba(255,255,255,0.6)", fontSize: 8 }}>{count} apps</div>
-        <div style={{ position: "absolute", left: 284, top: 42, width: 26, height: 26, borderRadius: 13, ...glass(1), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }}>
+      >
+        <div style={{ width: 30, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.4)", margin: "30px auto 0" }} />
+        <div style={{ position: "absolute", left: 26, top: 54, color: "#fff", fontSize: 17, fontWeight: 800 }}>All apps</div>
+        <div style={{ position: "absolute", left: 26, top: 76, color: "rgba(255,255,255,0.6)", fontSize: 8 }}>{count} apps</div>
+        <div style={{ position: "absolute", left: 284, top: 56, width: 26, height: 26, borderRadius: 13, ...glass(1), display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontSize: 12 }}>
           ×
         </div>
         {DRAWER_APPS.map((a) => {
@@ -444,7 +448,7 @@ const sheetBase = (top: number): React.CSSProperties => ({
   top,
   height: SH + 120,
   borderRadius: 24,
-  background: "linear-gradient(180deg, rgba(60,56,96,0.62), rgba(18,18,40,0.86))",
+  background: "linear-gradient(180deg, rgba(52,48,88,0.76), rgba(16,16,36,0.9))",
   backdropFilter: "blur(22px) saturate(160%)",
   border: "0.7px solid rgba(255,255,255,0.18)",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.25), 0 -10px 40px rgba(0,0,0,0.4)",
@@ -539,7 +543,7 @@ const Slider: React.FC<{ y: number; bg: string; frac: number; active?: boolean; 
 
 export const ThemeMakerSheet: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) => {
   let top = SH;
-  if (t >= T2.themeIn) top = tw(t, T2.themeIn, T2.themeIn + 0.45, SH, THEME_SHEET_TOP, springy);
+  if (t >= T2.themeIn) top = tw(t, T2.themeIn, T2.themeIn + 0.45, SH, THEME_SHEET_TOP, easeOut);
   if (t >= T2.themeDown) top = tw(t, T2.themeDown, T2.themeDown + 0.35, THEME_SHEET_TOP, SH + 20, easeIn);
   if (top >= SH) return null;
   const s = sliders(t);
@@ -572,8 +576,8 @@ export const ThemeMakerSheet: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) 
               </div>
               <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 7.5, fontVariantNumeric: "tabular-nums" }}>{color}</div>
             </div>
-            <Slider y={y + 24} bg={rainbow} frac={sec.h / 360} active={sec.act} ring={color} />
-            <Slider y={y + 46} bg={`linear-gradient(90deg, #fff, ${hsv(sec.h, 1, 1)})`} frac={sec.sat} ring={color} />
+            <Slider y={y + 24} bg={rainbow} frac={sec.h / 360} active={sec.act} ring={i === 2 ? pal.accent : color} />
+            <Slider y={y + 46} bg={`linear-gradient(90deg, ${hsv(sec.h, 0, sec.val)}, ${hsv(sec.h, 1, sec.val)})`} frac={sec.sat} ring={color} />
             <Slider y={y + 68} bg={`linear-gradient(90deg, #000, ${hsv(sec.h, sec.sat, 1)})`} frac={sec.val} ring={color} />
           </div>
         );
@@ -594,10 +598,10 @@ export const BackupToast: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) => {
       style={{
         position: "absolute",
         left: "50%",
-        top: 34,
+        top: 490,
         width: 240,
         height: 48,
-        translate: `-50% ${interpolate(p, [0, 1], [-80, 0])}px`,
+        translate: `-50% ${interpolate(p, [0, 1], [60, 0])}px`,
         opacity: Math.min(1, p * 1.5),
         borderRadius: 24,
         ...glass(1.3),
@@ -629,7 +633,7 @@ export const BackupToast: React.FC<{ t: number; pal: Pal2 }> = ({ t, pal }) => {
 // ------------------------------------------------------------ finger
 
 type Key = [number, number, number]; // time, x, y
-type Gesture = { keys: Key[]; tap?: boolean };
+type Gesture = { keys: Key[]; tap?: boolean; cut?: number };
 
 const thumbA0 = sliderThumb(0, 0, 252 / 360);
 const thumbA1 = sliderThumb(0, 0, 338 / 360);
@@ -639,8 +643,8 @@ const thumbC0 = sliderThumb(2, 0, 236 / 360);
 const thumbC1 = sliderThumb(2, 0, 328 / 360);
 
 const GESTURES: Gesture[] = [
-  { keys: [[T2.gmailTap, GMAIL_RECT.x + 29, GMAIL_RECT.y + 67]], tap: true },
-  { keys: [[T2.chromeTap, DOCK_ICON(2).x + 24, DOCK_ICON(2).y + 24]], tap: true },
+  { keys: [[T2.gmailTap, GMAIL_RECT.x + 29, GMAIL_RECT.y + 67]], tap: true, cut: T2.gmailOpen },
+  { keys: [[T2.chromeTap, DOCK_ICON(2).x + 24, DOCK_ICON(2).y + 24]], tap: true, cut: T2.chromeOpen },
   { keys: [[T2.swipeUp, 168, 692], [T2.swipeUp + 0.35, 168, 500]] },
   { keys: [[T2.searchAway - 0.12, 120, 681]], tap: true },
   {
@@ -652,7 +656,7 @@ const GESTURES: Gesture[] = [
     ],
   },
   { keys: [[T2.resizeStart, 162, 448], [T2.resizeEnd, 236, 448]] },
-  { keys: [[T2.resizeDone, 170, 381]], tap: true },
+  { keys: [[T2.resizeDone, 236, 448]], tap: true },
   { keys: [[T2.hideToggle - 0.05, 299, HIDE_SHEET_TOP + HIDE_ROW_Y(0) + 20]], tap: true },
   {
     keys: [
@@ -666,7 +670,11 @@ const GESTURES: Gesture[] = [
   },
 ];
 
-export function fingerAt(t: number): { x: number; y: number; vis: number; down: number; ripple: number } | null {
+type FingerState = { x: number; y: number; vis: number; down: number; ripple: number; cutK: number };
+
+/** The most visible gesture at time t (overlapping fade windows hand over smoothly). */
+export function fingerAt(t: number): FingerState | null {
+  let best: FingerState | null = null;
   for (const g of GESTURES) {
     const start = g.keys[0][0];
     const end = g.keys[g.keys.length - 1][0];
@@ -685,9 +693,11 @@ export function fingerAt(t: number): { x: number; y: number; vis: number; down: 
     const vis = prog(t, start - 0.2, start - 0.05) * (1 - prog(t, end + 0.08, end + 0.3));
     const down = g.tap ? 1 - prog(t, start + 0.08, start + 0.2) : t >= start && t <= end ? 1 : 0;
     const ripple = g.tap ? prog(t, start, start + 0.45, easeOut) : 0;
-    return { x, y, vis, down, ripple };
+    const cutK = g.cut ? 1 - prog(t, g.cut, g.cut + 0.05) : 1;
+    const st = { x, y, vis: vis * cutK, down, ripple, cutK };
+    if (!best || st.vis >= best.vis) best = st;
   }
-  return null;
+  return best;
 }
 
 export const Finger: React.FC<{ t: number }> = ({ t }) => {
@@ -704,8 +714,9 @@ export const Finger: React.FC<{ t: number }> = ({ t }) => {
             width: 52 * f.ripple,
             height: 52 * f.ripple,
             borderRadius: "50%",
-            border: "1.5px solid rgba(255,255,255,0.8)",
-            opacity: 1 - f.ripple,
+            border: "2px solid rgba(255,255,255,0.9)",
+            boxShadow: "0 0 0 1px rgba(0,0,0,0.3)",
+            opacity: (1 - f.ripple) * f.cutK,
           }}
         />
       ) : null}
@@ -717,9 +728,9 @@ export const Finger: React.FC<{ t: number }> = ({ t }) => {
           width: 22,
           height: 22,
           borderRadius: 11,
-          background: "rgba(255,255,255,0.45)",
-          border: "1.5px solid rgba(255,255,255,0.9)",
-          boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
+          background: "rgba(20,20,32,0.3)",
+          border: "2px solid rgba(255,255,255,0.95)",
+          boxShadow: "0 0 0 1px rgba(0,0,0,0.35), 0 2px 10px rgba(0,0,0,0.4)",
           opacity: f.vis,
           scale: 1 - f.down * 0.15,
         }}
