@@ -27,6 +27,7 @@ namespace SubnauticaMP
         readonly Vector3 _counterPos;    // its normal local position (we nudge it while nodding)
         bool _counterMoved;
         readonly Vector3 _hipPivot;   // between the hips, in the body's parent space
+        readonly Quaternion _face;    // the way the diver faces, in the body's parent space (the parent can be turned another way)
         readonly float _legLength;
         EmoteClips.Clip _clip;
         EmoteClips.Pose _pose;
@@ -133,6 +134,12 @@ namespace SubnauticaMP
                 _legLength = 0.9f;
             }
             if (_legLength < 0.3f || _legLength > 2f) _legLength = 0.9f;
+
+            // Which way the diver faces in the parent's space. Your own diver's parent (the player) is turned
+            // sideways from the body, so its axes aren't the diver's: go by the body's own right (x) and up.
+            var right = _baseRot * Vector3.right;
+            right.y = 0f;
+            _face = right.sqrMagnitude > 1e-6f ? Quaternion.LookRotation(Vector3.Cross(right.normalized, Vector3.up), Vector3.up) : Quaternion.identity;
 
             _bones = new[] { _chest, _head, _headCounter, _upperR, _lowerR, _upperL, _lowerL, _thighL, _kneeL, _thighR, _kneeR }.Where(b => b != null).Distinct().ToArray();
             _before = new Quaternion[_bones.Length];
@@ -263,7 +270,7 @@ namespace SubnauticaMP
         public void SetKnockDirection(Vector3 world)
         {
             var parent = _body.parent;
-            var local = parent != null ? parent.InverseTransformDirection(world) : world;
+            var local = Quaternion.Inverse(_face) * (parent != null ? parent.InverseTransformDirection(world) : world);
             local.y = 0f;
             _knockDir = local.sqrMagnitude > 1e-4f ? local.normalized : Vector3.back;
         }
@@ -521,12 +528,13 @@ namespace SubnauticaMP
         void ClipPose(EmoteClips.Clip clip, float t, float w)
         {
             EmoteClips.Sample(clip, t, ref _pose);
-            var turn = Quaternion.Slerp(Quaternion.identity, _pose.Torso, w);
-            _body.localRotation = turn * _baseRot;
-            _body.localPosition = _hipPivot + turn * (_basePos - _hipPivot) + _pose.Hips * (_legLength * w);
+            var turn = Quaternion.Slerp(Quaternion.identity, _pose.Torso, w); // in the facing space
+            var parentTurn = ToParent(turn);
+            _body.localRotation = parentTurn * _baseRot;
+            _body.localPosition = _hipPivot + parentTurn * (_basePos - _hipPivot) + _face * _pose.Hips * (_legLength * w);
 
-            var face = _body.parent; // the way the player faces: the clip's directions are in that space
-            Vector3 Dir(int k) => face != null ? face.TransformDirection(_pose.Dirs[k]) : _pose.Dirs[k];
+            var face = Facing; // the clip's directions are in the facing space
+            Vector3 Dir(int k) => face * _pose.Dirs[k];
             Aim(_upperL, _lowerL, Dir(EmoteClips.ArmUpL), w);
             Aim(_lowerL, _handL, Dir(EmoteClips.ArmLowL), w);
             Aim(_upperR, _lowerR, Dir(EmoteClips.ArmUpR), w);
@@ -612,7 +620,10 @@ namespace SubnauticaMP
             _headTurn = Quaternion.Inverse(face) * turn * face * _headTurn;
         }
 
-        Quaternion Facing => _body.parent != null ? _body.parent.rotation : Quaternion.identity;
+        Quaternion Facing => (_body.parent != null ? _body.parent.rotation : Quaternion.identity) * _face;
+
+        // a turn in the facing space, as a turn in the body's parent space
+        Quaternion ToParent(Quaternion turn) => _face * turn * Quaternion.Inverse(_face);
 
         void TurnHead(Quaternion facingTurn)
         {
@@ -637,19 +648,19 @@ namespace SubnauticaMP
             bone.rotation = turn * bone.rotation;
         }
 
-        // Moves / turns the whole body (in its parent's space, which faces the way the player looks).
+        // Moves / turns the whole body (in the facing space: x = right, y = up, z = the way the player looks).
         void BodyOffset(Vector3 move, Quaternion turn, float w)
         {
-            _body.localPosition = _basePos + move * w;
-            _body.localRotation = Quaternion.Slerp(Quaternion.identity, turn, w) * _baseRot;
+            _body.localPosition = _basePos + _face * move * w;
+            _body.localRotation = ToParent(Quaternion.Slerp(Quaternion.identity, turn, w)) * _baseRot;
         }
 
         // Turns the whole body around its middle (flips, spins, lying back).
         void Turn(Quaternion turn, Vector3 move, float w)
         {
-            turn = Quaternion.Slerp(Quaternion.identity, turn, w);
+            turn = ToParent(Quaternion.Slerp(Quaternion.identity, turn, w));
             _body.localRotation = turn * _baseRot;
-            _body.localPosition = _pivot + turn * (_basePos - _pivot) + move * w;
+            _body.localPosition = _pivot + turn * (_basePos - _pivot) + _face * move * w;
         }
     }
 }
